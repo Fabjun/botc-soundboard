@@ -281,6 +281,14 @@ input[type=file]{display:none}
     </div>
 
     <div class="tip">
+      <div class="tip-key">Fade</div>
+      <div class="tip-body">
+        <div class="tip-ttl">FADE-IN / FADE-OUT</div>
+        <div class="tip-desc">Im Setup pro Pad einstellbar (0–10s). Fade-In blendet den Sound beim Start ein. Fade-Out blendet ihn beim Stoppen aus — z.B. beim Togglen eines Loops. "Alle Stoppen" (Leertaste) ignoriert den Fade und stoppt sofort.</div>
+      </div>
+    </div>
+
+    <div class="tip">
       <div class="tip-key">🔒</div>
       <div class="tip-body">
         <div class="tip-ttl">LOCK-MODUS</div>
@@ -377,6 +385,14 @@ input[type=file]{display:none}
     <label class="fl">LAUTSTÄRKE</label>
     <input type="range" id="ev" min="0" max="100" value="80" style="width:100%;accent-color:var(--gold)">
   </div>
+  <div class="fg">
+    <label class="fl">FADE-IN — <span id="eft-lbl">Kein</span></label>
+    <input type="range" id="eft" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('eft')" style="width:100%;accent-color:var(--gold)">
+  </div>
+  <div class="fg">
+    <label class="fl">FADE-OUT — <span id="efo-lbl">Kein</span></label>
+    <input type="range" id="efo" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('efo')" style="width:100%;accent-color:var(--gold)">
+  </div>
   <div class="eact">
     <button class="btn-d" onclick="delPad()">LÖSCHEN</button>
     <button class="btn-s" style="flex:1" onclick="closeEP()">ABBRECHEN</button>
@@ -463,14 +479,23 @@ function decodePad(id){
     ctx.decodeAudioData(f.data.slice(0), buf=>{ if(!bufs[id]) bufs[id]=[]; bufs[id][fi]=buf; }, e=>console.warn(e));
   });
 }
+function fadeInGain(g, targetVol, fadeIn){
+  if(fadeIn>0){
+    g.gain.setValueAtTime(0, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(targetVol, ctx.currentTime+fadeIn);
+  } else {
+    g.gain.setValueAtTime(targetVol, ctx.currentTime);
+  }
+}
 function play(id){
   const p=pads[id]; if(!p||!bufs[id]||!bufs[id].length) return;
   flash(id);
+  const vol=(p.volume||80)/100, fi=p.fadeIn||0;
   if(p.mode==='once'){
     const b=bufs[id][0]; if(!b) return;
-    stopPad(id);
+    stopPad(id,true);
     const s=ctx.createBufferSource(), g=ctx.createGain();
-    g.gain.value=(p.volume||80)/100;
+    fadeInGain(g,vol,fi);
     s.buffer=b; s.connect(g); g.connect(ctx.destination); s.start(0);
     srcs[id]=[s]; gains[id]=g;
     s.onended=()=>{ delete srcs[id]; updBtn(id,false); chkNP(); };
@@ -479,7 +504,7 @@ function play(id){
     if(srcs[id]){ stopPad(id); return; }
     const b=bufs[id][0]; if(!b) return;
     const s=ctx.createBufferSource(), g=ctx.createGain();
-    g.gain.value=(p.volume||80)/100;
+    fadeInGain(g,vol,fi);
     s.buffer=b; s.loop=true; s.connect(g); g.connect(ctx.destination); s.start(0);
     srcs[id]=[s]; gains[id]=g;
     updBtn(id,true,true); setNP(p.name+' ↻');
@@ -493,7 +518,7 @@ function playNext(id,all){
   const p=pads[id]; if(!p) return;
   const i=Math.floor(Math.random()*all.length);
   const s=ctx.createBufferSource(), g=ctx.createGain();
-  g.gain.value=(p.volume||80)/100;
+  fadeInGain(g,(p.volume||80)/100,p.fadeIn||0);
   s.buffer=all[i]; s.connect(g); g.connect(ctx.destination); s.start(0);
   srcs[id]=[s]; gains[id]=g;
   updBtn(id,true,true);
@@ -501,12 +526,25 @@ function playNext(id,all){
   setNP(p.name+(fn?' — '+fn:''));
   s.onended=()=>{ if(srcs[id]) playNext(id,all); };
 }
-function stopPad(id){
-  if(srcs[id]){ srcs[id].forEach(s=>{ try{ s.onended=null; s.stop(); }catch(e){} }); delete srcs[id]; }
-  updBtn(id,false);
+function stopPad(id, immediate=false){
+  if(!srcs[id]) return;
+  const fo=(!immediate&&pads[id]?.fadeOut)||0;
+  if(fo>0&&gains[id]){
+    const g=gains[id];
+    g.gain.cancelScheduledValues(ctx.currentTime);
+    g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0, ctx.currentTime+fo);
+    srcs[id].forEach(s=>{ try{ s.onended=null; s.stop(ctx.currentTime+fo); }catch(e){} });
+    const cid=id;
+    setTimeout(()=>{ delete srcs[cid]; delete gains[cid]; updBtn(cid,false); chkNP(); }, fo*1000+100);
+  } else {
+    srcs[id].forEach(s=>{ try{ s.onended=null; s.stop(); }catch(e){} });
+    delete srcs[id];
+    updBtn(id,false);
+  }
 }
 function stopAll(){
-  Object.keys(srcs).forEach(id=>stopPad(+id));
+  Object.keys(srcs).forEach(id=>stopPad(+id,true));
   document.getElementById('nptxt').textContent='Kein Sound aktiv';
   document.getElementById('nptxt').style.color='var(--text-dim)';
   const d=document.querySelector('.npdot'); if(d) d.remove();
@@ -586,6 +624,9 @@ function openEP(id){
   keyEl.value=p?.keyLabel||p?.key||'';
   keyEl.dataset.code=p?.key||'';
   document.getElementById('ev').value=p?.volume??80;
+  document.getElementById('eft').value=p?.fadeIn??0;
+  document.getElementById('efo').value=p?.fadeOut??0;
+  updFadeLabel('eft'); updFadeLabel('efo');
   eFiles=p?.files?p.files.map(f=>({name:f.name,data:f.data})):[];
   eMode=p?.mode||'once';
   updFB(); setMode(eMode);
@@ -680,7 +721,9 @@ function doSave(){
   const key=keyEl.dataset.code||keyEl.value.trim();
   const keyLabel=keyEl.value.trim();
   const vol=+document.getElementById('ev').value;
-  pads[eId]={id:eId,name,key,keyLabel,mode:eMode,volume:vol,files:eFiles};
+  const fadeIn=+document.getElementById('eft').value;
+  const fadeOut=+document.getElementById('efo').value;
+  pads[eId]={id:eId,name,key,keyLabel,mode:eMode,volume:vol,fadeIn,fadeOut,files:eFiles};
   decodePad(eId); save(); closeEP(); renderSetup();
 }
 function delPad(){
@@ -718,6 +761,11 @@ function renderPerf(){
       <div class="plbl">${p?.name||''}</div>`;
     g.appendChild(b);
   }
+}
+
+function updFadeLabel(id){
+  const v=+document.getElementById(id).value;
+  document.getElementById(id+'-lbl').textContent=v>0?v+'s':'Kein';
 }
 
 // ── KEY CAPTURE (setup field) ──
@@ -776,7 +824,7 @@ function onDragEnd(e){
   const tgt=under?.closest('.pbtn');
   const tgtId=tgt?+tgt.dataset.id:null;
   if(tgtId!==null&&tgtId!==dragSrc){
-    stopPad(dragSrc); stopPad(tgtId);
+    stopPad(dragSrc,true); stopPad(tgtId,true);
     const padA=pads[dragSrc]?{...pads[dragSrc],id:tgtId}:null;
     const padB=pads[tgtId]?{...pads[tgtId],id:dragSrc}:null;
     pads[dragSrc]=padB; pads[tgtId]=padA;
