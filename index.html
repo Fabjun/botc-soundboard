@@ -222,6 +222,10 @@ input[type=file]{display:none}
     <label class="fl">TASTE — Feld anklicken, dann Taste drücken</label>
     <input type="text" class="fi" id="ek" placeholder="Taste drücken…" readonly onkeydown="captureKey(event)">
   </div>
+  <div id="key-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:12px;color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
+    <span id="key-warn-txt"></span>
+    <button class="btn-d" style="margin-top:8px;width:100%" onclick="saveForce()">TROTZDEM ÜBERSCHREIBEN</button>
+  </div>
   <div class="fg">
     <label class="fl">AUDIODATEI(EN)</label>
     <div class="fbtn" id="fbd" onclick="document.getElementById('fi').click()">+ Datei(en) auswählen</div>
@@ -448,6 +452,7 @@ function closeEP(){
   document.getElementById('ep').classList.remove('open');
   document.getElementById('ebk').classList.remove('open');
   document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('ed'));
+  document.getElementById('key-warn').style.display='none';
   eFiles=[]; eId=null;
 }
 function onFile(inp){
@@ -472,6 +477,23 @@ function setMode(m){
   });
 }
 function savePad(){
+  const key=document.getElementById('ek').value.trim();
+  const conflict=pads.findIndex((p,i)=>p&&p.key===key&&i!==eId);
+  if(conflict!==-1){
+    document.getElementById('key-warn-txt').textContent=
+      `"${key}" ist bereits belegt von Pad ${conflict+1} — "${pads[conflict].name}"`;
+    document.getElementById('key-warn').style.display='block';
+    return;
+  }
+  doSave();
+}
+function saveForce(){
+  const key=document.getElementById('ek').value.trim();
+  const conflict=pads.findIndex((p,i)=>p&&p.key===key&&i!==eId);
+  if(conflict!==-1) pads[conflict]={...pads[conflict],key:''};
+  doSave();
+}
+function doSave(){
   const name=document.getElementById('en').value.trim();
   const key=document.getElementById('ek').value.trim();
   const vol=+document.getElementById('ev').value;
@@ -520,6 +542,7 @@ function captureKey(e){
   e.preventDefault();
   e.stopPropagation();
   e.target.value=e.code;
+  document.getElementById('key-warn').style.display='none';
 }
 
 // ── KEYBOARD ──
