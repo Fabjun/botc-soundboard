@@ -258,6 +258,7 @@ input[type=file]{display:none}
   </div>
   <div class="pgrid" id="pgrid"></div>
   <div id="np"><span id="nptxt" style="color:var(--text-dim);font-style:italic">Kein Sound aktiv</span></div>
+  <div id="dbg" style="display:none;padding:4px 13px;background:#0a0a14;border-top:1px solid #1e1e35;font-family:monospace;font-size:10px;color:#4a4a7a;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
   <div class="srow">
     <button class="stop-btn" onclick="stopAll()">■ ALLE STOPPEN</button>
   </div>
@@ -527,9 +528,20 @@ document.addEventListener('keydown', e=>{
     return;
   }
   if(cur==='sp'){
-    if(code==='Escape'||code==='NumpadDecimal'){ stopAll(); return; }
+    const dbg=document.getElementById('dbg');
+    dbg.style.display='block';
+    if(code==='Escape'||code==='NumpadDecimal'){
+      stopAll(); dbg.textContent=`⏹ ${code} → stopAll`; return;
+    }
     const id=pads.findIndex(p=>p&&p.key===code);
-    if(id!==-1) play(id);
+    const cfgKeys=pads.filter(Boolean).map(p=>p.key).join(', ')||'—';
+    if(id!==-1){
+      const loaded=(bufs[id]||[]).filter(Boolean).length;
+      dbg.textContent=`▶ ${code} → pad[${id}] "${pads[id].name}" | bufs:${loaded}`;
+      play(id);
+    } else {
+      dbg.textContent=`? ${code} → kein Match | konfiguriert: [${cfgKeys}]`;
+    }
   }
 });
 
