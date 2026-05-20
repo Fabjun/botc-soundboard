@@ -66,8 +66,7 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);
 .sgrid{flex:1;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr 1fr;
   gap:6px;padding:8px;position:relative}
 .pbtn.ed{border-color:var(--gold)!important;box-shadow:0 0 8px rgba(201,168,76,.25)}
-.pbtn-add{border-style:dashed!important;opacity:.45}
-.pbtn-add:hover,.pbtn-add:active{opacity:1;border-color:var(--gold-dim)!important}
+#sgrid .pbtn.empty{cursor:pointer}
 #crop-dlg{position:fixed;inset:0;background:rgba(10,10,20,0.97);z-index:300;
   display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px}
 #crop-dlg h3{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:2px;margin:0}
@@ -679,24 +678,15 @@ function renderSetup(){
   const g=document.getElementById('sgrid'); g.innerHTML='';
   for(let i=0;i<MAX;i++){
     const p=pads[i];
-    if(!p) continue;
     const b=document.createElement('div');
-    b.className='pbtn'+(i===eId?' ed':'');
+    b.className='pbtn'+(p?'':' empty')+(i===eId?' ed':'');
     b.dataset.id=i;
-    if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
-    b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
+    if(p?.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
+    b.innerHTML=`<div class="pnum">${p?.keyLabel||p?.key||''}</div>`+
                 `<div class="pico">${ico(p)}</div>`+
-                `<div class="plbl">${p.name||''}</div>`;
+                `<div class="plbl">${p?.name||''}</div>`;
     b.onclick=()=>openEP(i);
     g.appendChild(b);
-  }
-  const free=pads.findIndex(p=>p===null);
-  if(free!==-1){
-    const a=document.createElement('div');
-    a.className='pbtn pbtn-add';
-    a.innerHTML='<div class="pico" style="font-size:26px">+</div>';
-    a.onclick=()=>openEP(free);
-    g.appendChild(a);
   }
 }
 
