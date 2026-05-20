@@ -97,6 +97,9 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);
   color:var(--text);font-family:'Crimson Pro',serif;font-size:16px;
   padding:7px 10px;border-radius:2px;outline:none}
 .fi:focus{border-color:var(--gold-dim)}
+.pvbtn{background:none;border:1px solid var(--border);border-radius:2px;
+  color:var(--active);width:24px;height:24px;font-size:11px;cursor:pointer;flex-shrink:0}
+.pvbtn:active{background:var(--surface)}
 .fbtn{width:100%;background:var(--surface);border:1px dashed var(--border);
   color:var(--text-dim);font-family:'Crimson Pro',serif;font-size:13px;
   padding:9px;border-radius:2px;cursor:pointer;text-align:center}
@@ -429,7 +432,8 @@ const MAX = 18;
 let pads = new Array(MAX).fill(null);
 let ctx = null, db = null;
 let bufs = {}, srcs = {}, gains = {};
-let eId = null, eFiles = [], eMode = 'once', previewAudio = null;
+let eId = null, eFiles = [], eMode = 'once';
+let previewAudio=null, previewGain=null, previewSrc=null, previewFileIdx=null, previewURL=null;
 let cur = 'su';
 let locked = false;
 const klog = [];
@@ -544,6 +548,7 @@ function stopPad(id, immediate=false){
   }
 }
 function stopAll(){
+  stopPreview(true);
   Object.keys(srcs).forEach(id=>stopPad(+id,true));
   document.getElementById('nptxt').textContent='Kein Sound aktiv';
   document.getElementById('nptxt').style.color='var(--text-dim)';
@@ -639,25 +644,59 @@ function closeEP(){
   document.getElementById('ebk').classList.remove('open');
   document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('ed'));
   document.getElementById('key-warn').style.display='none';
-  stopPreview();
+  stopPreview(true);
   eFiles=[]; eId=null;
 }
-function stopPreview(){
-  if(previewAudio){ previewAudio.pause(); previewAudio=null; }
+function _cleanupPreview(){
+  if(previewURL){ URL.revokeObjectURL(previewURL); previewURL=null; }
+  previewAudio=null; previewGain=null; previewSrc=null; previewFileIdx=null;
+}
+function stopPreview(immediate=false){
+  if(!previewAudio) return;
+  const fo=immediate?0:(+document.getElementById('efo')?.value||0);
+  if(fo>0&&previewGain){
+    const g=previewGain, au=previewAudio;
+    previewGain=null; // prevent double-fade
+    g.gain.cancelScheduledValues(ctx.currentTime);
+    g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0, ctx.currentTime+fo);
+    setTimeout(()=>{ try{au.pause();}catch(e){} _cleanupPreview(); updFB(); }, fo*1000+100);
+  } else {
+    try{ previewAudio.pause(); }catch(e){}
+    _cleanupPreview();
+  }
+}
+function pausePreview(){
+  if(!previewAudio) return;
+  if(previewAudio.paused) previewAudio.play(); else previewAudio.pause();
+  updFB();
 }
 function previewFile(i){
-  stopPreview();
+  stopPreview(true);
   const f=eFiles[i]; if(!f||!f.data) return;
   const ext=(f.name.split('.').pop()||'').toLowerCase();
   const mime={mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',m4a:'audio/mp4',aac:'audio/aac',flac:'audio/flac'}[ext]||'audio/*';
-  const url=URL.createObjectURL(new Blob([f.data],{type:mime}));
-  previewAudio=new Audio(url);
-  previewAudio.onended=()=>{ URL.revokeObjectURL(url); previewAudio=null; updFB(); };
+  previewURL=URL.createObjectURL(new Blob([f.data],{type:mime}));
+  previewAudio=new Audio(previewURL);
+  previewSrc=ctx.createMediaElementSource(previewAudio);
+  previewGain=ctx.createGain();
+  previewSrc.connect(previewGain);
+  previewGain.connect(ctx.destination);
+  const fi=+document.getElementById('eft').value;
+  const vol=+document.getElementById('ev').value/100;
+  if(fi>0){
+    previewGain.gain.setValueAtTime(0, ctx.currentTime);
+    previewGain.gain.linearRampToValueAtTime(vol, ctx.currentTime+fi);
+  } else {
+    previewGain.gain.setValueAtTime(vol, ctx.currentTime);
+  }
+  previewFileIdx=i;
+  previewAudio.onended=()=>{ _cleanupPreview(); updFB(); };
   previewAudio.play();
   updFB();
 }
 function onFile(inp){
-  stopPreview();
+  stopPreview(true);
   const files=Array.from(inp.files); eFiles=[]; let n=0;
   files.forEach(f=>{
     const r=new FileReader();
@@ -677,12 +716,19 @@ function updFB(){
     b.classList.add('hf');
     b.onclick=null;
     b.style.cursor='default';
-    b.innerHTML=eFiles.map((f,i)=>
-      `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(42,42,74,.4)">
-        <button onclick="previewFile(${i})" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--active);width:24px;height:24px;font-size:11px;cursor:pointer;flex-shrink:0">▶</button>
+    b.innerHTML=eFiles.map((f,i)=>{
+      const active=previewFileIdx===i;
+      const paused=active&&previewAudio?.paused;
+      const btns=!active
+        ? `<button class="pvbtn" onclick="previewFile(${i})">▶</button>`
+        : paused
+          ? `<button class="pvbtn" onclick="pausePreview()">▶</button><button class="pvbtn" onclick="stopPreview()">⏹</button>`
+          : `<button class="pvbtn" onclick="pausePreview()">⏸</button><button class="pvbtn" onclick="stopPreview()">⏹</button>`;
+      return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(42,42,74,.4)">
+        ${btns}
         <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${f.name}</span>
-      </div>`
-    ).join('')+
+      </div>`;
+    }).join('')+
     `<div style="text-align:right;padding-top:6px">
       <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:1px">↺ ÄNDERN</button>
     </div>`;
