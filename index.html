@@ -630,6 +630,14 @@ function toggleLock(){
 
 document.addEventListener('keydown', e=>{
   const code=e.code;
+  const tag=document.activeElement?.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA') return;
+
+  if(code==='Space'){
+    e.preventDefault();
+    stopAll();
+    return;
+  }
 
   if(locked){
     e.preventDefault();
@@ -647,8 +655,6 @@ document.addEventListener('keydown', e=>{
     return;
   }
 
-  const tag=document.activeElement?.tagName;
-  if(tag==='INPUT'||tag==='TEXTAREA') return;
   e.preventDefault();
 
   if(cur==='sk'){
@@ -662,7 +668,7 @@ document.addEventListener('keydown', e=>{
   if(cur==='sp'){
     const dbg=document.getElementById('dbg');
     dbg.style.display='block';
-    if(code==='NumpadDecimal'||code==='Space'){
+    if(code==='NumpadDecimal'){
       stopAll(); dbg.textContent=`⏹ ${code} → stopAll`; return;
     }
     const id=pads.findIndex(p=>p&&p.key===code);
