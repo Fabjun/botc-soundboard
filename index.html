@@ -717,10 +717,11 @@ function drawScrubber(){
   const frac=dur>0?Math.min(pos/dur,1):0;
   const mid=H/2;
   if(wf){
+    const vol=+document.getElementById('ev').value/100;
     const bw=W/wf.length;
     for(let i=0;i<wf.length;i++){
-      const x=i*bw, h=Math.max(1,wf[i]*mid*0.88);
-      g.fillStyle=i/wf.length<=frac?'rgba(122,95,40,0.85)':'rgba(30,30,53,0.95)';
+      const x=i*bw, h=Math.max(1,wf[i]*mid*0.88*vol);
+      g.fillStyle=i/wf.length<=frac?'rgba(122,95,40,0.85)':'rgba(74,74,122,0.7)';
       g.fillRect(x+0.5, mid-h, Math.max(bw-1,1), h*2);
     }
     if(dur>0){
@@ -789,6 +790,7 @@ function pausePreview(){
 function liveVol(){
   if(previewAudio && !previewAudio.paused)
     previewAudio.volume=+document.getElementById('ev').value/100;
+  drawScrubber();
 }
 function previewFile(i){
   if(previewAudio){ try{previewAudio.pause();}catch(e){} }
