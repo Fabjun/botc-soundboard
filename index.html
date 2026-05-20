@@ -433,7 +433,7 @@ let pads = new Array(MAX).fill(null);
 let ctx = null, db = null;
 let bufs = {}, srcs = {}, gains = {};
 let eId = null, eFiles = [], eMode = 'once';
-let previewAudio=null, previewGain=null, previewSrc=null, previewFileIdx=null, previewURL=null;
+let previewAudio=null, previewFileIdx=null, previewURL=null;
 let cur = 'su';
 let locked = false;
 const klog = [];
@@ -548,7 +548,7 @@ function stopPad(id, immediate=false){
   }
 }
 function stopAll(){
-  stopPreview(true);
+  stopPreview();
   Object.keys(srcs).forEach(id=>stopPad(+id,true));
   document.getElementById('nptxt').textContent='Kein Sound aktiv';
   document.getElementById('nptxt').style.color='var(--text-dim)';
@@ -644,27 +644,17 @@ function closeEP(){
   document.getElementById('ebk').classList.remove('open');
   document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('ed'));
   document.getElementById('key-warn').style.display='none';
-  stopPreview(true);
+  stopPreview();
   eFiles=[]; eId=null;
 }
 function _cleanupPreview(){
   if(previewURL){ URL.revokeObjectURL(previewURL); previewURL=null; }
-  previewAudio=null; previewGain=null; previewSrc=null; previewFileIdx=null;
+  previewAudio=null; previewFileIdx=null;
 }
-function stopPreview(immediate=false){
+function stopPreview(){
   if(!previewAudio) return;
-  const fo=immediate?0:(+document.getElementById('efo')?.value||0);
-  if(fo>0&&previewGain){
-    const g=previewGain, au=previewAudio;
-    previewGain=null; // prevent double-fade
-    g.gain.cancelScheduledValues(ctx.currentTime);
-    g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
-    g.gain.linearRampToValueAtTime(0, ctx.currentTime+fo);
-    setTimeout(()=>{ try{au.pause();}catch(e){} _cleanupPreview(); updFB(); }, fo*1000+100);
-  } else {
-    try{ previewAudio.pause(); }catch(e){}
-    _cleanupPreview();
-  }
+  try{ previewAudio.pause(); previewAudio.currentTime=0; }catch(e){}
+  _cleanupPreview(); updFB();
 }
 function pausePreview(){
   if(!previewAudio) return;
@@ -672,31 +662,20 @@ function pausePreview(){
   updFB();
 }
 function previewFile(i){
-  stopPreview(true);
+  if(previewAudio){ try{previewAudio.pause();}catch(e){} _cleanupPreview(); }
   const f=eFiles[i]; if(!f||!f.data) return;
   const ext=(f.name.split('.').pop()||'').toLowerCase();
   const mime={mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',m4a:'audio/mp4',aac:'audio/aac',flac:'audio/flac'}[ext]||'audio/*';
   previewURL=URL.createObjectURL(new Blob([f.data],{type:mime}));
   previewAudio=new Audio(previewURL);
-  previewSrc=ctx.createMediaElementSource(previewAudio);
-  previewGain=ctx.createGain();
-  previewSrc.connect(previewGain);
-  previewGain.connect(ctx.destination);
-  const fi=+document.getElementById('eft').value;
-  const vol=+document.getElementById('ev').value/100;
-  if(fi>0){
-    previewGain.gain.setValueAtTime(0, ctx.currentTime);
-    previewGain.gain.linearRampToValueAtTime(vol, ctx.currentTime+fi);
-  } else {
-    previewGain.gain.setValueAtTime(vol, ctx.currentTime);
-  }
+  previewAudio.volume=+document.getElementById('ev').value/100;
   previewFileIdx=i;
   previewAudio.onended=()=>{ _cleanupPreview(); updFB(); };
   previewAudio.play();
   updFB();
 }
 function onFile(inp){
-  stopPreview(true);
+  stopPreview();
   const files=Array.from(inp.files); eFiles=[]; let n=0;
   files.forEach(f=>{
     const r=new FileReader();
@@ -719,13 +698,12 @@ function updFB(){
     b.innerHTML=eFiles.map((f,i)=>{
       const active=previewFileIdx===i;
       const paused=active&&previewAudio?.paused;
-      const btns=!active
-        ? `<button class="pvbtn" onclick="previewFile(${i})">▶</button>`
-        : paused
-          ? `<button class="pvbtn" onclick="pausePreview()">▶</button><button class="pvbtn" onclick="stopPreview()">⏹</button>`
-          : `<button class="pvbtn" onclick="pausePreview()">⏸</button><button class="pvbtn" onclick="stopPreview()">⏹</button>`;
+      const dim='opacity:0.25;pointer-events:none';
+      const playAct=active&&paused?'pausePreview()':`previewFile(${i})`;
       return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(42,42,74,.4)">
-        ${btns}
+        <button class="pvbtn" onclick="${playAct}">▶</button>
+        <button class="pvbtn" onclick="pausePreview()" style="${active&&!paused?'':''+dim}">⏸</button>
+        <button class="pvbtn" onclick="stopPreview()" style="${active?'':''+dim}">⏹</button>
         <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${f.name}</span>
       </div>`;
     }).join('')+
