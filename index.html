@@ -706,7 +706,7 @@ function decodeWaveform(fi){
 }
 function drawScrubber(){
   const c=document.getElementById('scrub'); if(!c) return;
-  const W=c.offsetWidth; if(!W) return;
+  const W=c.offsetWidth; if(!W){ requestAnimationFrame(drawScrubber); return; }
   if(c.width!==W) c.width=W;
   const H=c.height, g=c.getContext('2d');
   g.clearRect(0,0,W,H);
@@ -749,11 +749,19 @@ function initScrub(){
   const c=document.getElementById('scrub'); if(!c||c._si) return;
   c._si=true;
   c.addEventListener('pointerdown',e=>{
-    if(!previewAudio||!previewAudio.duration) return;
+    if(!eFiles.length) return;
     const r=c.getBoundingClientRect();
     const frac=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
-    previewAudio.currentTime=frac*previewAudio.duration;
-    drawScrubber();
+    if(previewAudio&&previewAudio.duration){
+      previewAudio.currentTime=frac*previewAudio.duration;
+      drawScrubber();
+    } else {
+      const idx=previewFileIdx!==null?previewFileIdx:0;
+      previewFile(idx);
+      if(previewAudio) previewAudio.addEventListener('canplay',()=>{
+        if(previewAudio?.duration) previewAudio.currentTime=frac*previewAudio.duration;
+      },{once:true});
+    }
   });
 }
 function _cleanupPreview(){
