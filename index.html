@@ -518,6 +518,8 @@ function renderPerf(){
 // ── KEYBOARD ──
 document.addEventListener('keydown', e=>{
   const code=e.code;
+  const tag=document.activeElement?.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA') return;
   e.preventDefault();
   if(cur==='sk'){
     document.getElementById('kd-c').textContent=code;
