@@ -737,7 +737,7 @@ function decodeWaveform(fi){
       for(let j=0;j<step&&off+j<data.length;j++) max=Math.max(max,Math.abs(data[off+j]));
       peaks[i]=max;
     }
-    waveforms[fi]=peaks;
+    waveforms[fi]={peaks, duration:buf.duration};
     drawScrubber();
   }).catch(()=>{ waveforms[fi]=null; });
 }
@@ -748,9 +748,10 @@ function drawScrubber(){
   const H=c.height, g=c.getContext('2d');
   g.clearRect(0,0,W,H);
   const idx=previewFileIdx!==null?previewFileIdx:0;
-  const wf=waveforms[idx];
+  const wfData=waveforms[idx];
+  const wf=wfData?.peaks||wfData; // support both old and new format
   const audio=previewAudio;
-  const pos=audio?.currentTime||0, dur=audio?.duration||0;
+  const pos=audio?.currentTime||0, dur=audio?.duration||wfData?.duration||0;
   const frac=audio?( dur>0?Math.min(pos/dur,1):0 ):previewSeekPos;
   const mid=H/2;
   if(wf){
@@ -760,6 +761,25 @@ function drawScrubber(){
       const x=i*bw, h=Math.max(1,wf[i]*mid*0.88*vol);
       g.fillStyle=i/wf.length<=frac?'rgba(122,95,40,0.85)':'rgba(74,74,122,0.7)';
       g.fillRect(x+0.5, mid-h, Math.max(bw-1,1), h*2);
+    }
+    // fade overlays
+    if(dur>0){
+      const fi=+( document.getElementById('eft')?.value||0);
+      const fo=+( document.getElementById('efo')?.value||0);
+      if(fi>0){
+        const fiW=Math.min(fi/dur,1)*W;
+        const grad=g.createLinearGradient(0,0,fiW,0);
+        grad.addColorStop(0,'rgba(79,195,247,0.30)');
+        grad.addColorStop(1,'rgba(79,195,247,0)');
+        g.fillStyle=grad; g.fillRect(0,0,fiW,H);
+      }
+      if(fo>0){
+        const foW=Math.min(fo/dur,1)*W;
+        const grad=g.createLinearGradient(W-foW,0,W,0);
+        grad.addColorStop(0,'rgba(201,168,76,0)');
+        grad.addColorStop(1,'rgba(201,168,76,0.30)');
+        g.fillStyle=grad; g.fillRect(W-foW,0,foW,H);
+      }
     }
     if(dur>0||previewSeekPos>0){
       const px=Math.round(frac*W);
@@ -1020,6 +1040,7 @@ function renderPerf(){
 function updFadeLabel(id){
   const v=+document.getElementById(id).value;
   document.getElementById(id+'-lbl').textContent=v>0?v+'s':'Kein';
+  drawScrubber();
 }
 
 // ── KEY CAPTURE (setup field) ──
