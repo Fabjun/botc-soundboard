@@ -130,6 +130,8 @@ input[type=file]{display:none}
 #sp{background:var(--night);position:relative;overflow:hidden}
 #sp.locked .p-nav{display:none}
 #lock-btn.on{background:var(--blood);border-color:var(--blood-bright);color:#fff}
+.pbtn.dragging{opacity:0.25}
+.pbtn.drag-over{border-color:var(--gold)!important;background:var(--raised)}
 #sp::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.08) 0%,transparent 50%)}
 .p-hdr{display:flex;align-items:center;justify-content:space-between;
@@ -271,6 +273,14 @@ input[type=file]{display:none}
     <div class="tips-hdr">TIPS &amp; HINWEISE</div>
 
     <div class="tip">
+      <div class="tip-key">↕ Drag</div>
+      <div class="tip-body">
+        <div class="tip-ttl">PADS VERSCHIEBEN</div>
+        <div class="tip-desc">Im Spielmodus einen Sound-Button gedrückt halten und auf eine andere Position ziehen — die beiden Pads tauschen ihre Plätze. Kurzes Antippen spielt den Sound wie gewohnt. Im Lock-Modus ist Drag & Drop deaktiviert.</div>
+      </div>
+    </div>
+
+    <div class="tip">
       <div class="tip-key">🔒</div>
       <div class="tip-body">
         <div class="tip-ttl">LOCK-MODUS</div>
@@ -407,6 +417,8 @@ let eId = null, eFiles = [], eMode = 'once';
 let cur = 'su';
 let locked = false;
 const klog = [];
+let dragSrc=null, dragGhost=null, dragMoved=false;
+let dragStartX=0, dragStartY=0, dragGhostW=0, dragGhostH=0;
 
 // ── DB ──
 function openDB(){
@@ -667,7 +679,7 @@ function renderPerf(){
     b.dataset.id=i;
     const isLoop=p&&(p.mode==='loop'||p.mode==='playlist');
     if(srcs[i]) b.classList.add(isLoop?'plooping':'playing');
-    b.onclick=()=>{ if(p) play(i); };
+    if(p) b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
     b.innerHTML=`<div class="pnum">${p?.keyLabel||p?.key||''}</div>
       <div class="pico">${ico(p)}</div>
       <div class="plbl">${p?.name||''}</div>`;
@@ -685,6 +697,62 @@ function captureKey(e){
 }
 
 // ── KEYBOARD ──
+// ── DRAG & DROP ──
+function onPadPointerDown(e, id){
+  e.preventDefault();
+  if(locked){ play(id); return; }
+  dragSrc=id; dragStartX=e.clientX; dragStartY=e.clientY; dragMoved=false;
+  document.addEventListener('pointermove', onDragMove, {passive:false});
+  document.addEventListener('pointerup', onDragEnd);
+}
+function onDragMove(e){
+  if(dragSrc===null) return;
+  if(!dragMoved){
+    if(Math.hypot(e.clientX-dragStartX, e.clientY-dragStartY)<8) return;
+    dragMoved=true;
+    const src=document.querySelector(`.pbtn[data-id="${dragSrc}"]`);
+    const r=src.getBoundingClientRect();
+    dragGhostW=r.width; dragGhostH=r.height;
+    dragGhost=src.cloneNode(true);
+    dragGhost.style.cssText=`position:fixed;pointer-events:none;z-index:1000;`+
+      `width:${r.width}px;height:${r.height}px;`+
+      `left:${e.clientX-r.width/2}px;top:${e.clientY-r.height/2}px;`+
+      `opacity:0.85;transform:scale(1.06);border-radius:4px;`+
+      `box-shadow:0 6px 24px rgba(0,0,0,.7);transition:none;border:1px solid var(--gold)`;
+    document.body.appendChild(dragGhost);
+    src.classList.add('dragging');
+    return;
+  }
+  dragGhost.style.left=(e.clientX-dragGhostW/2)+'px';
+  dragGhost.style.top=(e.clientY-dragGhostH/2)+'px';
+  dragGhost.style.display='none';
+  const under=document.elementFromPoint(e.clientX, e.clientY);
+  dragGhost.style.display='';
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('drag-over'));
+  const tgt=under?.closest('.pbtn');
+  if(tgt&&+tgt.dataset.id!==dragSrc) tgt.classList.add('drag-over');
+}
+function onDragEnd(e){
+  document.removeEventListener('pointermove', onDragMove);
+  document.removeEventListener('pointerup', onDragEnd);
+  if(!dragMoved){ if(pads[dragSrc]) play(dragSrc); dragSrc=null; return; }
+  dragGhost.style.display='none';
+  const under=document.elementFromPoint(e.clientX, e.clientY);
+  dragGhost.remove(); dragGhost=null;
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('dragging','drag-over'));
+  const tgt=under?.closest('.pbtn');
+  const tgtId=tgt?+tgt.dataset.id:null;
+  if(tgtId!==null&&tgtId!==dragSrc){
+    stopPad(dragSrc); stopPad(tgtId);
+    const padA=pads[dragSrc]?{...pads[dragSrc],id:tgtId}:null;
+    const padB=pads[tgtId]?{...pads[tgtId],id:dragSrc}:null;
+    pads[dragSrc]=padB; pads[tgtId]=padA;
+    const tmpBuf=bufs[dragSrc]; bufs[dragSrc]=bufs[tgtId]; bufs[tgtId]=tmpBuf;
+    save(); renderPerf();
+  }
+  dragSrc=null;
+}
+
 function toggleLock(){
   locked=!locked;
   document.getElementById('sp').classList.toggle('locked',locked);
