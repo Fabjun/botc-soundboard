@@ -115,6 +115,18 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);
 input[type=file]{display:none}
 
 /* PERFORMANCE */
+/* TIPS */
+.tips-hdr{font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;
+  color:var(--gold-dim);padding:14px 14px 6px;border-top:1px solid var(--border);margin-top:4px}
+.tip{display:flex;gap:12px;padding:10px 14px;border-bottom:1px solid rgba(42,42,74,.4)}
+.tip-key{font-family:'Cinzel',serif;font-size:10px;color:var(--active);
+  background:var(--surface);border:1px solid var(--border);border-radius:3px;
+  padding:3px 7px;white-space:nowrap;align-self:flex-start;flex-shrink:0;margin-top:1px}
+.tip-body{}
+.tip-ttl{font-family:'Cinzel',serif;font-size:11px;letter-spacing:1px;
+  color:var(--text);margin-bottom:2px}
+.tip-desc{font-size:12px;color:var(--text-dim);line-height:1.5}
+
 #sp{background:var(--night);position:relative;overflow:hidden}
 #sp.locked .p-nav{display:none}
 #lock-btn.on{background:var(--blood);border-color:var(--blood-bright);color:#fff}
@@ -248,11 +260,64 @@ input[type=file]{display:none}
     <h2>APP-EINSTELLUNGEN</h2>
     <button class="btn-s" onclick="show('smm')" style="font-size:10px;padding:5px 9px">← MENÜ</button>
   </div>
-  <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
-    <div class="mopt" onclick="show('sk')">
-      <div class="mico">⌨</div>
-      <div><div class="mlbl">TASTEN-TEST</div><div class="msub">Codes des Numpads erkennen</div></div>
+  <div style="flex:1;overflow-y:auto">
+    <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div class="mopt" onclick="show('sk')">
+        <div class="mico">⌨</div>
+        <div><div class="mlbl">TASTEN-TEST</div><div class="msub">Codes des Numpads erkennen</div></div>
+      </div>
     </div>
+
+    <div class="tips-hdr">TIPS &amp; HINWEISE</div>
+
+    <div class="tip">
+      <div class="tip-key">🔒</div>
+      <div class="tip-body">
+        <div class="tip-ttl">LOCK-MODUS</div>
+        <div class="tip-desc">Im Spielmodus auf 🔓 tippen um den Lock zu aktivieren. Nur Tasten die im Setup belegt sind, lösen dann noch Sounds aus — alle Navigation (Escape, Menü, Setup) wird geblockt. Ideal für blinde Bedienung während des Spiels.</div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <div class="tip-key">Leertaste</div>
+      <div class="tip-body">
+        <div class="tip-ttl">ALLE STOPPEN</div>
+        <div class="tip-desc">Stoppt sofort alle laufenden Sounds. Funktioniert auf jedem Screen und auch im Lock-Modus. Einzige Ausnahme: wenn ein Texteingabefeld aktiv ist.</div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <div class="tip-key">Escape</div>
+      <div class="tip-body">
+        <div class="tip-ttl">ZURÜCK / ABBRECHEN</div>
+        <div class="tip-desc">Navigiert zurück zum Hauptmenü. Wenn das Bearbeitungsfenster im Setup offen ist, schließt Escape es (= Abbrechen). Im Lock-Modus wirkungslos.</div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <div class="tip-key">Tippen</div>
+      <div class="tip-body">
+        <div class="tip-ttl">TASTE BELEGEN</div>
+        <div class="tip-desc">Im Setup das Tastenfeld anklicken, dann die gewünschte Taste auf dem Numpad drücken — der Code wird automatisch erkannt und eingetragen. Kein manuelles Eintippen nötig.</div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <div class="tip-key">⚠</div>
+      <div class="tip-body">
+        <div class="tip-ttl">DOPPELBELEGUNG</div>
+        <div class="tip-desc">Beim Speichern wird geprüft ob eine Taste bereits einem anderen Pad zugewiesen ist. Bei Konflikt erscheint eine Warnung mit den Optionen Abbrechen oder Überschreiben.</div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <div class="tip-key">1 = 1</div>
+      <div class="tip-body">
+        <div class="tip-ttl">NUMPAD VS. ZIFFERNTASTE</div>
+        <div class="tip-desc">Die "1" auf dem Numpad und die "1" auf der Haupttastatur zeigen beide "1" an, werden aber intern unterschiedlich erkannt. Eine Taste belegt also nie versehentlich die andere.</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
