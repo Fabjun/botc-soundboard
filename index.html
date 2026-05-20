@@ -111,8 +111,8 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);
 .topt.ao{background:#2a1a1a;border-color:#8b3333;color:#ef9a9a}
 .topt.al{background:#1a2a3a;border-color:#1a5a8b;color:var(--active)}
 .topt.ap{background:#1a2a1a;border-color:#1a5a1a;color:#81c784}
-details.eff{margin-bottom:11px;border:1px solid var(--border);border-radius:2px}
-details.eff summary{font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);
+details.eff{margin-bottom:11px;border:1px solid var(--gold);border-radius:2px}
+details.eff summary{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);
   letter-spacing:1px;padding:7px 10px;cursor:pointer;list-style:none;
   display:flex;align-items:center;gap:6px}
 details.eff summary::-webkit-details-marker{display:none}
@@ -388,14 +388,6 @@ input[type=file]{display:none}
     <div class="fbtn" id="fbd" onclick="document.getElementById('fi').click()">+ Datei(en) auswählen</div>
     <input type="file" id="fi" accept="audio/*" multiple onchange="onFile(this)">
   </div>
-  <div class="fg">
-    <label class="fl">MODUS</label>
-    <div class="trow">
-      <div class="topt" data-m="once" onclick="setMode('once')">EINMALIG</div>
-      <div class="topt" data-m="loop" onclick="setMode('loop')">LOOP</div>
-      <div class="topt" data-m="playlist" onclick="setMode('playlist')">PLAYLIST 🎲</div>
-    </div>
-  </div>
   <details class="eff">
     <summary>EFFEKTE</summary>
     <div class="eff-body">
@@ -413,6 +405,14 @@ input[type=file]{display:none}
       </div>
     </div>
   </details>
+  <div class="fg">
+    <label class="fl">MODUS</label>
+    <div class="trow">
+      <div class="topt" data-m="once" onclick="setMode('once')">EINMALIG</div>
+      <div class="topt" data-m="loop" onclick="setMode('loop')">LOOP</div>
+      <div class="topt" data-m="playlist" onclick="setMode('playlist')">PLAYLIST 🎲</div>
+    </div>
+  </div>
   <div class="eact">
     <button class="btn-d" onclick="delPad()">LÖSCHEN</button>
     <button class="btn-s" style="flex:1" onclick="closeEP()">ABBRECHEN</button>
