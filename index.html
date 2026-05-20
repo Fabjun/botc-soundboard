@@ -219,8 +219,8 @@ input[type=file]{display:none}
     <input type="text" class="fi" id="en" placeholder="z.B. Donner, Nacht-Musik…">
   </div>
   <div class="fg">
-    <label class="fl">TASTE (Code vom Tasten-Test)</label>
-    <input type="text" class="fi" id="ek" placeholder="z.B. Numpad1 oder Digit1">
+    <label class="fl">TASTE — Feld anklicken, dann Taste drücken</label>
+    <input type="text" class="fi" id="ek" placeholder="Taste drücken…" readonly onkeydown="captureKey(event)">
   </div>
   <div class="fg">
     <label class="fl">AUDIODATEI(EN)</label>
@@ -513,6 +513,13 @@ function renderPerf(){
       <div class="plbl">${p?.name||''}</div>`;
     g.appendChild(b);
   }
+}
+
+// ── KEY CAPTURE (setup field) ──
+function captureKey(e){
+  e.preventDefault();
+  e.stopPropagation();
+  e.target.value=e.code;
 }
 
 // ── KEYBOARD ──
