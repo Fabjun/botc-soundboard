@@ -116,6 +116,8 @@ input[type=file]{display:none}
 
 /* PERFORMANCE */
 #sp{background:var(--night);position:relative;overflow:hidden}
+#sp.locked .p-nav{display:none}
+#lock-btn.on{background:var(--blood);border-color:var(--blood-bright);color:#fff}
 #sp::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.08) 0%,transparent 50%)}
 .p-hdr{display:flex;align-items:center;justify-content:space-between;
@@ -316,8 +318,11 @@ input[type=file]{display:none}
     </div>
     <span class="p-title">STORYTELLER</span>
     <div style="display:flex;gap:6px">
-      <button class="cfg-hdr-btn" onclick="show('smm')" style="padding:8px 10px">⌂</button>
-      <button class="cfg-hdr-btn" onclick="show('ss')">⚙ SETUP</button>
+      <div class="p-nav" style="display:flex;gap:6px">
+        <button class="cfg-hdr-btn" onclick="show('smm')" style="padding:8px 10px">⌂</button>
+        <button class="cfg-hdr-btn" onclick="show('ss')">⚙ SETUP</button>
+      </div>
+      <button id="lock-btn" class="cfg-hdr-btn" onclick="toggleLock()" style="padding:8px 10px">🔓</button>
     </div>
   </div>
   <div class="pgrid" id="pgrid"></div>
@@ -335,6 +340,7 @@ let ctx = null, db = null;
 let bufs = {}, srcs = {}, gains = {};
 let eId = null, eFiles = [], eMode = 'once';
 let cur = 'su';
+let locked = false;
 const klog = [];
 
 // ── DB ──
@@ -614,8 +620,25 @@ function captureKey(e){
 }
 
 // ── KEYBOARD ──
+function toggleLock(){
+  locked=!locked;
+  document.getElementById('sp').classList.toggle('locked',locked);
+  const btn=document.getElementById('lock-btn');
+  btn.textContent=locked?'🔒':'🔓';
+  btn.classList.toggle('on',locked);
+}
+
 document.addEventListener('keydown', e=>{
   const code=e.code;
+
+  if(locked){
+    e.preventDefault();
+    if(cur==='sp'){
+      const id=pads.findIndex(p=>p&&p.key===code);
+      if(id!==-1) play(id);
+    }
+    return;
+  }
 
   if(code==='Escape'){
     e.preventDefault();
