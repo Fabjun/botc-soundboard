@@ -636,13 +636,12 @@ function updFB(){
     b.classList.add('hf');
     b.onclick=null;
     b.style.cursor='default';
-    b.innerHTML=eFiles.map((f,i)=>{
-      const playing=previewAudio&&i===eFiles._previewIdx;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(42,42,74,.4)">
+    b.innerHTML=eFiles.map((f,i)=>
+      `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(42,42,74,.4)">
         <button onclick="previewFile(${i})" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--active);width:24px;height:24px;font-size:11px;cursor:pointer;flex-shrink:0">▶</button>
         <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${f.name}</span>
-      </div>`;
-    }).join('')+
+      </div>`
+    ).join('')+
     `<div style="text-align:right;padding-top:6px">
       <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:1px">↺ ÄNDERN</button>
     </div>`;
