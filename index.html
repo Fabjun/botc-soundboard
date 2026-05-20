@@ -170,6 +170,25 @@ input[type=file]{display:none}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* MAIN MENU */
+#smm{align-items:center;justify-content:center;gap:0;padding:32px 24px;
+  background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
+.m-title{text-align:center;margin-bottom:28px}
+.m-title h1{font-family:'Cinzel',serif;font-size:18px;font-weight:900;
+  letter-spacing:3px;color:var(--gold);line-height:1.4}
+.m-title p{color:var(--text-dim);font-size:13px;font-style:italic;margin-top:5px}
+.mopts{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
+.mopt{background:var(--surface);border:1px solid var(--border);border-radius:4px;
+  padding:18px 20px;cursor:pointer;display:flex;align-items:center;gap:14px;
+  transition:border-color .15s,background .15s}
+.mopt:active{background:var(--raised)}
+.mopt.mp{border-color:var(--gold-dim)}
+.mopt .mico{font-size:22px;width:32px;text-align:center;flex-shrink:0}
+.mopt .mlbl{font-family:'Cinzel',serif;font-size:14px;letter-spacing:2px;color:var(--text)}
+.mopt.mp .mlbl{color:var(--gold)}
+.mopt .msub{font-family:'Crimson Pro',serif;font-size:11px;color:var(--text-dim);
+  font-style:italic;margin-top:2px}
 </style>
 </head>
 <body>
@@ -180,6 +199,29 @@ input[type=file]{display:none}
   <h1>SOUNDBOARD FOR<br>STORYTELLER</h1>
   <p>Soundboard für den Geschichtenerzähler</p>
   <button class="unlock-btn" onclick="unlock()">BERÜHREN ZUM STARTEN</button>
+</div>
+
+<!-- MAIN MENU -->
+<div id="smm" class="screen">
+  <div class="m-title">
+    <div style="font-size:44px;margin-bottom:12px">🕯️</div>
+    <h1>SOUNDBOARD FOR<br>STORYTELLER</h1>
+    <p>Was möchtest du tun?</p>
+  </div>
+  <div class="mopts">
+    <div class="mopt mp" onclick="show('sp')">
+      <div class="mico">▶</div>
+      <div><div class="mlbl">SPIELMODUS</div><div class="msub">Soundboard spielen</div></div>
+    </div>
+    <div class="mopt" onclick="show('ss')">
+      <div class="mico">⚙</div>
+      <div><div class="mlbl">BOARD-SETUP</div><div class="msub">Tasten und Sounds konfigurieren</div></div>
+    </div>
+    <div class="mopt" onclick="show('sa')">
+      <div class="mico">☰</div>
+      <div><div class="mlbl">APP-EINSTELLUNGEN</div><div class="msub">Tasten-Test und weitere Optionen</div></div>
+    </div>
+  </div>
 </div>
 
 <!-- KEY DETECT -->
@@ -198,14 +240,26 @@ input[type=file]{display:none}
   <button class="btn-s" onclick="show('sp')" style="margin-top:4px">Direkt zum Soundboard</button>
 </div>
 
+<!-- APP SETTINGS -->
+<div id="sa" class="screen">
+  <div class="s-hdr">
+    <h2>APP-EINSTELLUNGEN</h2>
+    <button class="btn-s" onclick="show('smm')" style="font-size:10px;padding:5px 9px">← MENÜ</button>
+  </div>
+  <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+    <div class="mopt" onclick="show('sk')">
+      <div class="mico">⌨</div>
+      <div><div class="mlbl">TASTEN-TEST</div><div class="msub">Codes des Numpads erkennen</div></div>
+    </div>
+  </div>
+</div>
+
 <!-- SETUP -->
 <div id="ss" class="screen">
   <div class="s-hdr">
+    <button class="btn-s" onclick="show('smm')" style="font-size:10px;padding:5px 9px">← MENÜ</button>
     <h2>SETUP</h2>
-    <div style="display:flex;gap:6px">
-      <button class="btn-s" onclick="showKD()" style="font-size:10px;padding:5px 9px">Tasten-Test</button>
-      <button class="btn-p" onclick="show('sp')" style="font-size:11px;padding:5px 13px">▶ PLAY</button>
-    </div>
+    <button class="btn-p" onclick="show('sp')" style="font-size:11px;padding:5px 13px">▶ PLAY</button>
   </div>
   <div class="sgrid" id="sgrid"></div>
 </div>
@@ -261,7 +315,10 @@ input[type=file]{display:none}
       <span id="ptxt" style="color:var(--text-dim)">BEREIT</span>
     </div>
     <span class="p-title">STORYTELLER</span>
-    <button class="cfg-hdr-btn" onclick="show('ss')">⚙ SETUP</button>
+    <div style="display:flex;gap:6px">
+      <button class="cfg-hdr-btn" onclick="show('smm')" style="padding:8px 10px">⌂</button>
+      <button class="cfg-hdr-btn" onclick="show('ss')">⚙ SETUP</button>
+    </div>
   </div>
   <div class="pgrid" id="pgrid"></div>
   <div id="np"><span id="nptxt" style="color:var(--text-dim);font-style:italic">Kein Sound aktiv</span></div>
@@ -312,7 +369,7 @@ function unlock(){
   ctx = new (window.AudioContext||window.webkitAudioContext)();
   const b=ctx.createBuffer(1,1,22050), s=ctx.createBufferSource();
   s.buffer=b; s.connect(ctx.destination); s.start(0);
-  openDB().then(load).then(()=>{ decodeAll(); show('sp'); });
+  openDB().then(load).then(()=>{ decodeAll(); show('smm'); });
 }
 function decodeAll(){ pads.forEach((p,i)=>{ if(p&&p.files&&p.files.length) decodePad(i); }); }
 function decodePad(id){
