@@ -484,7 +484,7 @@ function renderSetup(){
     const c=document.createElement('div');
     c.className='pcard'+(p?' has':'');
     c.onclick=()=>openEP(i);
-    c.innerHTML=`<div class="pk">${p?.key||'—'}</div>
+    c.innerHTML=`<div class="pk">${p?.keyLabel||p?.key||'—'}</div>
       <div class="pn">${p?.name||'Leer'}</div>
       <div class="pf">${p?.files?.map(f=>f.name).join(', ')||''}</div>
       ${p?.mode==='loop'?'<span class="badge bl">LOOP</span>':''}
@@ -499,7 +499,9 @@ function openEP(id){
   eId=id; const p=pads[id];
   document.getElementById('ep-t').textContent=`TASTE ${id+1} BELEGEN`;
   document.getElementById('en').value=p?.name||'';
-  document.getElementById('ek').value=p?.key||'';
+  const keyEl=document.getElementById('ek');
+  keyEl.value=p?.keyLabel||p?.key||'';
+  keyEl.dataset.code=p?.key||'';
   document.getElementById('ev').value=p?.volume??80;
   eFiles=p?.files?p.files.map(f=>({name:f.name,data:f.data})):[];
   eMode=p?.mode||'once';
@@ -537,27 +539,32 @@ function setMode(m){
   });
 }
 function savePad(){
-  const key=document.getElementById('ek').value.trim();
+  const keyEl=document.getElementById('ek');
+  const key=keyEl.dataset.code||keyEl.value.trim();
   const conflict=pads.findIndex((p,i)=>p&&p.key===key&&i!==eId);
   if(conflict!==-1){
+    const cl=pads[conflict].keyLabel||pads[conflict].key;
     document.getElementById('key-warn-txt').textContent=
-      `"${key}" ist bereits belegt von Pad ${conflict+1} — "${pads[conflict].name}"`;
+      `"${cl}" ist bereits belegt von Pad ${conflict+1} — "${pads[conflict].name}"`;
     document.getElementById('key-warn').style.display='block';
     return;
   }
   doSave();
 }
 function saveForce(){
-  const key=document.getElementById('ek').value.trim();
+  const keyEl=document.getElementById('ek');
+  const key=keyEl.dataset.code||keyEl.value.trim();
   const conflict=pads.findIndex((p,i)=>p&&p.key===key&&i!==eId);
-  if(conflict!==-1) pads[conflict]={...pads[conflict],key:''};
+  if(conflict!==-1) pads[conflict]={...pads[conflict],key:'',keyLabel:''};
   doSave();
 }
 function doSave(){
   const name=document.getElementById('en').value.trim();
-  const key=document.getElementById('ek').value.trim();
+  const keyEl=document.getElementById('ek');
+  const key=keyEl.dataset.code||keyEl.value.trim();
+  const keyLabel=keyEl.value.trim();
   const vol=+document.getElementById('ev').value;
-  pads[eId]={id:eId,name,key,mode:eMode,volume:vol,files:eFiles};
+  pads[eId]={id:eId,name,key,keyLabel,mode:eMode,volume:vol,files:eFiles};
   decodePad(eId); save(); closeEP(); renderSetup();
 }
 function delPad(){
@@ -590,7 +597,7 @@ function renderPerf(){
     const isLoop=p&&(p.mode==='loop'||p.mode==='playlist');
     if(srcs[i]) b.classList.add(isLoop?'plooping':'playing');
     b.onclick=()=>{ if(p) play(i); };
-    b.innerHTML=`<div class="pnum">${p?.key||''}</div>
+    b.innerHTML=`<div class="pnum">${p?.keyLabel||p?.key||''}</div>
       <div class="pico">${ico(p)}</div>
       <div class="plbl">${p?.name||''}</div>`;
     g.appendChild(b);
@@ -601,7 +608,8 @@ function renderPerf(){
 function captureKey(e){
   e.preventDefault();
   e.stopPropagation();
-  e.target.value=e.code;
+  e.target.value = e.key===' ' ? 'Space' : e.key;
+  e.target.dataset.code = e.code;
   document.getElementById('key-warn').style.display='none';
 }
 
