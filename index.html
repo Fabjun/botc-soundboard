@@ -63,22 +63,11 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);
   padding:11px 14px;border-bottom:1px solid var(--border);
   background:var(--surface);flex-shrink:0}
 .s-hdr h2{font-family:'Cinzel',serif;color:var(--gold);font-size:14px;letter-spacing:2px}
-.sgrid{flex:1;overflow-y:auto;padding:10px;
-  display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pcard{background:var(--surface);border:1px solid var(--border);
-  border-radius:2px;cursor:pointer;transition:border-color .2s;
-  aspect-ratio:1;overflow:hidden;display:flex;flex-direction:column;padding:0}
-.pcard.has{border-color:var(--gold-dim)}
-.pcard.ed{border-color:var(--gold)}
-.pcard-add{border-style:dashed;opacity:.5;align-items:center;justify-content:center;
-  font-size:28px;color:var(--text-dim)}
-.pcard-add:hover{opacity:1;border-color:var(--gold-dim)}
-.pc-cover{flex:1;background:var(--raised);background-size:cover;background-position:center;
-  display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden}
-.pc-foot{padding:5px 7px;flex-shrink:0;border-top:1px solid var(--border);min-height:0}
-.pc-key{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim);letter-spacing:1px}
-.pc-name{font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;margin-top:1px}
+.sgrid{flex:1;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr 1fr;
+  gap:6px;padding:8px;position:relative}
+.pbtn.ed{border-color:var(--gold)!important;box-shadow:0 0 8px rgba(201,168,76,.25)}
+.pbtn-add{border-style:dashed!important;opacity:.45}
+.pbtn-add:hover,.pbtn-add:active{opacity:1;border-color:var(--gold-dim)!important}
 #crop-dlg{position:fixed;inset:0;background:rgba(10,10,20,0.97);z-index:300;
   display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px}
 #crop-dlg h3{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:2px;margin:0}
@@ -691,27 +680,21 @@ function renderSetup(){
   for(let i=0;i<MAX;i++){
     const p=pads[i];
     if(!p) continue;
-    const c=document.createElement('div');
-    c.className='pcard has'+(i===eId?' ed':'');
-    c.onclick=()=>openEP(i);
-    const coverStyle=p.image?`background-image:url(${p.image})`:'';
-    c.innerHTML=
-      `<div class="pc-cover" style="${coverStyle}">${p.image?'':ico(p)}</div>`+
-      `<div class="pc-foot">`+
-        `<div class="pc-key">${p.keyLabel||p.key||'—'}</div>`+
-        `<div class="pc-name">${p.name||''}</div>`+
-        (p.mode==='loop'?'<span class="badge bl">LOOP</span>':'')+
-        (p.mode==='playlist'?'<span class="badge bp">PLAYLIST</span>':'')+
-      `</div>`;
-    g.appendChild(c);
+    const b=document.createElement('div');
+    b.className='pbtn'+(i===eId?' ed':'');
+    b.dataset.id=i;
+    if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
+    b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
+                `<div class="pico">${ico(p)}</div>`+
+                `<div class="plbl">${p.name||''}</div>`;
+    b.onclick=()=>openEP(i);
+    g.appendChild(b);
   }
-  // "+" card — opens first free slot
   const free=pads.findIndex(p=>p===null);
   if(free!==-1){
     const a=document.createElement('div');
-    a.className='pcard pcard-add';
-    a.title='Neues Sound-Pad erstellen';
-    a.textContent='+';
+    a.className='pbtn pbtn-add';
+    a.innerHTML='<div class="pico" style="font-size:26px">+</div>';
     a.onclick=()=>openEP(free);
     g.appendChild(a);
   }
@@ -738,12 +721,12 @@ function openEP(id){
   updFB(); setMode(eMode);
   document.getElementById('ep').classList.add('open');
   document.getElementById('ebk').classList.add('open');
-  document.querySelectorAll('.pcard').forEach((c,i)=>c.classList.toggle('ed',i===id));
+  document.querySelectorAll('#sgrid [data-id]').forEach(c=>c.classList.toggle('ed',+c.dataset.id===id));
 }
 function closeEP(){
   document.getElementById('ep').classList.remove('open');
   document.getElementById('ebk').classList.remove('open');
-  document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('ed'));
+  document.querySelectorAll('#sgrid [data-id]').forEach(c=>c.classList.remove('ed'));
   document.getElementById('key-warn').style.display='none';
   stopPreview();
   eFiles=[]; eId=null;
