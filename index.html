@@ -119,6 +119,8 @@ details.eff summary::-webkit-details-marker{display:none}
 details.eff summary::before{content:'▶';font-size:7px;transition:transform .2s;flex-shrink:0}
 details.eff[open] summary::before{transform:rotate(90deg)}
 details.eff .eff-body{padding:0 10px 10px}
+#scrub{display:block;width:100%;border-radius:3px;cursor:pointer;background:var(--raised);border:1px solid var(--border)}
+#scrub-time{font-size:10px;color:var(--text-dim);font-family:'Cinzel',serif;text-align:right;margin-top:2px;letter-spacing:1px}
 .eact{display:flex;gap:7px;margin-top:12px}
 .btn-d{background:transparent;border:1px solid var(--blood);color:var(--blood-bright);
   font-family:'Cinzel',serif;font-size:11px;letter-spacing:1px;
@@ -387,6 +389,10 @@ input[type=file]{display:none}
     <label class="fl">AUDIODATEI(EN)</label>
     <div class="fbtn" id="fbd" onclick="document.getElementById('fi').click()">+ Datei(en) auswählen</div>
     <input type="file" id="fi" accept="audio/*" multiple onchange="onFile(this)">
+    <div id="scrub-wrap" style="display:none;margin-top:7px">
+      <canvas id="scrub" height="48"></canvas>
+      <div id="scrub-time"></div>
+    </div>
   </div>
   <details class="eff">
     <summary>EFFEKTE</summary>
@@ -452,6 +458,7 @@ let ctx = null, db = null;
 let bufs = {}, srcs = {}, gains = {};
 let eId = null, eFiles = [], eMode = 'once';
 let previewAudio=null, previewFileIdx=null, previewURL=null, previewFadeGen=0;
+let waveforms=[], scrubRAF=null;
 let cur = 'su';
 let locked = false;
 const klog = [];
@@ -659,6 +666,8 @@ function openEP(id){
   document.getElementById('efo').value=p?.fadeOut??0;
   updFadeLabel('eft'); updFadeLabel('efo');
   eFiles=p?.files?p.files.map(f=>({name:f.name,data:f.data})):[];
+  waveforms=[];
+  eFiles.forEach((_,i)=>decodeWaveform(i));
   eMode=p?.mode||'once';
   updFB(); setMode(eMode);
   document.getElementById('ep').classList.add('open');
@@ -673,8 +682,82 @@ function closeEP(){
   stopPreview();
   eFiles=[]; eId=null;
 }
+function _fmtTime(s){
+  if(!isFinite(s)) return '0:00';
+  const m=Math.floor(s/60), sec=Math.floor(s%60);
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+function decodeWaveform(fi){
+  const f=eFiles[fi]; if(!f||!f.data) return;
+  const tmpAC=new AudioContext();
+  tmpAC.decodeAudioData(f.data.slice(0)).then(buf=>{
+    tmpAC.close();
+    const data=buf.getChannelData(0);
+    const N=300, step=Math.max(1,Math.floor(data.length/N));
+    const peaks=new Float32Array(N);
+    for(let i=0;i<N;i++){
+      let max=0; const off=i*step;
+      for(let j=0;j<step&&off+j<data.length;j++) max=Math.max(max,Math.abs(data[off+j]));
+      peaks[i]=max;
+    }
+    waveforms[fi]=peaks;
+    drawScrubber();
+  }).catch(()=>{ waveforms[fi]=null; });
+}
+function drawScrubber(){
+  const c=document.getElementById('scrub'); if(!c) return;
+  const W=c.offsetWidth; if(!W) return;
+  if(c.width!==W) c.width=W;
+  const H=c.height, g=c.getContext('2d');
+  g.clearRect(0,0,W,H);
+  const idx=previewFileIdx!==null?previewFileIdx:0;
+  const wf=waveforms[idx];
+  const audio=previewAudio;
+  const pos=audio?.currentTime||0, dur=audio?.duration||0;
+  const frac=dur>0?Math.min(pos/dur,1):0;
+  const mid=H/2;
+  if(wf){
+    const bw=W/wf.length;
+    for(let i=0;i<wf.length;i++){
+      const x=i*bw, h=Math.max(1,wf[i]*mid*0.88);
+      g.fillStyle=i/wf.length<=frac?'rgba(122,95,40,0.85)':'rgba(30,30,53,0.95)';
+      g.fillRect(x+0.5, mid-h, Math.max(bw-1,1), h*2);
+    }
+    if(dur>0){
+      const px=Math.round(frac*W);
+      g.fillStyle='rgba(201,168,76,0.9)';
+      g.fillRect(px-1,0,2,H);
+    }
+  }
+  const tEl=document.getElementById('scrub-time');
+  if(tEl) tEl.textContent=dur>0?`${_fmtTime(pos)} / ${_fmtTime(dur)}`:'';
+}
+function startScrubRAF(){
+  if(scrubRAF) return;
+  const tick=()=>{
+    drawScrubber();
+    if(previewAudio&&!previewAudio.paused) scrubRAF=requestAnimationFrame(tick);
+    else scrubRAF=null;
+  };
+  scrubRAF=requestAnimationFrame(tick);
+}
+function stopScrubRAF(){
+  if(scrubRAF){ cancelAnimationFrame(scrubRAF); scrubRAF=null; }
+}
+function initScrub(){
+  const c=document.getElementById('scrub'); if(!c||c._si) return;
+  c._si=true;
+  c.addEventListener('pointerdown',e=>{
+    if(!previewAudio||!previewAudio.duration) return;
+    const r=c.getBoundingClientRect();
+    const frac=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+    previewAudio.currentTime=frac*previewAudio.duration;
+    drawScrubber();
+  });
+}
 function _cleanupPreview(){
   ++previewFadeGen;
+  stopScrubRAF();
   if(previewURL){ URL.revokeObjectURL(previewURL); previewURL=null; }
   previewAudio=null; previewFileIdx=null;
 }
@@ -699,7 +782,8 @@ function stopPreview(){
 }
 function pausePreview(){
   if(!previewAudio) return;
-  if(previewAudio.paused) previewAudio.play(); else previewAudio.pause();
+  if(previewAudio.paused){ previewAudio.play(); startScrubRAF(); }
+  else { previewAudio.pause(); drawScrubber(); }
   updFB();
 }
 function liveVol(){
@@ -716,7 +800,7 @@ function previewFile(i){
   previewAudio=new Audio(previewURL);
   const fi=+document.getElementById('eft').value;
   previewFileIdx=i;
-  previewAudio.onended=()=>{ _cleanupPreview(); updFB(); };
+  previewAudio.onended=()=>{ _cleanupPreview(); updFB(); drawScrubber(); };
   if(fi>0){
     previewAudio.volume=0;
     previewAudio.play();
@@ -733,25 +817,28 @@ function previewFile(i){
     previewAudio.volume=+document.getElementById('ev').value/100;
     previewAudio.play();
   }
+  startScrubRAF();
   updFB();
 }
 function onFile(inp){
-  stopPreview();
+  stopPreview(); waveforms=[];
   const files=Array.from(inp.files); eFiles=[]; let n=0;
   files.forEach(f=>{
     const r=new FileReader();
-    r.onload=e=>{ eFiles.push({name:f.name,data:e.target.result}); if(++n===files.length) updFB(); };
+    r.onload=e=>{ eFiles.push({name:f.name,data:e.target.result}); decodeWaveform(eFiles.length-1); if(++n===files.length) updFB(); };
     r.readAsArrayBuffer(f);
   });
   inp.value='';
 }
 function updFB(){
   const b=document.getElementById('fbd');
+  const sw=document.getElementById('scrub-wrap');
   if(!eFiles.length){
     b.innerHTML='+ Datei(en) auswählen';
     b.classList.remove('hf');
     b.onclick=()=>document.getElementById('fi').click();
     b.style.cursor='pointer';
+    if(sw) sw.style.display='none';
   } else {
     b.classList.add('hf');
     b.onclick=null;
@@ -771,6 +858,7 @@ function updFB(){
     `<div style="text-align:right;padding-top:6px">
       <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:1px">↺ ÄNDERN</button>
     </div>`;
+    if(sw){ sw.style.display=''; initScrub(); drawScrubber(); }
   }
 }
 function setMode(m){
