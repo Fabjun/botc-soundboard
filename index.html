@@ -13,7 +13,7 @@
   --night:#0a0a14; --deep:#0f0f1e; --surface:#16162a; --raised:#1e1e35;
   --border:#2a2a4a; --gold:#c9a84c; --gold-dim:#7a5f28; --blood:#8b1a1a;
   --blood-bright:#c0392b; --mist:#4a4a7a; --text:#e8e0d0; --text-dim:#8a8098;
-  --active:#4fc3f7;
+  --active:#4fc3f7; --pad-sz:90px; --pad-gap:8px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;background:var(--night);color:var(--text);
@@ -63,10 +63,10 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);
   padding:11px 14px;border-bottom:1px solid var(--border);
   background:var(--surface);flex-shrink:0}
 .s-hdr h2{font-family:'Cinzel',serif;color:var(--gold);font-size:14px;letter-spacing:2px}
-.sgrid{flex:1;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr 1fr;
-  gap:6px;padding:8px;position:relative}
+.sgrid{flex:1;overflow-y:auto;display:grid;
+  grid-template-columns:repeat(auto-fill,var(--pad-sz));
+  gap:var(--pad-gap);padding:8px;position:relative;align-content:start}
 .pbtn.ed{border-color:var(--gold)!important;box-shadow:0 0 8px rgba(201,168,76,.25)}
-#sgrid .pbtn.empty{cursor:pointer}
 #crop-dlg{position:fixed;inset:0;background:rgba(10,10,20,0.97);z-index:300;
   display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px}
 #crop-dlg h3{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:2px;margin:0}
@@ -168,13 +168,14 @@ input[type=file]{display:none}
   font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;
   padding:8px 14px;border-radius:2px;cursor:pointer;white-space:nowrap}
 .cfg-hdr-btn:active{transform:scale(.97)}
-.pgrid{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;
-  gap:6px;padding:8px;position:relative;z-index:2}
+.pgrid{flex:1;overflow-y:auto;display:grid;
+  grid-template-columns:repeat(auto-fill,var(--pad-sz));
+  gap:var(--pad-gap);padding:8px;position:relative;z-index:2;align-content:start}
 .pbtn{background:var(--surface);border:1px solid var(--border);border-radius:4px;
-  padding:8px 5px;cursor:pointer;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:3px;min-height:68px;
+  padding:4px;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;aspect-ratio:1/1;
   transition:all .1s;position:relative;overflow:hidden}
-.pbtn.empty{opacity:.2;cursor:default}
+.pbtn.empty{opacity:.4;cursor:pointer;border-style:dashed}
 .pbtn.playing{border-color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,.2)}
 .pbtn.plooping{border-color:var(--active);box-shadow:0 0 10px rgba(79,195,247,.2);
   animation:breathe 2s ease-in-out infinite}
@@ -190,6 +191,12 @@ input[type=file]{display:none}
 .pbtn.has-img::after{content:'';position:absolute;inset:0;background:rgba(10,10,20,0.52);border-radius:inherit;pointer-events:none}
 .pbtn.has-img .pico{display:none}
 .pbtn.has-img .plbl,.pbtn.has-img .pnum{position:relative;z-index:1}
+#grid-ctrl{display:flex;align-items:center;gap:8px;padding:5px 10px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  flex-shrink:0;position:relative;z-index:2}
+.gc-ico{font-size:10px;color:var(--text-dim);flex-shrink:0;
+  font-family:'Cinzel',serif;letter-spacing:.5px;white-space:nowrap}
+#grid-ctrl input[type=range]{flex:1;accent-color:var(--gold-dim);cursor:pointer}
 #img-prev{width:100%;height:90px;background-size:cover;background-position:center;border-radius:3px;border:1px solid var(--border);margin-bottom:6px;display:none}
 #np{padding:5px 13px;background:rgba(30,30,53,.8);border-top:1px solid var(--border);
   font-size:11px;color:var(--text-dim);font-style:italic;min-height:25px;
@@ -460,14 +467,19 @@ input[type=file]{display:none}
     </div>
   </div>
   <textarea id="kfocus" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+  <div id="grid-ctrl">
+    <span class="gc-ico">▦</span>
+    <input type="range" id="sz-slider" min="60" max="200" value="90">
+    <span class="gc-ico">↔</span>
+    <input type="range" id="gap-slider" min="2" max="24" value="8">
+  </div>
   <div class="pgrid" id="pgrid"></div>
   <div id="np"><span id="nptxt" style="color:var(--text-dim);font-style:italic">Kein Sound aktiv</span></div>
   <div id="dbg" style="display:none;padding:4px 13px;background:#0a0a14;border-top:1px solid #1e1e35;font-family:monospace;font-size:10px;color:#4a4a7a;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
 </div>
 
 <script>
-const MAX = 18;
-let pads = new Array(MAX).fill(null);
+let pads = [];
 let ctx = null, db = null;
 let bufs = {}, srcs = {}, gains = {};
 let eId = null, eFiles = [], eMode = 'once', eImage = null;
@@ -501,7 +513,7 @@ function load(){
     if(!db) return res();
     const r=db.transaction('p','readonly').objectStore('p').getAll();
     r.onsuccess=e=>{
-      (e.target.result||[]).forEach(p=>{ if(p.id>=0&&p.id<MAX) pads[p.id]=p; });
+      (e.target.result||[]).forEach(p=>{ if(p.id>=0) pads[p.id]=p; });
       res();
     };
     r.onerror=()=>res();
@@ -513,6 +525,7 @@ function unlock(){
   ctx = new (window.AudioContext||window.webkitAudioContext)();
   const b=ctx.createBuffer(1,1,22050), s=ctx.createBufferSource();
   s.buffer=b; s.connect(ctx.destination); s.start(0);
+  initGridCtrl();
   openDB().then(load).then(()=>{ decodeAll(); show('smm'); });
 }
 function decodeAll(){ pads.forEach((p,i)=>{ if(p&&p.files&&p.files.length) decodePad(i); }); }
@@ -665,21 +678,51 @@ function showKD(){
   cur='sk';
 }
 
+// ── GRID CONTROLS ──
+function applyGridCtrl(){
+  const sz=document.getElementById('sz-slider').value;
+  const gap=document.getElementById('gap-slider').value;
+  document.documentElement.style.setProperty('--pad-sz',sz+'px');
+  document.documentElement.style.setProperty('--pad-gap',gap+'px');
+}
+function initGridCtrl(){
+  const sz=localStorage.getItem('pad-sz')||'90';
+  const gap=localStorage.getItem('pad-gap')||'8';
+  document.getElementById('sz-slider').value=sz;
+  document.getElementById('gap-slider').value=gap;
+  applyGridCtrl();
+  document.getElementById('sz-slider').addEventListener('input',()=>{
+    applyGridCtrl(); localStorage.setItem('pad-sz',document.getElementById('sz-slider').value);
+  });
+  document.getElementById('gap-slider').addEventListener('input',()=>{
+    applyGridCtrl(); localStorage.setItem('pad-gap',document.getElementById('gap-slider').value);
+  });
+}
+
 // ── SETUP ──
+function findNextPadId(){
+  for(let i=0;i<pads.length;i++){ if(pads[i]==null) return i; }
+  return pads.length;
+}
 function renderSetup(){
   const g=document.getElementById('sgrid'); g.innerHTML='';
-  for(let i=0;i<MAX;i++){
-    const p=pads[i];
+  for(let i=0;i<pads.length;i++){
+    const p=pads[i]; if(p==null) continue;
     const b=document.createElement('div');
-    b.className='pbtn'+(p?'':' empty')+(i===eId?' ed':'');
+    b.className='pbtn'+(i===eId?' ed':'');
     b.dataset.id=i;
-    if(p?.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
-    b.innerHTML=`<div class="pnum">${p?.keyLabel||p?.key||''}</div>`+
-                `<div class="pico">${p?ico(p):'+'}</div>`+
-                `<div class="plbl">${p?.name||''}</div>`;
+    if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
+    b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
+                `<div class="pico">${ico(p)}</div>`+
+                `<div class="plbl">${p.name||''}</div>`;
     b.onclick=()=>openEP(i);
     g.appendChild(b);
   }
+  const add=document.createElement('div');
+  add.className='pbtn empty';
+  add.innerHTML='<div class="pico" style="font-size:22px;color:var(--text-dim)">+</div>';
+  add.onclick=()=>openEP(findNextPadId());
+  g.appendChild(add);
 }
 
 // ── EDIT ──
@@ -1117,18 +1160,18 @@ function ico(p){
 }
 function renderPerf(){
   const g=document.getElementById('pgrid'); g.innerHTML='';
-  for(let i=0;i<MAX;i++){
-    const p=pads[i];
+  for(let i=0;i<pads.length;i++){
+    const p=pads[i]; if(p==null) continue;
     const b=document.createElement('div');
-    b.className='pbtn'+(p?'':' empty');
+    b.className='pbtn';
     b.dataset.id=i;
-    const isLoop=p&&(p.mode==='loop'||p.mode==='playlist');
+    const isLoop=p.mode==='loop'||p.mode==='playlist';
     if(srcs[i]) b.classList.add(isLoop?'plooping':'playing');
-    if(p) b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
-    if(p?.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
-    b.innerHTML=`<div class="pnum">${p?.keyLabel||p?.key||''}</div>
+    b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
+    if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
+    b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>
       <div class="pico">${ico(p)}</div>
-      <div class="plbl">${p?.name||''}</div>`;
+      <div class="plbl">${p.name||''}</div>`;
     g.appendChild(b);
   }
 }
