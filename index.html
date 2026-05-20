@@ -142,29 +142,15 @@ input[type=file]{display:none}
 .tip-desc{font-size:12px;color:var(--text-dim);line-height:1.5}
 
 #sp{background:var(--night);position:relative;overflow:hidden}
-#sp.locked .p-nav{display:none}
 .pbtn.dragging{opacity:0.25}
 .pbtn.drag-over{border-color:var(--gold)!important;background:var(--raised)}
 #sp::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.08) 0%,transparent 50%)}
-.p-hdr{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+.p-hdr{display:grid;grid-template-columns:1fr auto;align-items:center;
   padding:8px 13px 6px;border-bottom:1px solid rgba(42,42,74,.6);
   flex-shrink:0;position:relative;z-index:2}
-.p-hdr-left{display:flex;align-items:center;gap:6px}
 .board-title{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;
   transition:color .4s ease}
-.phase{display:flex;align-items:center;gap:6px;justify-content:center;
-  font-family:'Cinzel',serif;font-size:10px;letter-spacing:1px}
-.pdot{width:7px;height:7px;border-radius:50%;background:var(--text-dim);transition:all .5s}
-.pdot.night{background:var(--active);box-shadow:0 0 8px var(--active)}
-.pdot.day{background:var(--gold);box-shadow:0 0 8px var(--gold)}
-/* prominent setup button in header */
-.cfg-hdr-btn{
-  background:linear-gradient(135deg,var(--gold-dim),#5a4010);
-  border:1px solid var(--gold);color:var(--gold);
-  font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;
-  padding:8px 14px;border-radius:2px;cursor:pointer;white-space:nowrap}
-.cfg-hdr-btn:active{transform:scale(.97)}
 .pgrid{flex:1;overflow-y:auto;display:grid;
   grid-template-columns:repeat(auto-fill,var(--pad-sz));
   gap:var(--pad-gap);padding:8px;position:relative;z-index:2;align-content:start}
@@ -237,7 +223,7 @@ input[type=file]{display:none}
 
 /* PORTAL BUTTON — Flamme */
 #portal-btn{background:none;border:none;cursor:pointer;padding:2px 10px 4px;
-  display:flex;align-items:center;justify-content:center;justify-self:end}
+  display:flex;align-items:center;justify-content:center}
 #portal-btn:active .flame{transform:scale(.88)}
 .flame{position:relative;width:18px;height:30px;display:block;transition:color .4s ease}
 .flame::before{content:'';position:absolute;bottom:0;left:50%;
@@ -526,16 +512,7 @@ input[type=file]{display:none}
 <!-- BOARD (Setup + Performance fusioniert) -->
 <div id="sp" class="screen">
   <div class="p-hdr">
-    <div class="p-hdr-left">
-      <div class="p-nav">
-        <button class="cfg-hdr-btn" onclick="show('smm')" style="padding:8px 10px">⌂</button>
-      </div>
-      <div id="board-title" class="board-title">SETUP-MODUS</div>
-    </div>
-    <div class="phase">
-      <div class="pdot" id="pdot"></div>
-      <span id="ptxt" style="color:var(--text-dim)">BEREIT</span>
-    </div>
+    <div id="board-title" class="board-title">SETUP-MODUS</div>
     <button id="portal-btn" onclick="toggleLock()"><span class="flame"></span></button>
   </div>
   <div id="edge-glow"></div>
@@ -725,9 +702,6 @@ function stopAll(){
   document.getElementById('nptxt').textContent='Kein Sound aktiv';
   document.getElementById('nptxt').style.color='var(--text-dim)';
   const d=document.querySelector('.npdot'); if(d) d.remove();
-  document.getElementById('pdot').className='pdot';
-  document.getElementById('ptxt').textContent='BEREIT';
-  document.getElementById('ptxt').style.color='var(--text-dim)';
   updEdgeGlow(); stopEQ();
 }
 function flash(id){
@@ -809,12 +783,6 @@ function setNP(txt){
   el.textContent=txt; el.style.color='var(--text)';
   startEQ();
   const lo=(txt||'').toLowerCase();
-  const pd=document.getElementById('pdot'), pt=document.getElementById('ptxt');
-  if(lo.includes('nacht')||lo.includes('donner')||lo.includes('night')){
-    pd.className='pdot night'; pt.textContent='NACHT'; pt.style.color='var(--active)';
-  } else if(lo.includes('tag')||lo.includes('hahn')||lo.includes('day')){
-    pd.className='pdot day'; pt.textContent='TAG'; pt.style.color='var(--gold)';
-  }
 }
 
 // ── SCREENS ──
