@@ -58,14 +58,10 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);
   padding:9px 18px;border-radius:2px;cursor:pointer}
 
 /* SETUP */
-#ss{background:var(--deep)}
 .s-hdr{display:flex;align-items:center;justify-content:space-between;
   padding:11px 14px;border-bottom:1px solid var(--border);
   background:var(--surface);flex-shrink:0}
 .s-hdr h2{font-family:'Cinzel',serif;color:var(--gold);font-size:14px;letter-spacing:2px}
-.sgrid{flex:1;overflow-y:auto;display:grid;
-  grid-template-columns:repeat(auto-fill,var(--pad-sz));
-  gap:var(--pad-gap);padding:8px;position:relative;align-content:start}
 .pbtn.ed{border-color:var(--gold)!important;box-shadow:0 0 8px rgba(201,168,76,.25)}
 #crop-dlg{position:fixed;inset:0;background:rgba(10,10,20,0.97);z-index:300;
   display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px}
@@ -147,7 +143,6 @@ input[type=file]{display:none}
 
 #sp{background:var(--night);position:relative;overflow:hidden}
 #sp.locked .p-nav{display:none}
-#lock-btn.on{background:var(--blood);border-color:var(--blood-bright);color:#fff}
 .pbtn.dragging{opacity:0.25}
 .pbtn.drag-over{border-color:var(--gold)!important;background:var(--raised)}
 #sp::before{content:'';position:absolute;inset:0;pointer-events:none;
@@ -211,6 +206,33 @@ input[type=file]{display:none}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
+/* PORTAL BUTTON */
+#portal-btn{
+  font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;font-weight:600;
+  padding:9px 20px;border-radius:3px;cursor:pointer;border-width:2px;border-style:solid;
+  transition:all .4s ease}
+#portal-btn.mode-edit{
+  background:linear-gradient(135deg,#2a1800,#180e00);
+  border-color:var(--gold);color:var(--gold);
+  box-shadow:0 0 18px rgba(201,168,76,.4),inset 0 0 8px rgba(201,168,76,.08)}
+#portal-btn.mode-play{
+  background:linear-gradient(135deg,#001828,#00101a);
+  border-color:var(--active);color:var(--active);
+  box-shadow:0 0 18px rgba(79,195,247,.35),inset 0 0 8px rgba(79,195,247,.08)}
+#portal-btn.mode-edit:active{transform:scale(.97)}
+#portal-btn.mode-play:active{transform:scale(.97)}
+
+/* BOARD MODUS-STIMMUNG */
+#sp.mode-edit{background:var(--night)}
+#sp.mode-edit::before{
+  background:radial-gradient(ellipse at 55% 25%,rgba(120,80,10,.18) 0%,transparent 60%) !important}
+#sp.mode-edit .p-hdr{border-bottom-color:rgba(201,168,76,.25)}
+#sp.mode-play::before{
+  background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.1) 0%,transparent 50%) !important}
+#sp.mode-play .p-hdr{border-bottom-color:rgba(42,42,74,.6)}
+#sp.mode-edit #np{display:none}
+#sp.mode-edit #dbg{display:none !important}
+
 /* MAIN MENU */
 #smm{align-items:center;justify-content:center;gap:0;padding:32px 24px;
   background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
@@ -250,16 +272,16 @@ input[type=file]{display:none}
   </div>
   <div class="mopts">
     <div class="mopt mp" onclick="show('sp')">
-      <div class="mico">▶</div>
-      <div><div class="mlbl">SPIELMODUS</div><div class="msub">Soundboard spielen</div></div>
-    </div>
-    <div class="mopt" onclick="show('ss')">
-      <div class="mico">⚙</div>
-      <div><div class="mlbl">BOARD-SETUP</div><div class="msub">Tasten und Sounds konfigurieren</div></div>
+      <div class="mico">◈</div>
+      <div><div class="mlbl">BOARD</div><div class="msub">Setup &amp; Spielmodus — durch Portal umschalten</div></div>
     </div>
     <div class="mopt" onclick="show('sa')">
+      <div class="mico">⚙</div>
+      <div><div class="mlbl">EINSTELLUNGEN</div><div class="msub">Startmodus, Tasten-Test &amp; Optionen</div></div>
+    </div>
+    <div class="mopt" onclick="show('st')">
       <div class="mico">☰</div>
-      <div><div class="mlbl">APP-EINSTELLUNGEN</div><div class="msub">Tasten-Test und weitere Optionen</div></div>
+      <div><div class="mlbl">TIPS &amp; TRICKS</div><div class="msub">Bedienhinweise und Tastenbelegung</div></div>
     </div>
   </div>
 </div>
@@ -276,14 +298,14 @@ input[type=file]{display:none}
   <p style="font-size:11px;color:var(--text-dim);max-width:280px">
     Notiere welche Taste welchen Code sendet — du trägst ihn später im Setup ein.
   </p>
-  <button class="btn-p" onclick="show('ss')">WEITER ZUM SETUP →</button>
+  <button class="btn-p" onclick="show('sp')">WEITER ZUM BOARD →</button>
   <button class="btn-s" onclick="show('sp')" style="margin-top:4px">Direkt zum Soundboard</button>
 </div>
 
 <!-- APP SETTINGS -->
 <div id="sa" class="screen">
   <div class="s-hdr">
-    <h2>APP-EINSTELLUNGEN</h2>
+    <h2>EINSTELLUNGEN</h2>
     <button class="btn-s" onclick="show('smm')" style="font-size:10px;padding:5px 9px">← MENÜ</button>
   </div>
   <div style="flex:1;overflow-y:auto">
@@ -293,65 +315,78 @@ input[type=file]{display:none}
         <div><div class="mlbl">TASTEN-TEST</div><div class="msub">Codes des Numpads erkennen</div></div>
       </div>
     </div>
+    <div class="tips-hdr">STARTMODUS</div>
+    <div style="padding:10px 14px 16px">
+      <div class="trow">
+        <div class="topt" id="sm-unlocked" onclick="setStartMode('unlocked')">SETUP</div>
+        <div class="topt" id="sm-locked" onclick="setStartMode('locked')">SPIEL</div>
+        <div class="topt" id="sm-remember" onclick="setStartMode('remember')">LETZTER</div>
+      </div>
+      <p style="font-size:11px;color:var(--text-dim);margin-top:9px;line-height:1.7">
+        <b style="color:var(--text)">SETUP</b> — öffnet immer im Bearbeitungsmodus.<br>
+        <b style="color:var(--text)">SPIEL</b> — öffnet direkt im Spielmodus.<br>
+        <b style="color:var(--text)">LETZTER</b> — merkt sich den zuletzt genutzten Modus.
+      </p>
+    </div>
+  </div>
+</div>
 
-    <div class="tips-hdr">TIPS &amp; HINWEISE</div>
-
+<!-- TIPS & TRICKS -->
+<div id="st" class="screen">
+  <div class="s-hdr">
+    <h2>TIPS &amp; TRICKS</h2>
+    <button class="btn-s" onclick="show('smm')" style="font-size:10px;padding:5px 9px">← MENÜ</button>
+  </div>
+  <div style="flex:1;overflow-y:auto">
+    <div class="tip">
+      <div class="tip-key">◈ Portal</div>
+      <div class="tip-body">
+        <div class="tip-ttl">SETUP ↔ SPIELMODUS</div>
+        <div class="tip-desc">Der Portal-Button oben im Board schaltet zwischen den beiden Modi um. Im Setup-Modus (golden) kannst du Pads bearbeiten. Im Spielmodus (blau) lösen Tasten und Tippen Sounds aus.</div>
+      </div>
+    </div>
     <div class="tip">
       <div class="tip-key">↕ Drag</div>
       <div class="tip-body">
         <div class="tip-ttl">PADS VERSCHIEBEN</div>
-        <div class="tip-desc">Im Spielmodus einen Sound-Button gedrückt halten und auf eine andere Position ziehen — die beiden Pads tauschen ihre Plätze. Kurzes Antippen spielt den Sound wie gewohnt. Im Lock-Modus ist Drag & Drop deaktiviert.</div>
+        <div class="tip-desc">Im Setup-Modus ein Pad gedrückt halten und auf eine andere Position ziehen — die beiden Pads tauschen ihre Plätze. Kurzes Antippen öffnet das Bearbeitungsfenster. Im Spielmodus ist Drag &amp; Drop deaktiviert.</div>
       </div>
     </div>
-
     <div class="tip">
       <div class="tip-key">Fade</div>
       <div class="tip-body">
         <div class="tip-ttl">FADE-IN / FADE-OUT</div>
-        <div class="tip-desc">Im Setup pro Pad einstellbar (0–10s). Fade-In blendet den Sound beim Start ein. Fade-Out blendet ihn beim Stoppen aus — z.B. beim Togglen eines Loops. "Alle Stoppen" (Enter) ignoriert den Fade und stoppt sofort.</div>
+        <div class="tip-desc">Im Bearbeitungsfenster pro Pad einstellbar (0–10s). Fade-In blendet den Sound beim Start ein. Fade-Out blendet ihn beim Stoppen aus. Enter stoppt sofort ohne Fade.</div>
       </div>
     </div>
-
-    <div class="tip">
-      <div class="tip-key">🔒</div>
-      <div class="tip-body">
-        <div class="tip-ttl">LOCK-MODUS</div>
-        <div class="tip-desc">Im Spielmodus auf 🔓 tippen um den Lock zu aktivieren. Nur Tasten die im Setup belegt sind, lösen dann noch Sounds aus — alle Navigation (Escape, Menü, Setup) wird geblockt. Ideal für blinde Bedienung während des Spiels.</div>
-      </div>
-    </div>
-
     <div class="tip">
       <div class="tip-key">Leertaste</div>
       <div class="tip-body">
         <div class="tip-ttl">PAUSE / WEITER</div>
-        <div class="tip-desc">Pausiert alle laufenden Sounds und setzt sie auf Druck fort. Funktioniert auf jedem Screen und auch im Lock-Modus. Einzige Ausnahme: wenn ein Texteingabefeld aktiv ist.</div>
+        <div class="tip-desc">Pausiert alle laufenden Sounds und setzt sie auf Druck fort. Funktioniert auf jedem Screen und auch im Spielmodus. Einzige Ausnahme: wenn ein Texteingabefeld aktiv ist.</div>
       </div>
     </div>
-
     <div class="tip">
       <div class="tip-key">Enter</div>
       <div class="tip-body">
         <div class="tip-ttl">ALLE STOPPEN</div>
-        <div class="tip-desc">Stoppt sofort alle laufenden Sounds und setzt die Position zurück auf Anfang. Funktioniert auf jedem Screen und auch im Lock-Modus.</div>
+        <div class="tip-desc">Stoppt sofort alle laufenden Sounds und setzt die Position zurück auf Anfang. Funktioniert auf jedem Screen und auch im Spielmodus.</div>
       </div>
     </div>
-
     <div class="tip">
       <div class="tip-key">Escape</div>
       <div class="tip-body">
         <div class="tip-ttl">ZURÜCK / ABBRECHEN</div>
-        <div class="tip-desc">Navigiert zurück zum Hauptmenü. Wenn das Bearbeitungsfenster im Setup offen ist, schließt Escape es (= Abbrechen). Im Lock-Modus wirkungslos.</div>
+        <div class="tip-desc">Navigiert zurück zum Hauptmenü. Wenn das Bearbeitungsfenster offen ist, schließt Escape es (= Abbrechen). Im Spielmodus wirkungslos.</div>
       </div>
     </div>
-
     <div class="tip">
       <div class="tip-key">Tippen</div>
       <div class="tip-body">
         <div class="tip-ttl">SOUND-PAD BELEGEN</div>
-        <div class="tip-desc">Im Setup das Tastenfeld anklicken, dann die gewünschte Taste auf dem Numpad drücken — der Code wird automatisch erkannt und eingetragen. Kein manuelles Eintippen nötig.</div>
+        <div class="tip-desc">Im Setup-Modus ein Pad antippen — das Bearbeitungsfenster öffnet sich. Dort das Tastenfeld anklicken und die gewünschte Taste drücken — der Code wird automatisch erkannt.</div>
       </div>
     </div>
-
     <div class="tip">
       <div class="tip-key">⚠</div>
       <div class="tip-body">
@@ -359,26 +394,14 @@ input[type=file]{display:none}
         <div class="tip-desc">Beim Speichern wird geprüft ob eine Taste bereits einem anderen Pad zugewiesen ist. Bei Konflikt erscheint eine Warnung mit den Optionen Abbrechen oder Überschreiben.</div>
       </div>
     </div>
-
     <div class="tip">
-      <div class="tip-key">1 = 1</div>
+      <div class="tip-key">1 ≠ 1</div>
       <div class="tip-body">
         <div class="tip-ttl">NUMPAD VS. ZIFFERNTASTE</div>
-        <div class="tip-desc">Die "1" auf dem Numpad und die "1" auf der Haupttastatur zeigen beide "1" an, werden aber intern unterschiedlich erkannt. Eine Taste belegt also nie versehentlich die andere.</div>
+        <div class="tip-desc">Die "1" auf dem Numpad und die "1" auf der Haupttastatur werden intern unterschiedlich erkannt. Eine Taste belegt also nie versehentlich die andere.</div>
       </div>
     </div>
-
   </div>
-</div>
-
-<!-- SETUP -->
-<div id="ss" class="screen">
-  <div class="s-hdr">
-    <button class="btn-s" onclick="show('smm')" style="font-size:10px;padding:5px 9px">← MENÜ</button>
-    <h2>SETUP</h2>
-    <button class="btn-p" onclick="show('sp')" style="font-size:11px;padding:5px 13px">▶ PLAY</button>
-  </div>
-  <div class="sgrid" id="sgrid"></div>
 </div>
 
 <!-- EDIT -->
@@ -450,20 +473,16 @@ input[type=file]{display:none}
   </div>
 </div>
 
-<!-- PERFORMANCE -->
+<!-- BOARD (Setup + Performance fusioniert) -->
 <div id="sp" class="screen">
   <div class="p-hdr">
+    <div class="p-nav">
+      <button class="cfg-hdr-btn" onclick="show('smm')" style="padding:8px 10px">⌂</button>
+    </div>
+    <button id="portal-btn" onclick="toggleLock()">⚙ SETUP-MODUS</button>
     <div class="phase">
       <div class="pdot" id="pdot"></div>
       <span id="ptxt" style="color:var(--text-dim)">BEREIT</span>
-    </div>
-    <span class="p-title">STORYTELLER</span>
-    <div style="display:flex;gap:6px">
-      <div class="p-nav" style="display:flex;gap:6px">
-        <button class="cfg-hdr-btn" onclick="show('smm')" style="padding:8px 10px">⌂</button>
-        <button class="cfg-hdr-btn" onclick="show('ss')">⚙ SETUP</button>
-      </div>
-      <button id="lock-btn" class="cfg-hdr-btn" onclick="toggleLock()" style="padding:8px 10px">🔓</button>
     </div>
   </div>
   <textarea id="kfocus" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
@@ -526,7 +545,12 @@ function unlock(){
   const b=ctx.createBuffer(1,1,22050), s=ctx.createBufferSource();
   s.buffer=b; s.connect(ctx.destination); s.start(0);
   initGridCtrl();
-  openDB().then(load).then(()=>{ decodeAll(); show('smm'); });
+  openDB().then(load).then(()=>{
+    decodeAll();
+    applyStartMode();
+    initStartModeUI();
+    show('smm');
+  });
 }
 function decodeAll(){ pads.forEach((p,i)=>{ if(p&&p.files&&p.files.length) decodePad(i); }); }
 function decodePad(id){
@@ -664,8 +688,7 @@ function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   cur=id;
-  if(id==='ss') renderSetup();
-  if(id==='sp'){ renderPerf(); focusKB(); }
+  if(id==='sp'){ renderBoard(); if(locked) focusKB(); }
 }
 document.getElementById('kfocus').addEventListener('blur', ()=>{
   if(cur==='sp' && !document.getElementById('ep').classList.contains('open')){
@@ -699,13 +722,46 @@ function initGridCtrl(){
   });
 }
 
+// ── MODUS ──
+function applyModeVisuals(){
+  const sp=document.getElementById('sp');
+  const btn=document.getElementById('portal-btn');
+  sp.classList.toggle('mode-edit',!locked);
+  sp.classList.toggle('mode-play',locked);
+  if(btn){
+    btn.classList.toggle('mode-edit',!locked);
+    btn.classList.toggle('mode-play',locked);
+    btn.textContent=locked?'▶ SPIEL-MODUS':'⚙ SETUP-MODUS';
+  }
+}
+function applyStartMode(){
+  const sm=localStorage.getItem('start-mode')||'unlocked';
+  if(sm==='locked') locked=true;
+  else if(sm==='remember') locked=localStorage.getItem('last-mode')==='locked';
+  else locked=false;
+  applyModeVisuals();
+}
+function setStartMode(m){
+  localStorage.setItem('start-mode',m);
+  ['unlocked','locked','remember'].forEach(k=>{
+    const el=document.getElementById('sm-'+k);
+    if(el) el.className='topt'+(k===m?' al':'');
+  });
+}
+function initStartModeUI(){
+  setStartMode(localStorage.getItem('start-mode')||'unlocked');
+}
+function renderBoard(){
+  if(locked) renderPerf(); else renderSetup();
+}
+
 // ── SETUP ──
 function findNextPadId(){
   for(let i=0;i<pads.length;i++){ if(pads[i]==null) return i; }
   return pads.length;
 }
 function renderSetup(){
-  const g=document.getElementById('sgrid'); g.innerHTML='';
+  const g=document.getElementById('pgrid'); g.innerHTML='';
   for(let i=0;i<pads.length;i++){
     const p=pads[i]; if(p==null) continue;
     const b=document.createElement('div');
@@ -746,12 +802,12 @@ function openEP(id){
   updFB(); setMode(eMode);
   document.getElementById('ep').classList.add('open');
   document.getElementById('ebk').classList.add('open');
-  document.querySelectorAll('#sgrid [data-id]').forEach(c=>c.classList.toggle('ed',+c.dataset.id===id));
+  document.querySelectorAll('#pgrid [data-id]').forEach(c=>c.classList.toggle('ed',+c.dataset.id===id));
 }
 function closeEP(){
   document.getElementById('ep').classList.remove('open');
   document.getElementById('ebk').classList.remove('open');
-  document.querySelectorAll('#sgrid [data-id]').forEach(c=>c.classList.remove('ed'));
+  document.querySelectorAll('#pgrid [data-id]').forEach(c=>c.classList.remove('ed'));
   document.getElementById('key-warn').style.display='none';
   stopPreview();
   eFiles=[]; eId=null;
@@ -1255,10 +1311,12 @@ function onDragEnd(e){
 
 function toggleLock(){
   locked=!locked;
+  if(localStorage.getItem('start-mode')==='remember')
+    localStorage.setItem('last-mode',locked?'locked':'unlocked');
   document.getElementById('sp').classList.toggle('locked',locked);
-  const btn=document.getElementById('lock-btn');
-  btn.textContent=locked?'🔒':'🔓';
-  btn.classList.toggle('on',locked);
+  applyModeVisuals();
+  renderBoard();
+  if(locked) focusKB();
 }
 
 document.addEventListener('keydown', e=>{
