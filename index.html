@@ -458,7 +458,7 @@ let ctx = null, db = null;
 let bufs = {}, srcs = {}, gains = {};
 let eId = null, eFiles = [], eMode = 'once';
 let previewAudio=null, previewFileIdx=null, previewURL=null, previewFadeGen=0;
-let waveforms=[], scrubRAF=null;
+let waveforms=[], scrubRAF=null, previewSeekPos=0;
 let cur = 'su';
 let locked = false;
 const klog = [];
@@ -714,7 +714,7 @@ function drawScrubber(){
   const wf=waveforms[idx];
   const audio=previewAudio;
   const pos=audio?.currentTime||0, dur=audio?.duration||0;
-  const frac=dur>0?Math.min(pos/dur,1):0;
+  const frac=audio?( dur>0?Math.min(pos/dur,1):0 ):previewSeekPos;
   const mid=H/2;
   if(wf){
     const vol=+document.getElementById('ev').value/100;
@@ -754,21 +754,17 @@ function initScrub(){
     const frac=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
     if(previewAudio&&previewAudio.duration){
       previewAudio.currentTime=frac*previewAudio.duration;
-      drawScrubber();
     } else {
-      const idx=previewFileIdx!==null?previewFileIdx:0;
-      previewFile(idx);
-      if(previewAudio) previewAudio.addEventListener('canplay',()=>{
-        if(previewAudio?.duration) previewAudio.currentTime=frac*previewAudio.duration;
-      },{once:true});
+      previewSeekPos=frac;
     }
+    drawScrubber();
   });
 }
 function _cleanupPreview(){
   ++previewFadeGen;
   stopScrubRAF();
   if(previewURL){ URL.revokeObjectURL(previewURL); previewURL=null; }
-  previewAudio=null; previewFileIdx=null;
+  previewAudio=null; previewFileIdx=null; previewSeekPos=0;
 }
 function stopPreview(){
   if(!previewAudio) return;
@@ -802,6 +798,7 @@ function liveVol(){
 }
 function previewFile(i){
   if(previewAudio){ try{previewAudio.pause();}catch(e){} }
+  const seekFrac=previewSeekPos;
   _cleanupPreview();
   const f=eFiles[i]; if(!f||!f.data) return;
   const ext=(f.name.split('.').pop()||'').toLowerCase();
@@ -811,6 +808,9 @@ function previewFile(i){
   const fi=+document.getElementById('eft').value;
   previewFileIdx=i;
   previewAudio.onended=()=>{ _cleanupPreview(); updFB(); drawScrubber(); };
+  if(seekFrac>0) previewAudio.addEventListener('loadedmetadata',()=>{
+    if(previewAudio?.duration) previewAudio.currentTime=seekFrac*previewAudio.duration;
+  },{once:true});
   if(fi>0){
     previewAudio.volume=0;
     previewAudio.play();
@@ -1032,7 +1032,8 @@ document.addEventListener('keydown', e=>{
 
   if(code==='Space'){
     e.preventDefault();
-    stopAll();
+    if(document.getElementById('ep').classList.contains('open')) pausePreview();
+    else stopAll();
     return;
   }
 
