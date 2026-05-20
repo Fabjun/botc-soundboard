@@ -595,6 +595,12 @@ function stopPad(id, immediate=false){
   }
 }
 function pauseAllAudio(){
+  const epOpen=document.getElementById('ep').classList.contains('open');
+  if(epOpen){
+    if(!previewAudio && eFiles.length) previewFile(previewFileIdx!==null?previewFileIdx:0);
+    else if(previewAudio) pausePreview();
+    return;
+  }
   if(previewAudio) pausePreview();
   if(!ctx) return;
   if(ctx.state==='suspended') ctx.resume();
@@ -755,10 +761,14 @@ function drawScrubber(){
       g.fillStyle=i/wf.length<=frac?'rgba(122,95,40,0.85)':'rgba(74,74,122,0.7)';
       g.fillRect(x+0.5, mid-h, Math.max(bw-1,1), h*2);
     }
-    if(dur>0){
+    if(dur>0||previewSeekPos>0){
       const px=Math.round(frac*W);
-      g.fillStyle='rgba(201,168,76,0.9)';
+      g.save();
+      g.shadowColor='rgba(201,168,76,0.9)';
+      g.shadowBlur=5;
+      g.fillStyle='rgba(255,255,255,0.95)';
       g.fillRect(px-1,0,2,H);
+      g.restore();
     }
   }
   const tEl=document.getElementById('scrub-time');
@@ -785,6 +795,7 @@ function initScrub(){
     const frac=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
     if(previewAudio&&previewAudio.duration){
       previewAudio.currentTime=frac*previewAudio.duration;
+      if(!previewAudio.paused){ previewAudio.pause(); updFB(); }
     } else {
       previewSeekPos=frac;
     }
