@@ -195,7 +195,8 @@ input[type=file]{display:none}
 #img-prev{width:100%;height:90px;background-size:cover;background-position:center;border-radius:3px;border:1px solid var(--border);margin-bottom:6px;display:none}
 #np{padding:5px 13px;background:rgba(30,30,53,.8);border-top:1px solid var(--border);
   font-size:11px;color:var(--text-dim);font-style:italic;min-height:25px;
-  display:flex;align-items:center;gap:6px;flex-shrink:0;position:relative;z-index:2}
+  display:flex;align-items:center;gap:6px;flex-shrink:0;position:relative;z-index:2;overflow:hidden}
+#eq-cv{position:absolute;inset:0;width:100%;pointer-events:none;opacity:.7}
 .npdot{width:5px;height:5px;border-radius:50%;background:var(--gold);
   animation:blink 1s ease-in-out infinite;flex-shrink:0}
 
@@ -203,6 +204,11 @@ input[type=file]{display:none}
 @keyframes pulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
 @keyframes breathe{0%,100%{box-shadow:0 0 8px rgba(79,195,247,.2)}50%{box-shadow:0 0 20px rgba(79,195,247,.4)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes ripple-anim{to{transform:scale(3);opacity:0}}
+@keyframes portal-breathe-play{0%,100%{box-shadow:0 0 18px rgba(79,195,247,.35),inset 0 0 8px rgba(79,195,247,.08)}50%{box-shadow:0 0 36px rgba(79,195,247,.7),inset 0 0 16px rgba(79,195,247,.2)}}
+@keyframes portal-breathe-edit{0%,100%{box-shadow:0 0 18px rgba(201,168,76,.4),inset 0 0 8px rgba(201,168,76,.08)}50%{box-shadow:0 0 30px rgba(201,168,76,.65),inset 0 0 14px rgba(201,168,76,.18)}}
+@keyframes edge-breathe{0%,100%{box-shadow:inset 0 0 50px rgba(79,195,247,.12)}50%{box-shadow:inset 0 0 90px rgba(79,195,247,.3)}}
+@keyframes fog-drift{0%{transform:translate(0,0) scale(1);opacity:.8}33%{transform:translate(4%,2%) scale(1.06);opacity:1}66%{transform:translate(-2%,4%) scale(.97);opacity:.85}100%{transform:translate(0,0) scale(1);opacity:.8}}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
@@ -219,16 +225,34 @@ input[type=file]{display:none}
   background:linear-gradient(135deg,#001828,#00101a);
   border-color:var(--active);color:var(--active);
   box-shadow:0 0 18px rgba(79,195,247,.35),inset 0 0 8px rgba(79,195,247,.08)}
-#portal-btn.mode-edit:active{transform:scale(.97)}
-#portal-btn.mode-play:active{transform:scale(.97)}
+#portal-btn.mode-edit{animation:portal-breathe-edit 3s ease-in-out infinite}
+#portal-btn.mode-play{animation:portal-breathe-play 2.2s ease-in-out infinite}
+#portal-btn.mode-edit:active,#portal-btn.mode-play:active{transform:scale(.97);animation:none}
+
+/* RIPPLE */
+.ripple-el{position:absolute;border-radius:50%;background:rgba(201,168,76,.28);
+  transform:scale(0);animation:ripple-anim .55s ease-out forwards;pointer-events:none}
+
+/* EDGE GLOW */
+#edge-glow{position:absolute;inset:0;pointer-events:none;z-index:1;
+  opacity:0;transition:opacity .6s ease;border-radius:inherit}
+#edge-glow.glow-once{opacity:1;box-shadow:inset 0 0 55px rgba(201,168,76,.22)}
+#edge-glow.glow-loop{opacity:1;animation:edge-breathe 2.2s ease-in-out infinite}
+
+/* MODE FLASH */
+#mode-flash{position:fixed;inset:0;pointer-events:none;z-index:500;
+  opacity:0;transition:opacity .35s ease}
+#mode-flash.flash-visible{opacity:1;transition:none}
 
 /* BOARD MODUS-STIMMUNG */
 #sp.mode-edit{background:var(--night)}
 #sp.mode-edit::before{
-  background:radial-gradient(ellipse at 55% 25%,rgba(120,80,10,.18) 0%,transparent 60%) !important}
+  background:radial-gradient(ellipse at 55% 25%,rgba(120,80,10,.18) 0%,transparent 60%) !important;
+  animation:fog-drift 14s ease-in-out infinite}
 #sp.mode-edit .p-hdr{border-bottom-color:rgba(201,168,76,.25)}
 #sp.mode-play::before{
-  background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.1) 0%,transparent 50%) !important}
+  background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.1) 0%,transparent 50%) !important;
+  animation:fog-drift 10s ease-in-out infinite}
 #sp.mode-play .p-hdr{border-bottom-color:rgba(42,42,74,.6)}
 #sp.mode-edit #np{display:none}
 #sp.mode-edit #dbg{display:none !important}
@@ -485,6 +509,7 @@ input[type=file]{display:none}
       <span id="ptxt" style="color:var(--text-dim)">BEREIT</span>
     </div>
   </div>
+  <div id="edge-glow"></div>
   <textarea id="kfocus" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
   <div id="grid-ctrl">
     <span class="gc-ico">▦</span>
@@ -493,14 +518,18 @@ input[type=file]{display:none}
     <input type="range" id="gap-slider" min="2" max="24" value="8">
   </div>
   <div class="pgrid" id="pgrid"></div>
-  <div id="np"><span id="nptxt" style="color:var(--text-dim);font-style:italic">Kein Sound aktiv</span></div>
+  <div id="np">
+    <canvas id="eq-cv" height="25"></canvas>
+    <span id="nptxt" style="color:var(--text-dim);font-style:italic;position:relative;z-index:1">Kein Sound aktiv</span>
+  </div>
   <div id="dbg" style="display:none;padding:4px 13px;background:#0a0a14;border-top:1px solid #1e1e35;font-family:monospace;font-size:10px;color:#4a4a7a;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
 </div>
 
 <script>
 let pads = [];
-let ctx = null, db = null;
+let ctx = null, db = null, masterGain = null, analyser = null, analyserData = null;
 let bufs = {}, srcs = {}, gains = {};
+let eqRAF = null;
 let eId = null, eFiles = [], eMode = 'once', eImage = null;
 let cropOffX=0, cropOffY=0, cropImgDispW=0, cropImgDispH=0, cropDragging=false, cropDragX=0, cropDragY=0;
 const CROP_SIZE=280;
@@ -542,6 +571,12 @@ function load(){
 // ── AUDIO ──
 function unlock(){
   ctx = new (window.AudioContext||window.webkitAudioContext)();
+  masterGain = ctx.createGain();
+  analyser = ctx.createAnalyser();
+  analyser.fftSize = 128;
+  analyserData = new Uint8Array(analyser.frequencyBinCount);
+  masterGain.connect(analyser);
+  analyser.connect(ctx.destination);
   const b=ctx.createBuffer(1,1,22050), s=ctx.createBufferSource();
   s.buffer=b; s.connect(ctx.destination); s.start(0);
   initGridCtrl();
@@ -578,7 +613,7 @@ function play(id){
     stopPad(id,true);
     const s=ctx.createBufferSource(), g=ctx.createGain();
     fadeInGain(g,vol,fi);
-    s.buffer=b; s.connect(g); g.connect(ctx.destination); s.start(0);
+    s.buffer=b; s.connect(g); g.connect(masterGain); s.start(0);
     srcs[id]=[s]; gains[id]=g;
     s.onended=()=>{ delete srcs[id]; updBtn(id,false); chkNP(); };
     updBtn(id,true,false); setNP(p.name);
@@ -587,7 +622,7 @@ function play(id){
     const b=bufs[id][0]; if(!b) return;
     const s=ctx.createBufferSource(), g=ctx.createGain();
     fadeInGain(g,vol,fi);
-    s.buffer=b; s.loop=true; s.connect(g); g.connect(ctx.destination); s.start(0);
+    s.buffer=b; s.loop=true; s.connect(g); g.connect(masterGain); s.start(0);
     srcs[id]=[s]; gains[id]=g;
     updBtn(id,true,true); setNP(p.name+' ↻');
   } else {
@@ -601,7 +636,7 @@ function playNext(id,all){
   const i=Math.floor(Math.random()*all.length);
   const s=ctx.createBufferSource(), g=ctx.createGain();
   fadeInGain(g,(p.volume||80)/100,p.fadeIn||0);
-  s.buffer=all[i]; s.connect(g); g.connect(ctx.destination); s.start(0);
+  s.buffer=all[i]; s.connect(g); g.connect(masterGain); s.start(0);
   srcs[id]=[s]; gains[id]=g;
   updBtn(id,true,true);
   const fn=(p.files[i]||{}).name||'';
@@ -647,6 +682,7 @@ function stopAll(){
   document.getElementById('pdot').className='pdot';
   document.getElementById('ptxt').textContent='BEREIT';
   document.getElementById('ptxt').style.color='var(--text-dim)';
+  updEdgeGlow(); stopEQ();
 }
 function flash(id){
   const b=document.querySelector(`[data-id="${id}"]`); if(!b) return;
@@ -657,19 +693,75 @@ function updBtn(id,on,loop){
   b.classList.remove('playing','plooping');
   if(on&&loop) b.classList.add('plooping');
   else if(on) b.classList.add('playing');
+  updEdgeGlow();
 }
 function chkNP(){
   if(!Object.keys(srcs).length){
     document.getElementById('nptxt').textContent='Kein Sound aktiv';
     document.getElementById('nptxt').style.color='var(--text-dim)';
     const d=document.querySelector('.npdot'); if(d) d.remove();
+    updEdgeGlow(); stopEQ();
   }
+}
+
+// ── VISUELLE EFFEKTE ──
+function spawnRipple(padEl, e){
+  const r=padEl.getBoundingClientRect();
+  const x=e.clientX-r.left, y=e.clientY-r.top;
+  const sz=Math.max(r.width,r.height);
+  const el=document.createElement('div');
+  el.className='ripple-el';
+  el.style.cssText=`width:${sz}px;height:${sz}px;left:${x-sz/2}px;top:${y-sz/2}px`;
+  padEl.appendChild(el);
+  el.addEventListener('animationend',()=>el.remove());
+}
+function triggerModeFlash(){
+  const el=document.getElementById('mode-flash');
+  if(!el) return;
+  el.style.background=locked
+    ?'radial-gradient(ellipse at center,rgba(79,195,247,.22) 0%,transparent 70%)'
+    :'radial-gradient(ellipse at center,rgba(201,168,76,.22) 0%,transparent 70%)';
+  el.classList.add('flash-visible');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.remove('flash-visible')));
+}
+function updEdgeGlow(){
+  const el=document.getElementById('edge-glow'); if(!el) return;
+  const ids=Object.keys(srcs);
+  if(!ids.length){ el.className=''; return; }
+  const hasLoop=ids.some(id=>{ const p=pads[+id]; return p&&(p.mode==='loop'||p.mode==='playlist'); });
+  el.className=hasLoop?'glow-loop':'glow-once';
+}
+function drawEQ(){
+  const cv=document.getElementById('eq-cv'); if(!cv||!analyser) return;
+  const W=cv.offsetWidth; if(!W) return;
+  if(cv.width!==W) cv.width=W;
+  const H=cv.height, g=cv.getContext('2d');
+  g.clearRect(0,0,W,H);
+  analyser.getByteFrequencyData(analyserData);
+  const bars=Math.min(analyserData.length,40);
+  const bw=W/bars;
+  for(let i=0;i<bars;i++){
+    const v=analyserData[i]/255;
+    const h=Math.max(1,v*H*.9);
+    g.fillStyle=`rgba(201,168,76,${.15+v*.55})`;
+    g.fillRect(i*bw+.5,H-h,Math.max(bw-1,1),h);
+  }
+  eqRAF=requestAnimationFrame(drawEQ);
+}
+function startEQ(){
+  if(!eqRAF) eqRAF=requestAnimationFrame(drawEQ);
+}
+function stopEQ(){
+  if(eqRAF){ cancelAnimationFrame(eqRAF); eqRAF=null; }
+  const cv=document.getElementById('eq-cv');
+  if(cv) cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
 }
 function setNP(txt){
   let dot=document.querySelector('.npdot');
   if(!dot){ dot=document.createElement('div'); dot.className='npdot'; document.getElementById('np').prepend(dot); }
   const el=document.getElementById('nptxt');
   el.textContent=txt; el.style.color='var(--text)';
+  startEQ();
   const lo=(txt||'').toLowerCase();
   const pd=document.getElementById('pdot'), pt=document.getElementById('ptxt');
   if(lo.includes('nacht')||lo.includes('donner')||lo.includes('night')){
@@ -1251,6 +1343,7 @@ function captureKey(e){
 // ── DRAG & DROP ──
 function onPadPointerDown(e, id){
   e.preventDefault();
+  spawnRipple(e.currentTarget, e);
   if(locked){ play(id); return; }
   dragSrc=id; dragStartX=e.clientX; dragStartY=e.clientY; dragMoved=false;
   document.addEventListener('pointermove', onDragMove, {passive:false});
@@ -1315,6 +1408,7 @@ function toggleLock(){
     localStorage.setItem('last-mode',locked?'locked':'unlocked');
   document.getElementById('sp').classList.toggle('locked',locked);
   applyModeVisuals();
+  triggerModeFlash();
   renderBoard();
   if(locked) focusKB();
 }
@@ -1373,6 +1467,8 @@ document.addEventListener('keydown', e=>{
 
 openDB().then(load).catch(()=>{});
 </script>
+
+<div id="mode-flash"></div>
 
 <div id="crop-dlg">
   <h3>BILD ZUSCHNEIDEN</h3>
