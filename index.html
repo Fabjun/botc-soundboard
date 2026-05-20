@@ -616,9 +616,18 @@ function captureKey(e){
 // ── KEYBOARD ──
 document.addEventListener('keydown', e=>{
   const code=e.code;
+
+  if(code==='Escape'){
+    e.preventDefault();
+    if(document.getElementById('ep').classList.contains('open')){ closeEP(); return; }
+    if(cur!=='smm'&&cur!=='su') show('smm');
+    return;
+  }
+
   const tag=document.activeElement?.tagName;
   if(tag==='INPUT'||tag==='TEXTAREA') return;
   e.preventDefault();
+
   if(cur==='sk'){
     document.getElementById('kd-c').textContent=code;
     document.getElementById('kd-l').textContent=`key:"${e.key}"  code:"${code}"`;
@@ -630,7 +639,7 @@ document.addEventListener('keydown', e=>{
   if(cur==='sp'){
     const dbg=document.getElementById('dbg');
     dbg.style.display='block';
-    if(code==='Escape'||code==='NumpadDecimal'||code==='Space'){
+    if(code==='NumpadDecimal'||code==='Space'){
       stopAll(); dbg.textContent=`⏹ ${code} → stopAll`; return;
     }
     const id=pads.findIndex(p=>p&&p.key===code);
