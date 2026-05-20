@@ -66,13 +66,16 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);
 .sgrid{flex:1;overflow-y:auto;padding:10px;
   display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pcard{background:var(--surface);border:1px solid var(--border);
-  border-radius:8px;cursor:pointer;transition:border-color .2s;
+  border-radius:2px;cursor:pointer;transition:border-color .2s;
   aspect-ratio:1;overflow:hidden;display:flex;flex-direction:column;padding:0}
 .pcard.has{border-color:var(--gold-dim)}
 .pcard.ed{border-color:var(--gold)}
+.pcard-add{border-style:dashed;opacity:.5;align-items:center;justify-content:center;
+  font-size:28px;color:var(--text-dim)}
+.pcard-add:hover{opacity:1;border-color:var(--gold-dim)}
 .pc-cover{flex:1;background:var(--raised);background-size:cover;background-position:center;
-  display:flex;align-items:center;justify-content:center;font-size:26px;min-height:0}
-.pc-foot{padding:6px 8px;flex-shrink:0;border-top:1px solid var(--border)}
+  display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden}
+.pc-foot{padding:5px 7px;flex-shrink:0;border-top:1px solid var(--border);min-height:0}
 .pc-key{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim);letter-spacing:1px}
 .pc-name{font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;margin-top:1px}
@@ -687,19 +690,30 @@ function renderSetup(){
   const g=document.getElementById('sgrid'); g.innerHTML='';
   for(let i=0;i<MAX;i++){
     const p=pads[i];
+    if(!p) continue;
     const c=document.createElement('div');
-    c.className='pcard'+(p?' has':'');
+    c.className='pcard has'+(i===eId?' ed':'');
     c.onclick=()=>openEP(i);
-    const cover=p?.image
-      ?`<div class="pc-cover" style="background-image:url(${p.image})"></div>`
-      :`<div class="pc-cover">${p?ico(p):'<span style="font-size:22px;color:var(--border)">+</span>'}</div>`;
-    c.innerHTML=cover+`<div class="pc-foot">
-      <div class="pc-key">${p?.keyLabel||p?.key||'—'}</div>
-      <div class="pc-name">${p?.name||'<span style="color:var(--text-dim);font-style:italic">Leer</span>'}</div>
-      ${p?.mode==='loop'?'<span class="badge bl">LOOP</span>':''}
-      ${p?.mode==='playlist'?'<span class="badge bp">PLAYLIST</span>':''}
-    </div>`;
+    const coverStyle=p.image?`background-image:url(${p.image})`:'';
+    c.innerHTML=
+      `<div class="pc-cover" style="${coverStyle}">${p.image?'':ico(p)}</div>`+
+      `<div class="pc-foot">`+
+        `<div class="pc-key">${p.keyLabel||p.key||'—'}</div>`+
+        `<div class="pc-name">${p.name||''}</div>`+
+        (p.mode==='loop'?'<span class="badge bl">LOOP</span>':'')+
+        (p.mode==='playlist'?'<span class="badge bp">PLAYLIST</span>':'')+
+      `</div>`;
     g.appendChild(c);
+  }
+  // "+" card — opens first free slot
+  const free=pads.findIndex(p=>p===null);
+  if(free!==-1){
+    const a=document.createElement('div');
+    a.className='pcard pcard-add';
+    a.title='Neues Sound-Pad erstellen';
+    a.textContent='+';
+    a.onclick=()=>openEP(free);
+    g.appendChild(a);
   }
 }
 
