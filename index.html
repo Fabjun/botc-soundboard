@@ -196,13 +196,7 @@ input[type=file]{display:none}
   display:flex;align-items:center;gap:6px;flex-shrink:0;position:relative;z-index:2}
 .npdot{width:5px;height:5px;border-radius:50%;background:var(--gold);
   animation:blink 1s ease-in-out infinite;flex-shrink:0}
-/* extra bottom padding to clear tiiny.host banner (~60px) */
-.srow{padding:0 8px 70px;position:relative;z-index:2;display:flex;gap:6px;flex-shrink:0}
-.stop-btn{flex:1;background:linear-gradient(135deg,#1a0808,#2a0a0a);
-  border:1px solid var(--blood);color:var(--blood-bright);
-  font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;
-  padding:14px;border-radius:2px;cursor:pointer}
-.stop-btn:active{background:var(--blood);color:#fff}
+
 
 @keyframes pulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
 @keyframes breathe{0%,100%{box-shadow:0 0 8px rgba(79,195,247,.2)}50%{box-shadow:0 0 20px rgba(79,195,247,.4)}}
@@ -469,9 +463,6 @@ input[type=file]{display:none}
   <div class="pgrid" id="pgrid"></div>
   <div id="np"><span id="nptxt" style="color:var(--text-dim);font-style:italic">Kein Sound aktiv</span></div>
   <div id="dbg" style="display:none;padding:4px 13px;background:#0a0a14;border-top:1px solid #1e1e35;font-family:monospace;font-size:10px;color:#4a4a7a;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-  <div class="srow">
-    <button class="stop-btn" onclick="stopAll()">■ ALLE STOPPEN</button>
-  </div>
 </div>
 
 <script>
@@ -656,6 +647,7 @@ function focusKB(){
   setTimeout(()=>{ document.getElementById('kfocus')?.focus(); }, 50);
 }
 function show(id){
+  if(locked && id!=='sp') return;
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   cur=id;
@@ -683,7 +675,7 @@ function renderSetup(){
     b.dataset.id=i;
     if(p?.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
     b.innerHTML=`<div class="pnum">${p?.keyLabel||p?.key||''}</div>`+
-                `<div class="pico">${ico(p)}</div>`+
+                `<div class="pico">${p?ico(p):'+'}</div>`+
                 `<div class="plbl">${p?.name||''}</div>`;
     b.onclick=()=>openEP(i);
     g.appendChild(b);
