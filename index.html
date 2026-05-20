@@ -401,7 +401,7 @@ input[type=file]{display:none}
     <div class="eff-body">
       <div class="fg">
         <label class="fl">LAUTSTÄRKE</label>
-        <input type="range" id="ev" min="0" max="100" value="80" style="width:100%;accent-color:var(--gold)">
+        <input type="range" id="ev" min="0" max="100" value="80" oninput="liveVol()" style="width:100%;accent-color:var(--gold)">
       </div>
       <div class="fg">
         <label class="fl">FADE-IN — <span id="eft-lbl">Kein</span></label>
@@ -451,7 +451,7 @@ let pads = new Array(MAX).fill(null);
 let ctx = null, db = null;
 let bufs = {}, srcs = {}, gains = {};
 let eId = null, eFiles = [], eMode = 'once';
-let previewAudio=null, previewFileIdx=null, previewURL=null;
+let previewAudio=null, previewFileIdx=null, previewURL=null, previewFadeGen=0;
 let cur = 'su';
 let locked = false;
 const klog = [];
@@ -674,30 +674,65 @@ function closeEP(){
   eFiles=[]; eId=null;
 }
 function _cleanupPreview(){
+  ++previewFadeGen;
   if(previewURL){ URL.revokeObjectURL(previewURL); previewURL=null; }
   previewAudio=null; previewFileIdx=null;
 }
 function stopPreview(){
   if(!previewAudio) return;
-  try{ previewAudio.pause(); previewAudio.currentTime=0; }catch(e){}
-  _cleanupPreview(); updFB();
+  const fo=+document.getElementById('efo').value;
+  const a=previewAudio, gen=++previewFadeGen;
+  if(fo>0){
+    const startVol=a.volume;
+    const t0=performance.now();
+    const ramp=()=>{
+      if(previewFadeGen!==gen) return;
+      const elapsed=(performance.now()-t0)/1000;
+      if(elapsed<fo){ a.volume=startVol*Math.max(0,1-elapsed/fo); requestAnimationFrame(ramp); }
+      else { try{a.pause();a.currentTime=0;}catch(e){} _cleanupPreview(); updFB(); }
+    };
+    requestAnimationFrame(ramp);
+  } else {
+    try{ a.pause(); a.currentTime=0; }catch(e){}
+    _cleanupPreview(); updFB();
+  }
 }
 function pausePreview(){
   if(!previewAudio) return;
   if(previewAudio.paused) previewAudio.play(); else previewAudio.pause();
   updFB();
 }
+function liveVol(){
+  if(previewAudio && !previewAudio.paused)
+    previewAudio.volume=+document.getElementById('ev').value/100;
+}
 function previewFile(i){
-  if(previewAudio){ try{previewAudio.pause();}catch(e){} _cleanupPreview(); }
+  if(previewAudio){ try{previewAudio.pause();}catch(e){} }
+  _cleanupPreview();
   const f=eFiles[i]; if(!f||!f.data) return;
   const ext=(f.name.split('.').pop()||'').toLowerCase();
   const mime={mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',m4a:'audio/mp4',aac:'audio/aac',flac:'audio/flac'}[ext]||'audio/*';
   previewURL=URL.createObjectURL(new Blob([f.data],{type:mime}));
   previewAudio=new Audio(previewURL);
-  previewAudio.volume=+document.getElementById('ev').value/100;
+  const fi=+document.getElementById('eft').value;
   previewFileIdx=i;
   previewAudio.onended=()=>{ _cleanupPreview(); updFB(); };
-  previewAudio.play();
+  if(fi>0){
+    previewAudio.volume=0;
+    previewAudio.play();
+    const gen=previewFadeGen, t0=performance.now();
+    const ramp=()=>{
+      if(previewFadeGen!==gen||!previewAudio) return;
+      const elapsed=(performance.now()-t0)/1000;
+      const target=+document.getElementById('ev').value/100;
+      if(elapsed<fi){ previewAudio.volume=Math.min((elapsed/fi)*target,1); requestAnimationFrame(ramp); }
+      else previewAudio.volume=target;
+    };
+    requestAnimationFrame(ramp);
+  } else {
+    previewAudio.volume=+document.getElementById('ev').value/100;
+    previewAudio.play();
+  }
   updFB();
 }
 function onFile(inp){
