@@ -606,6 +606,7 @@ function fadeInGain(g, targetVol, fadeIn){
 }
 function play(id){
   const p=pads[id]; if(!p||!bufs[id]||!bufs[id].length) return;
+  if(ctx?.state==='suspended') ctx.resume().catch(()=>{});
   flash(id);
   const vol=(p.volume||80)/100, fi=p.fadeIn||0;
   if(p.mode==='once'){
@@ -673,7 +674,7 @@ function pauseAllAudio(){
   else ctx.suspend();
 }
 function stopAll(){
-  if(ctx?.state==='suspended') ctx.resume();
+  if(ctx) ctx.resume().catch(()=>{});
   stopPreview();
   Object.keys(srcs).forEach(id=>stopPad(+id,true));
   document.getElementById('nptxt').textContent='Kein Sound aktiv';
