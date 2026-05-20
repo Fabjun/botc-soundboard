@@ -413,7 +413,7 @@ const MAX = 18;
 let pads = new Array(MAX).fill(null);
 let ctx = null, db = null;
 let bufs = {}, srcs = {}, gains = {};
-let eId = null, eFiles = [], eMode = 'once';
+let eId = null, eFiles = [], eMode = 'once', previewAudio = null;
 let cur = 'su';
 let locked = false;
 const klog = [];
@@ -598,9 +598,25 @@ function closeEP(){
   document.getElementById('ebk').classList.remove('open');
   document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('ed'));
   document.getElementById('key-warn').style.display='none';
+  stopPreview();
   eFiles=[]; eId=null;
 }
+function stopPreview(){
+  if(previewAudio){ previewAudio.pause(); previewAudio=null; }
+}
+function previewFile(i){
+  stopPreview();
+  const f=eFiles[i]; if(!f||!f.data) return;
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  const mime={mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',m4a:'audio/mp4',aac:'audio/aac',flac:'audio/flac'}[ext]||'audio/*';
+  const url=URL.createObjectURL(new Blob([f.data],{type:mime}));
+  previewAudio=new Audio(url);
+  previewAudio.onended=()=>{ URL.revokeObjectURL(url); previewAudio=null; updFB(); };
+  previewAudio.play();
+  updFB();
+}
 function onFile(inp){
+  stopPreview();
   const files=Array.from(inp.files); eFiles=[]; let n=0;
   files.forEach(f=>{
     const r=new FileReader();
@@ -611,8 +627,26 @@ function onFile(inp){
 }
 function updFB(){
   const b=document.getElementById('fbd');
-  if(!eFiles.length){ b.textContent='+ Datei(en) auswählen'; b.classList.remove('hf'); }
-  else { b.textContent=eFiles.map(f=>f.name).join(', '); b.classList.add('hf'); }
+  if(!eFiles.length){
+    b.innerHTML='+ Datei(en) auswählen';
+    b.classList.remove('hf');
+    b.onclick=()=>document.getElementById('fi').click();
+    b.style.cursor='pointer';
+  } else {
+    b.classList.add('hf');
+    b.onclick=null;
+    b.style.cursor='default';
+    b.innerHTML=eFiles.map((f,i)=>{
+      const playing=previewAudio&&i===eFiles._previewIdx;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(42,42,74,.4)">
+        <button onclick="previewFile(${i})" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--active);width:24px;height:24px;font-size:11px;cursor:pointer;flex-shrink:0">▶</button>
+        <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${f.name}</span>
+      </div>`;
+    }).join('')+
+    `<div style="text-align:right;padding-top:6px">
+      <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:1px">↺ ÄNDERN</button>
+    </div>`;
+  }
 }
 function setMode(m){
   eMode=m;
