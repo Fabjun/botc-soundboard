@@ -565,7 +565,7 @@ document.addEventListener('keydown', e=>{
   if(cur==='sp'){
     const dbg=document.getElementById('dbg');
     dbg.style.display='block';
-    if(code==='Escape'||code==='NumpadDecimal'){
+    if(code==='Escape'||code==='NumpadDecimal'||code==='Space'){
       stopAll(); dbg.textContent=`⏹ ${code} → stopAll`; return;
     }
     const id=pads.findIndex(p=>p&&p.key===code);
