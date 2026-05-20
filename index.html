@@ -715,7 +715,7 @@ function renderSetup(){
     b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
                 `<div class="pico">${ico(p)}</div>`+
                 `<div class="plbl">${p.name||''}</div>`;
-    b.onclick=()=>openEP(i);
+    b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
     g.appendChild(b);
   }
   const add=document.createElement('div');
@@ -1224,26 +1224,31 @@ function onDragMove(e){
   const under=document.elementFromPoint(e.clientX, e.clientY);
   dragGhost.style.display='';
   document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('drag-over'));
-  const tgt=under?.closest('.pbtn');
+  const tgt=under?.closest('.pbtn[data-id]');
   if(tgt&&+tgt.dataset.id!==dragSrc) tgt.classList.add('drag-over');
 }
 function onDragEnd(e){
   document.removeEventListener('pointermove', onDragMove);
   document.removeEventListener('pointerup', onDragEnd);
-  if(!dragMoved){ if(pads[dragSrc]) play(dragSrc); dragSrc=null; return; }
+  if(!dragMoved){
+    const id=dragSrc; dragSrc=null;
+    if(pads[id]){ if(cur==='ss') openEP(id); else play(id); }
+    return;
+  }
   dragGhost.style.display='none';
   const under=document.elementFromPoint(e.clientX, e.clientY);
   dragGhost.remove(); dragGhost=null;
   document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('dragging','drag-over'));
-  const tgt=under?.closest('.pbtn');
+  const tgt=under?.closest('.pbtn[data-id]');
   const tgtId=tgt?+tgt.dataset.id:null;
-  if(tgtId!==null&&tgtId!==dragSrc){
+  if(tgtId!==null && Number.isInteger(tgtId) && tgtId!==dragSrc){
     stopPad(dragSrc,true); stopPad(tgtId,true);
     const padA=pads[dragSrc]?{...pads[dragSrc],id:tgtId}:null;
     const padB=pads[tgtId]?{...pads[tgtId],id:dragSrc}:null;
     pads[dragSrc]=padB; pads[tgtId]=padA;
     const tmpBuf=bufs[dragSrc]; bufs[dragSrc]=bufs[tgtId]; bufs[tgtId]=tmpBuf;
-    save(); renderPerf();
+    save();
+    if(cur==='ss') renderSetup(); else renderPerf();
   }
   dragSrc=null;
 }
