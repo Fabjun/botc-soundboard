@@ -146,11 +146,16 @@ input[type=file]{display:none}
 .pbtn.drag-over{border-color:var(--gold)!important;background:var(--raised)}
 #sp::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.08) 0%,transparent 50%)}
-.p-hdr{display:grid;grid-template-columns:1fr auto;align-items:center;
+.p-hdr{display:flex;justify-content:center;align-items:center;
   padding:8px 13px 6px;border-bottom:1px solid rgba(42,42,74,.6);
   flex-shrink:0;position:relative;z-index:2}
-.board-title{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;
-  transition:color .4s ease}
+.hdr-center{display:flex;align-items:center;gap:10px}
+.board-title{font-family:'Cinzel',serif;font-size:13px;letter-spacing:4px;
+  padding:6px 16px;border:1px solid var(--gold-dim);border-radius:2px;
+  background:linear-gradient(135deg,rgba(122,95,40,.12),rgba(90,64,16,.08));
+  transition:color .4s ease,border-color .4s ease}
+#sp.mode-edit .board-title{border-color:rgba(79,195,247,.35)}
+#sp.mode-play .board-title{border-color:rgba(201,168,76,.4)}
 .pgrid{flex:1;overflow-y:auto;display:grid;
   grid-template-columns:repeat(auto-fill,var(--pad-sz));
   gap:var(--pad-gap);padding:8px;position:relative;z-index:2;align-content:start}
@@ -512,8 +517,10 @@ input[type=file]{display:none}
 <!-- BOARD (Setup + Performance fusioniert) -->
 <div id="sp" class="screen">
   <div class="p-hdr">
-    <div id="board-title" class="board-title">SETUP-MODUS</div>
-    <button id="portal-btn" onclick="toggleLock()"><span class="flame"></span></button>
+    <div class="hdr-center">
+      <div id="board-title" class="board-title">SETUP-MODUS</div>
+      <button id="portal-btn" onclick="toggleLock()"><span class="flame"></span></button>
+    </div>
   </div>
   <div id="edge-glow"></div>
   <textarea id="kfocus" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
