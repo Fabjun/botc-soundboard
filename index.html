@@ -13,7 +13,7 @@
   --night:#0a0a14; --deep:#0f0f1e; --surface:#16162a; --raised:#1e1e35;
   --border:#2a2a4a; --gold:#c9a84c; --gold-dim:#7a5f28; --blood:#8b1a1a;
   --blood-bright:#c0392b; --mist:#4a4a7a; --text:#e8e0d0; --text-dim:#8a8098;
-  --active:#4fc3f7; --pad-sz:90px; --pad-gap:8px;
+  --active:#4fc3f7; --pad-sz:90px; --pad-gap:8px; --pad-radius:8px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;background:var(--night);color:var(--text);
@@ -168,7 +168,7 @@ input[type=file]{display:none}
 .pgrid{flex:1;overflow-y:auto;display:grid;
   grid-template-columns:repeat(auto-fill,var(--pad-sz));
   gap:var(--pad-gap);padding:8px;position:relative;z-index:2;align-content:start}
-.pbtn{background:var(--surface);border:1px solid var(--border);border-radius:4px;
+.pbtn{background:var(--surface);border:1px solid var(--border);border-radius:var(--pad-radius);
   padding:4px;cursor:pointer;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:2px;aspect-ratio:1/1;
   transition:all .1s;position:relative;overflow:hidden}
@@ -188,12 +188,23 @@ input[type=file]{display:none}
 .pbtn.has-img::after{content:'';position:absolute;inset:0;background:rgba(10,10,20,0.52);border-radius:inherit;pointer-events:none}
 .pbtn.has-img .pico{display:none}
 .pbtn.has-img .plbl,.pbtn.has-img .pnum{position:relative;z-index:1}
-#grid-ctrl{display:flex;align-items:center;gap:8px;padding:5px 10px;
-  background:var(--surface);border-bottom:1px solid var(--border);
-  flex-shrink:0;position:relative;z-index:2}
+#pad-style-bar{flex-shrink:0;position:relative;z-index:2}
+#pad-style-toggle{width:100%;background:var(--surface);border:none;
+  border-bottom:1px solid var(--border);color:var(--text-dim);
+  font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;
+  padding:5px 13px;cursor:pointer;display:flex;align-items:center;
+  justify-content:space-between;transition:color .2s}
+#pad-style-toggle:active{color:var(--gold-dim)}
+#pad-style-panel{max-height:0;overflow:hidden;
+  transition:max-height .3s ease;
+  background:var(--surface);border-bottom:1px solid var(--border)}
+#pad-style-panel.open{max-height:130px}
+#pad-style-inner{padding:8px 13px 11px;display:flex;flex-direction:column;gap:5px}
+.gc-row{display:flex;align-items:center;gap:8px}
 .gc-ico{font-size:10px;color:var(--text-dim);flex-shrink:0;
   font-family:'Cinzel',serif;letter-spacing:.5px;white-space:nowrap}
-#grid-ctrl input[type=range]{flex:1;accent-color:var(--gold-dim);cursor:pointer}
+.gc-row input[type=range]{flex:1;accent-color:var(--gold-dim);cursor:pointer}
+.topt.sh-act{background:rgba(201,168,76,.12);border-color:var(--gold-dim);color:var(--gold)}
 #img-prev{width:100%;height:90px;background-size:cover;background-position:center;border-radius:3px;border:1px solid var(--border);margin-bottom:6px;display:none}
 #np{padding:5px 13px;background:rgba(30,30,53,.8);border-top:1px solid var(--border);
   font-size:11px;color:var(--text-dim);font-style:italic;min-height:25px;
@@ -529,11 +540,27 @@ input[type=file]{display:none}
   </div>
   <div id="edge-glow"></div>
   <textarea id="kfocus" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
-  <div id="grid-ctrl">
-    <span class="gc-ico">▦</span>
-    <input type="range" id="sz-slider" min="60" max="200" value="90">
-    <span class="gc-ico">↔</span>
-    <input type="range" id="gap-slider" min="2" max="24" value="8">
+  <div id="pad-style-bar">
+    <button id="pad-style-toggle" onclick="togglePadStyle()">
+      <span>PAD-STYLE</span><span id="ps-arrow">▾</span>
+    </button>
+    <div id="pad-style-panel">
+      <div id="pad-style-inner">
+        <div class="gc-row">
+          <span class="gc-ico">▦ GR.</span>
+          <input type="range" id="sz-slider" min="60" max="200" value="90">
+        </div>
+        <div class="gc-row">
+          <span class="gc-ico">↔ ABSt.</span>
+          <input type="range" id="gap-slider" min="2" max="24" value="8">
+        </div>
+        <div class="trow">
+          <div class="topt" id="sh-sq" onclick="setPadShape('0px','sq')">◼ ECKIG</div>
+          <div class="topt" id="sh-rd" onclick="setPadShape('8px','rd')">▢ GERUNDET</div>
+          <div class="topt" id="sh-ci" onclick="setPadShape('50%','ci')">● KREIS</div>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="pgrid" id="pgrid"></div>
   <div id="np">
@@ -813,6 +840,21 @@ function showKD(){
 }
 
 // ── GRID CONTROLS ──
+let padStyleOpen=false;
+function togglePadStyle(){
+  padStyleOpen=!padStyleOpen;
+  document.getElementById('pad-style-panel').classList.toggle('open',padStyleOpen);
+  document.getElementById('ps-arrow').textContent=padStyleOpen?'▴':'▾';
+}
+function setPadShape(radius,key){
+  localStorage.setItem('pad-radius',radius);
+  localStorage.setItem('pad-shape-key',key);
+  document.documentElement.style.setProperty('--pad-radius',radius);
+  ['sq','rd','ci'].forEach(k=>{
+    const el=document.getElementById('sh-'+k);
+    if(el) el.classList.toggle('sh-act',k===key);
+  });
+}
 function applyGridCtrl(){
   const sz=document.getElementById('sz-slider').value;
   const gap=document.getElementById('gap-slider').value;
@@ -822,9 +864,12 @@ function applyGridCtrl(){
 function initGridCtrl(){
   const sz=localStorage.getItem('pad-sz')||'90';
   const gap=localStorage.getItem('pad-gap')||'8';
+  const radius=localStorage.getItem('pad-radius')||'8px';
+  const shapeKey=localStorage.getItem('pad-shape-key')||'rd';
   document.getElementById('sz-slider').value=sz;
   document.getElementById('gap-slider').value=gap;
   applyGridCtrl();
+  setPadShape(radius,shapeKey);
   document.getElementById('sz-slider').addEventListener('input',()=>{
     applyGridCtrl(); localStorage.setItem('pad-sz',document.getElementById('sz-slider').value);
   });
