@@ -784,15 +784,15 @@ function drawScrubber(){
       if(fi>0){
         const fiW=Math.min(fi/dur,1)*W;
         const grad=g.createLinearGradient(0,0,fiW,0);
-        grad.addColorStop(0,'rgba(79,195,247,0.30)');
-        grad.addColorStop(1,'rgba(79,195,247,0)');
+        grad.addColorStop(0,'rgba(200,50,210,0.38)');
+        grad.addColorStop(1,'rgba(200,50,210,0)');
         g.fillStyle=grad; g.fillRect(0,0,fiW,H);
       }
       if(fo>0){
         const foW=Math.min(fo/dur,1)*W;
         const grad=g.createLinearGradient(W-foW,0,W,0);
-        grad.addColorStop(0,'rgba(201,168,76,0)');
-        grad.addColorStop(1,'rgba(201,168,76,0.30)');
+        grad.addColorStop(0,'rgba(200,50,210,0)');
+        grad.addColorStop(1,'rgba(200,50,210,0.38)');
         g.fillStyle=grad; g.fillRect(W-foW,0,foW,H);
       }
     }
@@ -824,18 +824,62 @@ function stopScrubRAF(){
 function initScrub(){
   const c=document.getElementById('scrub'); if(!c||c._si) return;
   c._si=true;
+  let dragMode=null;
+
+  function relFrac(e){
+    const r=c.getBoundingClientRect();
+    return Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+  }
+  function getDur(){
+    const idx=previewFileIdx!==null?previewFileIdx:0;
+    return previewAudio?.duration||waveforms[idx]?.duration||0;
+  }
+  function getMode(frac){
+    const dur=getDur(); if(!dur) return 'seek';
+    const fi=+(document.getElementById('eft')?.value||0);
+    const fo=+(document.getElementById('efo')?.value||0);
+    if(fi>0&&frac<Math.min(fi/dur,1)) return 'fi';
+    if(fo>0&&frac>1-Math.min(fo/dur,1)) return 'fo';
+    return 'seek';
+  }
+
+  c.addEventListener('pointermove',e=>{
+    const frac=relFrac(e);
+    if(!dragMode){
+      const m=getMode(frac);
+      c.style.cursor=m==='seek'?'pointer':'ew-resize';
+      return;
+    }
+    const dur=getDur();
+    if(dragMode==='fi'&&dur>0){
+      const v=Math.min(Math.round(frac*dur*2)/2,10);
+      document.getElementById('eft').value=v; updFadeLabel('eft');
+    } else if(dragMode==='fo'&&dur>0){
+      const v=Math.min(Math.round((1-frac)*dur*2)/2,10);
+      document.getElementById('efo').value=v; updFadeLabel('efo');
+    } else if(dragMode==='seek'){
+      if(previewAudio&&previewAudio.duration) previewAudio.currentTime=frac*previewAudio.duration;
+      else previewSeekPos=frac;
+      drawScrubber();
+    }
+  });
+
   c.addEventListener('pointerdown',e=>{
     if(!eFiles.length) return;
-    const r=c.getBoundingClientRect();
-    const frac=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
-    if(previewAudio&&previewAudio.duration){
-      previewAudio.currentTime=frac*previewAudio.duration;
-      if(!previewAudio.paused){ previewAudio.pause(); updFB(); }
-    } else {
-      previewSeekPos=frac;
+    const frac=relFrac(e);
+    dragMode=getMode(frac);
+    c.setPointerCapture(e.pointerId);
+    if(dragMode==='seek'){
+      if(previewAudio&&previewAudio.duration){
+        previewAudio.currentTime=frac*previewAudio.duration;
+        if(!previewAudio.paused){ previewAudio.pause(); updFB(); }
+      } else { previewSeekPos=frac; }
+      drawScrubber();
     }
-    drawScrubber();
   });
+
+  c.addEventListener('pointerup',  ()=>{ dragMode=null; });
+  c.addEventListener('pointercancel',()=>{ dragMode=null; });
 }
 function _cleanupPreview(){
   ++previewFadeGen;
