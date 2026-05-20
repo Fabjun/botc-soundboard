@@ -301,7 +301,7 @@ input[type=file]{display:none}
       <div class="tip-key">Fade</div>
       <div class="tip-body">
         <div class="tip-ttl">FADE-IN / FADE-OUT</div>
-        <div class="tip-desc">Im Setup pro Pad einstellbar (0–10s). Fade-In blendet den Sound beim Start ein. Fade-Out blendet ihn beim Stoppen aus — z.B. beim Togglen eines Loops. "Alle Stoppen" (Leertaste) ignoriert den Fade und stoppt sofort.</div>
+        <div class="tip-desc">Im Setup pro Pad einstellbar (0–10s). Fade-In blendet den Sound beim Start ein. Fade-Out blendet ihn beim Stoppen aus — z.B. beim Togglen eines Loops. "Alle Stoppen" (Enter) ignoriert den Fade und stoppt sofort.</div>
       </div>
     </div>
 
@@ -316,8 +316,16 @@ input[type=file]{display:none}
     <div class="tip">
       <div class="tip-key">Leertaste</div>
       <div class="tip-body">
+        <div class="tip-ttl">PAUSE / WEITER</div>
+        <div class="tip-desc">Pausiert alle laufenden Sounds und setzt sie auf Druck fort. Funktioniert auf jedem Screen und auch im Lock-Modus. Einzige Ausnahme: wenn ein Texteingabefeld aktiv ist.</div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <div class="tip-key">Enter</div>
+      <div class="tip-body">
         <div class="tip-ttl">ALLE STOPPEN</div>
-        <div class="tip-desc">Stoppt sofort alle laufenden Sounds. Funktioniert auf jedem Screen und auch im Lock-Modus. Einzige Ausnahme: wenn ein Texteingabefeld aktiv ist.</div>
+        <div class="tip-desc">Stoppt sofort alle laufenden Sounds und setzt die Position zurück auf Anfang. Funktioniert auf jedem Screen und auch im Lock-Modus.</div>
       </div>
     </div>
 
@@ -572,7 +580,14 @@ function stopPad(id, immediate=false){
     updBtn(id,false);
   }
 }
+function pauseAllAudio(){
+  if(previewAudio) pausePreview();
+  if(!ctx) return;
+  if(ctx.state==='suspended') ctx.resume();
+  else ctx.suspend();
+}
 function stopAll(){
+  if(ctx?.state==='suspended') ctx.resume();
   stopPreview();
   Object.keys(srcs).forEach(id=>stopPad(+id,true));
   document.getElementById('nptxt').textContent='Kein Sound aktiv';
@@ -1030,12 +1045,8 @@ document.addEventListener('keydown', e=>{
   const tag=document.activeElement?.tagName;
   if((tag==='INPUT'||tag==='TEXTAREA') && document.activeElement?.id!=='kfocus') return;
 
-  if(code==='Space'){
-    e.preventDefault();
-    if(document.getElementById('ep').classList.contains('open')) pausePreview();
-    else stopAll();
-    return;
-  }
+  if(code==='Space'){ e.preventDefault(); pauseAllAudio(); return; }
+  if(code==='Enter'){ e.preventDefault(); stopAll(); return; }
 
   if(locked){
     e.preventDefault();
