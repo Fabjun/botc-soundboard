@@ -799,23 +799,29 @@ function drawScrubber(){
         const fiW=Math.min(fi/dur,1)*W;
         const grad=g.createLinearGradient(0,0,fiW,0);
         grad.addColorStop(0,'rgba(200,50,210,0.38)');
+        grad.addColorStop(0.75,'rgba(200,50,210,0.28)');
         grad.addColorStop(1,'rgba(200,50,210,0)');
         g.fillStyle=grad; g.fillRect(0,0,fiW,H);
+        g.fillStyle='rgba(200,50,210,0.75)';
+        g.fillRect(fiW-1,0,2,H);
       }
       if(fo>0){
         const foW=Math.min(fo/dur,1)*W;
         const grad=g.createLinearGradient(W-foW,0,W,0);
         grad.addColorStop(0,'rgba(200,50,210,0)');
+        grad.addColorStop(0.25,'rgba(200,50,210,0.28)');
         grad.addColorStop(1,'rgba(200,50,210,0.38)');
         g.fillStyle=grad; g.fillRect(W-foW,0,foW,H);
+        g.fillStyle='rgba(200,50,210,0.75)';
+        g.fillRect(W-foW-1,0,2,H);
       }
     }
     if(dur>0||previewSeekPos>0){
       const px=Math.round(frac*W);
       g.save();
-      g.shadowColor='rgba(201,168,76,0.9)';
-      g.shadowBlur=5;
-      g.fillStyle='rgba(255,255,255,0.95)';
+      g.shadowColor='rgba(80,200,120,0.9)';
+      g.shadowBlur=6;
+      g.fillStyle='rgba(80,200,120,1)';
       g.fillRect(px-1,0,2,H);
       g.restore();
     }
