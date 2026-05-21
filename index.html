@@ -367,10 +367,23 @@ input[type=file]{display:none}
   color:var(--gold);white-space:nowrap;letter-spacing:.5px}
 #combo-bg-warn{display:none;background:rgba(10,10,30,.8);border:1px solid var(--gold-dim);
   border-radius:3px;padding:8px 10px;font-size:11px;color:var(--text-dim);margin-bottom:8px}
-#combo-new-btn{display:none;position:absolute;left:13px;background:none;
-  border:1px solid var(--border);color:var(--text-dim);font-family:'Cinzel',serif;
-  font-size:8px;letter-spacing:1px;padding:5px 8px;border-radius:2px;cursor:pointer}
-#combo-new-btn:active{background:var(--raised)}
+/* PAD TYPE PICKER */
+#pad-type-picker{position:fixed;inset:0;z-index:160;background:rgba(10,10,20,.82);
+  display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+#pad-type-picker.open{display:flex}
+.ptp-box{background:var(--surface);border:1px solid var(--gold-dim);border-radius:4px;
+  width:min(320px,88vw);overflow:hidden;
+  box-shadow:0 0 40px rgba(201,168,76,.1)}
+.ptp-title{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;
+  color:var(--text-dim);padding:11px 14px 9px;border-bottom:1px solid var(--border)}
+.ptp-opt{display:flex;align-items:center;gap:13px;padding:14px;cursor:pointer;
+  border-bottom:1px solid var(--border);transition:background .1s}
+.ptp-opt:last-child{border-bottom:none}
+.ptp-opt:active{background:var(--raised)}
+.ptp-ico{font-size:20px;width:28px;text-align:center;flex-shrink:0}
+.ptp-lbl{font-family:'Cinzel',serif;font-size:12px;letter-spacing:1.5px;color:var(--text)}
+.ptp-sub{font-family:'Crimson Pro',serif;font-size:11px;color:var(--text-dim);
+  font-style:italic;margin-top:2px}
 </style>
 </head>
 <body>
@@ -649,7 +662,6 @@ input[type=file]{display:none}
 <!-- BOARD (Setup + Performance fusioniert) -->
 <div id="sp" class="screen">
   <div class="p-hdr">
-    <button id="combo-new-btn" onclick="openComboEditor()">⊕ COMBO</button>
     <div class="hdr-center">
       <div id="board-title" class="board-title">SETUP-MODUS</div>
       <button id="portal-btn" onclick="toggleLock()"><span class="flame"></span></button>
@@ -687,6 +699,23 @@ input[type=file]{display:none}
   <div id="dbg" style="display:none;padding:4px 13px;background:#0a0a14;border-top:1px solid #1e1e35;font-family:monospace;font-size:10px;color:#4a4a7a;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
 </div>
 
+<!-- PAD TYPE PICKER -->
+<div id="pad-type-picker" onclick="if(event.target===this)closePadTypePicker()">
+  <div class="ptp-box">
+    <div class="ptp-title">NEUES PAD</div>
+    <div class="ptp-opt" onclick="pickAudioPad()">
+      <div class="ptp-ico">🔊</div>
+      <div><div class="ptp-lbl">AUDIO-PAD</div>
+           <div class="ptp-sub">Einmalig, Loop oder Playlist</div></div>
+    </div>
+    <div class="ptp-opt" onclick="pickKomboPad()">
+      <div class="ptp-ico">⚡</div>
+      <div><div class="ptp-lbl">KOMBO-PAD</div>
+           <div class="ptp-sub">Mehrere Pads kombinieren</div></div>
+    </div>
+  </div>
+</div>
+
 <!-- COMBO EDITOR OVERLAY -->
 <div id="combo-ghost"></div>
 <div id="combo-ov">
@@ -709,6 +738,9 @@ input[type=file]{display:none}
       <label class="fl" style="margin:0">SCHRITTE</label>
       <button onclick="addComboStep()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;padding:4px 9px;border-radius:2px;cursor:pointer">+ SCHRITT</button>
     </div>
+    <p style="font-family:'Crimson Pro',serif;font-size:12px;color:var(--text-dim);font-style:italic;margin:0 0 10px;line-height:1.5">
+      Pads innerhalb eines Schritts starten <em style="color:var(--text)">gleichzeitig</em>. Schritte laufen <em style="color:var(--text)">nacheinander</em> — der nächste Schritt beginnt erst, wenn alle Pads des vorherigen geendet haben.
+    </p>
     <div id="combo-err" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:3px;padding:7px 10px;font-size:11px;color:#ef9a9a;margin-bottom:8px"></div>
     <div id="combo-steps-list"></div>
     <label class="fl" style="margin-bottom:6px">PADS — ZIEHEN ZUM HINZUFÜGEN</label>
@@ -1197,8 +1229,6 @@ function applyModeVisuals(){
     title.textContent=locked?'SPIEL-MODUS':'SETUP-MODUS';
     title.style.color=locked?'var(--gold)':'var(--active)';
   }
-  const comboBtn=document.getElementById('combo-new-btn');
-  if(comboBtn) comboBtn.style.display=locked?'none':'block';
 }
 function applyStartMode(){
   const sm=localStorage.getItem('start-mode')||'unlocked';
@@ -1244,7 +1274,7 @@ function renderSetup(){
   const add=document.createElement('div');
   add.className='pbtn empty';
   add.innerHTML='<div class="pico" style="font-size:22px;color:var(--text-dim)">+</div>';
-  add.onclick=()=>openEP(findNextPadId());
+  add.onclick=()=>openPadTypePicker();
   g.appendChild(add);
 }
 
@@ -1282,6 +1312,12 @@ function closeEP(){
   stopPreview();
   eFiles=[]; eId=null;
 }
+// ── PAD TYPE PICKER ──
+function openPadTypePicker(){ document.getElementById('pad-type-picker').classList.add('open'); }
+function closePadTypePicker(){ document.getElementById('pad-type-picker').classList.remove('open'); }
+function pickAudioPad(){ closePadTypePicker(); openEP(findNextPadId()); }
+function pickKomboPad(){ closePadTypePicker(); openComboEditor(null); }
+
 // ── COMBO EDITOR ──
 function openComboEditor(editId=null){
   comboEditId=editId;
