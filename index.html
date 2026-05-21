@@ -84,14 +84,15 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
   padding:9px 18px;border-radius:2px;cursor:pointer}
 
 /* SETUP */
-/* Centered content box — max 500px, auto margins, 20px h-padding.
-   Use on scrollable content areas inside non-pad screens. */
-.cx{max-width:500px;width:100%;margin:0 auto;padding:0 20px;box-sizing:border-box}
-/* Section body inside Einstellungen — vertical padding + .cx geometry */
-.sec-body{max-width:500px;width:100%;margin:0 auto;padding:10px 20px 16px;box-sizing:border-box}
-.s-hdr{display:flex;align-items:center;justify-content:space-between;
-  padding:11px max(20px, calc((100% - 460px) / 2));
-  border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+/* Responsive content column: grows with viewport, caps at 900px.
+   Use as single wrapper inside every non-pad screen's scrollable area. */
+.cx{max-width:900px;width:100%;margin:0 auto;
+  padding:0 clamp(20px,5vw,56px);box-sizing:border-box}
+/* Section body inside .cx — only vertical spacing needed */
+.sec-body{padding:10px 0 16px}
+.s-hdr{border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.s-hdr .cx{padding-top:11px;padding-bottom:11px;
+  display:flex;align-items:center;justify-content:space-between}
 .s-hdr h2{font-family:var(--ff-label);color:var(--gold);font-size:calc(17px * var(--font-scale));letter-spacing:0}
 .pbtn.ed{border-color:var(--gold)!important;box-shadow:0 0 8px rgba(201,168,76,.25)}
 #crop-dlg{position:fixed;inset:0;background:rgba(10,10,20,0.97);z-index:300;
@@ -169,10 +170,8 @@ input[type=file]{display:none}
 /* PERFORMANCE */
 /* TIPS */
 .tips-hdr{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
-  color:var(--gold-dim);padding:14px max(20px, calc((100% - 460px) / 2)) 6px;
-  border-top:1px solid var(--border);margin-top:4px}
-.tip{display:flex;gap:12px;padding:10px max(20px, calc((100% - 460px) / 2));
-  border-bottom:1px solid rgba(42,42,74,.4)}
+  color:var(--gold-dim);padding:14px 0 6px;border-top:1px solid var(--border);margin-top:4px}
+.tip{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(42,42,74,.4)}
 .tip-key{font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));color:var(--active);
   background:var(--surface);border:1px solid var(--border);border-radius:3px;
   padding:3px 7px;white-space:nowrap;align-self:flex-start;flex-shrink:0;margin-top:1px}
@@ -355,7 +354,8 @@ input[type=file]{display:none}
 .m-title h1{font-family:var(--ff-title);font-size:calc(13px * var(--font-scale));letter-spacing:0;
   color:var(--gold);line-height:1.6}
 .m-title p{color:var(--text-dim);font-size:calc(13px * var(--font-scale));font-style:italic;margin-top:5px}
-.mopts{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
+.mopts{width:100%;max-width:min(680px,92vw);display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 .mopt{background:var(--surface);border:1px solid var(--border);border-radius:4px;
   padding:18px 20px;cursor:pointer;display:flex;align-items:center;gap:14px;
   transition:border-color .15s,background .15s}
@@ -465,12 +465,14 @@ input[type=file]{display:none}
 
 <!-- MEINE BOARDS -->
 <div id="smb" class="screen">
-  <div class="s-hdr">
-    <h2>MEINE BOARDS</h2>
+  <div class="s-hdr"><div class="cx"><h2>MEINE BOARDS</h2></div></div>
+  <div style="flex:1;overflow-y:auto">
+    <div id="board-list" class="cx" style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px"></div>
   </div>
-  <div id="board-list" style="flex:1;overflow-y:auto;padding:14px max(20px, calc((100% - 460px) / 2));display:flex;flex-direction:column;gap:10px"></div>
-  <div style="padding:10px max(20px, calc((100% - 460px) / 2));border-top:1px solid var(--border);flex-shrink:0">
-    <button class="btn-p" onclick="showCreateBoard()" style="width:100%">+ NEUES BOARD</button>
+  <div style="border-top:1px solid var(--border);flex-shrink:0">
+    <div class="cx" style="padding-top:10px;padding-bottom:10px">
+      <button class="btn-p" onclick="showCreateBoard()" style="width:100%">+ NEUES BOARD</button>
+    </div>
   </div>
 </div>
 
@@ -540,11 +542,10 @@ input[type=file]{display:none}
 
 <!-- APP SETTINGS -->
 <div id="sa" class="screen">
-  <div class="s-hdr">
-    <h2>EINSTELLUNGEN</h2>
-  </div>
+  <div class="s-hdr"><div class="cx"><h2>EINSTELLUNGEN</h2></div></div>
   <div style="flex:1;overflow-y:auto">
-    <div class="cx" style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px">
+   <div class="cx">
+    <div style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px">
       <div class="mopt" onclick="show('sk')">
         <div class="mico">⌨</div>
         <div><div class="mlbl">TASTEN-TEST</div><div class="msub">Codes des Numpads erkennen</div></div>
@@ -622,15 +623,15 @@ input[type=file]{display:none}
       </div>
       <div style="text-align:center;font-size:calc(11px * var(--font-scale));color:var(--text-dim)" id="sym-scale-label">100%</div>
     </div>
+   </div><!-- /.cx -->
   </div>
 </div>
 
 <!-- TIPS & TRICKS -->
 <div id="st" class="screen">
-  <div class="s-hdr">
-    <h2>TIPS &amp; TRICKS</h2>
-  </div>
+  <div class="s-hdr"><div class="cx"><h2>TIPS &amp; TRICKS</h2></div></div>
   <div style="flex:1;overflow-y:auto">
+   <div class="cx">
     <div class="tip">
       <div class="tip-key">◈ Portal</div>
       <div class="tip-body">
@@ -694,6 +695,7 @@ input[type=file]{display:none}
         <div class="tip-desc">Die "1" auf dem Numpad und die "1" auf der Haupttastatur werden intern unterschiedlich erkannt. Eine Taste belegt also nie versehentlich die andere.</div>
       </div>
     </div>
+   </div><!-- /.cx -->
   </div>
 </div>
 
