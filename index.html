@@ -54,7 +54,10 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 /* UNLOCK */
 #su{align-items:center;justify-content:center;text-align:center;gap:12px;padding:32px;
   background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
-.sigil{font-size:calc(60px * var(--sym-scale));animation:pulse 3s ease-in-out infinite;color:var(--gold)}
+.sigil{font-size:calc(60px * var(--sym-scale));animation:fire-flicker .9s ease-in-out infinite,fire-color 5s ease-in-out infinite;color:var(--gold);position:relative;display:inline-block;line-height:1}
+.sigil::before,.sigil::after{content:'';position:absolute;width:.06em;height:.06em;border-radius:50%;background:currentColor;filter:blur(.4px);pointer-events:none}
+.sigil::before{top:.1em;left:.42em;animation:sigil-spark-a 1.9s ease-out infinite .5s}
+.sigil::after{top:.15em;right:.32em;animation:sigil-spark-b 2.3s ease-out infinite 1.3s}
 #su h1{font-family:var(--ff-hero);font-size:calc(26px * var(--font-scale));letter-spacing:.04em;
   color:var(--gold);line-height:1.3;text-shadow:0 0 28px rgba(201,168,76,.35)}
 #su .sub{font-family:var(--ff-subtitle);font-size:calc(15px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:4px 0 0}
@@ -287,7 +290,20 @@ input[type=file]{display:none}
   animation:blink 1s ease-in-out infinite;flex-shrink:0}
 
 
-@keyframes pulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
+@keyframes fire-flicker{
+  0%,100%{transform:scaleX(1) scaleY(1) skewX(0deg);filter:brightness(1) drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .3em rgba(201,168,76,.3))}
+  8%{transform:scaleX(.97) scaleY(1.02) skewX(-1.5deg);filter:brightness(1.15) drop-shadow(0 0 .22em currentColor) drop-shadow(0 0 .45em rgba(255,140,0,.5))}
+  20%{transform:scaleX(1.02) scaleY(.98) skewX(1deg);filter:brightness(.86) drop-shadow(0 0 .07em currentColor) drop-shadow(0 0 .13em rgba(201,168,76,.2))}
+  35%{transform:scaleX(.98) scaleY(1.03) skewX(-.5deg);filter:brightness(1.22) drop-shadow(0 0 .32em currentColor) drop-shadow(0 0 .6em rgba(255,215,0,.55))}
+  51%{transform:scaleX(1.01) scaleY(.99) skewX(2deg);filter:brightness(.9) drop-shadow(0 0 .08em currentColor) drop-shadow(0 0 .17em rgba(201,168,76,.25))}
+  67%{transform:scaleX(.99) scaleY(1.02) skewX(-1deg);filter:brightness(1.1) drop-shadow(0 0 .19em currentColor) drop-shadow(0 0 .38em rgba(255,107,53,.4))}
+  82%{transform:scaleX(1.01) scaleY(1) skewX(.5deg);filter:brightness(.93) drop-shadow(0 0 .1em currentColor) drop-shadow(0 0 .22em rgba(201,168,76,.3))}}
+@keyframes fire-color{
+  0%{color:#c9a84c}15%{color:#ff8c35}32%{color:#ffd700}50%{color:#ff5a1e}65%{color:#ffb830}80%{color:#ff7c35}100%{color:#c9a84c}}
+@keyframes sigil-spark-a{
+  0%{transform:translate(0,0) scale(1.2);opacity:1}60%{opacity:.7}100%{transform:translate(-.23em,-.7em) scale(0);opacity:0}}
+@keyframes sigil-spark-b{
+  0%{transform:translate(0,0) scale(1.2);opacity:1}60%{opacity:.7}100%{transform:translate(.27em,-.8em) scale(0);opacity:0}}
 @keyframes breathe{
   0%,100%{box-shadow:0 0 8px rgba(79,195,247,.25),inset 0 0 10px rgba(79,195,247,.05)}
   50%    {box-shadow:0 0 22px rgba(79,195,247,.55),inset 0 0 18px rgba(79,195,247,.12)}}
@@ -492,7 +508,7 @@ input[type=file]{display:none}
 <!-- MAIN MENU -->
 <div id="smm" class="screen">
   <div class="m-title">
-    <div style="font-size:calc(44px * var(--sym-scale));margin-bottom:12px;color:var(--gold)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
+    <div class="sigil" style="font-size:calc(44px * var(--sym-scale));margin-bottom:12px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
     <h1 style="font-family:var(--ff-hero);font-size:calc(22px * var(--font-scale));letter-spacing:.04em;color:var(--gold);line-height:1.3;text-shadow:0 0 24px rgba(201,168,76,.3);margin:0 0 6px">Soundboard of Storytelling</h1>
     <p style="font-family:var(--ff-subtitle);font-size:calc(14px * var(--font-scale));color:var(--text-dim);margin-top:4px;line-height:1.5">A tool for Game-Masters<br>and other creative Creatures</p>
   </div>
