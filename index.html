@@ -1174,6 +1174,11 @@ input[type=file]{display:none}
       <span style="font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));color:var(--gold)">PICK FROM LIBRARY</span>
       <button onclick="closeLibPicker()" style="background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);font-size:calc(18px * var(--font-scale));cursor:pointer;padding:0 4px;letter-spacing:0">✕</button>
     </div>
+    <div style="padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <input type="search" id="lp-search" class="fi" placeholder="Filter by name…"
+        oninput="_lpQuery=this.value;_lpRenderList()"
+        style="width:100%;box-sizing:border-box;font-size:calc(13px * var(--font-scale))">
+    </div>
     <div id="lp-list" style="overflow-y:auto;flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:6px"></div>
   </div>
 </div>
@@ -2109,29 +2114,81 @@ async function doResetAllData(){
 
 // ── LIBRARY PICKER ──
 let libPickerAppend=false;
-async function openLibPicker(append=false){
-  libPickerAppend=append;
-  const modal=document.getElementById('lib-picker');
-  modal.style.display='flex';
+let _lpEntries=[],_lpQuery='',_lpScroll=0;
+let _lpPrev={src:null,hash:null};
+
+function _lpUsedHashes(){
+  const s=new Set();
+  pads.forEach(p=>{ if(p?.files) p.files.forEach(h=>s.add(h)); });
+  return s;
+}
+function _lpRenderList(){
   const list=document.getElementById('lp-list');
-  list.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:20px 0">Loading…</p>';
-  const all=await libGetAll();
-  if(!all.length){
-    list.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:20px 0">Library is empty.<br>Upload audio files to the Library first.</p>';
+  if(!list) return;
+  const q=_lpQuery.toLowerCase().trim();
+  const used=_lpUsedHashes();
+  const rows=q?_lpEntries.filter(e=>e.name.toLowerCase().includes(q)):_lpEntries;
+  if(!rows.length){
+    list.innerHTML=`<p style="color:var(--text-dim);text-align:center;padding:20px 0">${_lpEntries.length?'No matches.':'Library is empty.<br>Upload audio files to the Library first.'}</p>`;
     return;
   }
-  list.innerHTML=all.map(e=>{
+  list.innerHTML=rows.map(e=>{
     const date=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    const inUse=used.has(e.hash);
+    const playing=_lpPrev.hash===e.hash;
     return `<div class="lp-row">
+      <button class="lp-play-btn" data-hash="${e.hash}" onclick="lpPlay('${e.hash}')"
+        style="background:none;border:1px solid ${playing?'var(--active)':'var(--border)'};color:${playing?'var(--active)':'var(--text-dim)'};font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));width:32px;height:32px;border-radius:2px;cursor:pointer;flex-shrink:0;padding:0;letter-spacing:0;line-height:1">${playing?'■':'▶'}</button>
       <div style="flex:1;min-width:0">
         <div style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(e.name)}</div>
-        <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date}</div>
+        <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date}${inUse?' · <span style="color:var(--active)">in use</span>':''}</div>
       </div>
-      <button onclick="pickFromLib('${escHtml(e.hash)}')" style="background:var(--raised);border:1px solid var(--gold-dim);color:var(--gold);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));padding:5px 12px;border-radius:2px;cursor:pointer;white-space:nowrap;letter-spacing:0">SELECT</button>
+      <button onclick="pickFromLib('${e.hash}')" style="background:var(--raised);border:1px solid var(--gold-dim);color:var(--gold);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));padding:5px 12px;border-radius:2px;cursor:pointer;white-space:nowrap;letter-spacing:0">SELECT</button>
     </div>`;
   }).join('');
 }
+function lpStop(){
+  if(_lpPrev.src){ try{_lpPrev.src.stop();}catch(e){} }
+  _lpPrev={src:null,hash:null};
+}
+function lpPlay(hash){
+  const wasPlaying=_lpPrev.hash===hash;
+  lpStop();
+  if(wasPlaying){ _lpRenderList(); return; }
+  (async()=>{
+    if(!ctx) return;
+    let buf=libBufs[hash];
+    if(!buf){
+      const entry=await libGet(hash);
+      if(!entry) return;
+      try{ buf=libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0)); }catch(e){ return; }
+    }
+    const src=ctx.createBufferSource();
+    src.buffer=buf;
+    src.connect(ctx.destination);
+    src.start(0);
+    src.onended=()=>{ if(_lpPrev.hash===hash){ _lpPrev={src:null,hash:null}; _lpRenderList(); } };
+    _lpPrev={src,hash};
+    _lpRenderList();
+  })();
+}
+async function openLibPicker(append=false){
+  libPickerAppend=append;
+  lpStop();
+  const modal=document.getElementById('lib-picker');
+  modal.style.display='flex';
+  const searchEl=document.getElementById('lp-search');
+  if(searchEl) searchEl.value=_lpQuery;
+  const list=document.getElementById('lp-list');
+  list.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:20px 0">Loading…</p>';
+  _lpEntries=await libGetAll();
+  _lpRenderList();
+  requestAnimationFrame(()=>{ const l=document.getElementById('lp-list'); if(l) l.scrollTop=_lpScroll; });
+}
 function closeLibPicker(){
+  const l=document.getElementById('lp-list');
+  _lpScroll=l?l.scrollTop:0;
+  lpStop();
   document.getElementById('lib-picker').style.display='none';
 }
 async function pickFromLib(hash){
