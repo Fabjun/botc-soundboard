@@ -18,65 +18,87 @@
   --border:#2a2a4a; --gold:#c9a84c; --gold-dim:#7a5f28; --blood:#8b1a1a;
   --blood-bright:#c0392b; --mist:#4a4a7a; --text:#e8e0d0; --text-dim:#8a8098;
   --active:#4fc3f7; --pad-sz:90px; --pad-gap:8px; --pad-radius:8px;
+  --ff-title:'Press Start 2P',monospace;
+  --ff-label:'VT323',monospace;
+  --ff-body:'Share Tech Mono',monospace;
+  --font-scale:1; --sym-scale:1;
 }
+body.theme-modern {
+  --ff-title:system-ui,-apple-system,'Inter',sans-serif;
+  --ff-label:system-ui,-apple-system,'Inter',sans-serif;
+  --ff-body:system-ui,-apple-system,'Inter',sans-serif;
+  --surface:#18182e; --raised:#22223c; --border:#2e2e4a; --pad-radius:14px;
+}
+body.theme-modern .pbtn{box-shadow:0 2px 8px rgba(0,0,0,.4)}
+body.theme-modern #ep{border-radius:18px 18px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.5)}
+body.theme-modern .btn-s,body.theme-modern .btn-p,body.theme-modern .btn-d,
+body.theme-modern .unlock-btn,body.theme-modern .fbtn{border-radius:8px;letter-spacing:0}
+body.theme-modern .topt{border-radius:8px}
+body.theme-modern .board-title{border-radius:8px;letter-spacing:.04em}
+body.theme-modern .pbtn.empty{border-style:solid}
+body.theme-modern #pad-style-panel{border-radius:0 0 12px 12px}
+body.theme-modern .km-bar{border-radius:12px}
+body.theme-modern .badge{border-radius:6px}
+body.theme-modern .s-hdr h2,body.theme-modern .tips-hdr{letter-spacing:.03em}
+body.theme-modern .trow .topt{font-weight:500}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch-action:manipulation;
-  font-family:'Share Tech Mono',monospace;overflow:hidden;user-select:none}
+  font-family:var(--ff-body);overflow:hidden;user-select:none}
 .screen{display:none;width:100%;height:100%;flex-direction:column}
 .screen.active{display:flex}
 
 /* UNLOCK */
 #su{align-items:center;justify-content:center;text-align:center;gap:12px;padding:32px;
   background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
-.sigil{font-size:60px;animation:pulse 3s ease-in-out infinite}
-#su h1{font-family:'Press Start 2P',monospace;font-size:15px;letter-spacing:0;
+.sigil{font-size:calc(60px * var(--sym-scale));animation:pulse 3s ease-in-out infinite}
+#su h1{font-family:var(--ff-title);font-size:calc(15px * var(--font-scale));letter-spacing:0;
   color:var(--gold);line-height:1.6}
-#su p{color:var(--text-dim);font-size:14px;font-style:italic}
+#su p{color:var(--text-dim);font-size:calc(14px * var(--font-scale));font-style:italic}
 .unlock-btn{background:linear-gradient(135deg,var(--blood),#5a0f0f);border:1px solid var(--gold-dim);
-  color:var(--gold);font-family:'VT323',monospace;font-size:16px;letter-spacing:1px;
+  color:var(--gold);font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));letter-spacing:1px;
   padding:14px 32px;border-radius:2px;cursor:pointer;margin-top:12px}
 .unlock-btn:active{transform:scale(.97)}
 
 /* KEY DETECT */
 #sk{align-items:center;justify-content:center;gap:14px;background:var(--deep);
   padding:24px 20px;text-align:center}
-#sk h2{font-family:'VT323',monospace;color:var(--gold);font-size:20px;letter-spacing:0}
-#sk p{color:var(--text-dim);font-size:13px;line-height:1.6;max-width:300px}
+#sk h2{font-family:var(--ff-label);color:var(--gold);font-size:calc(20px * var(--font-scale));letter-spacing:0}
+#sk p{color:var(--text-dim);font-size:calc(13px * var(--font-scale));line-height:1.6;max-width:300px}
 #kd{background:var(--raised);border:1px solid var(--border);border-radius:4px;
   padding:18px 28px;min-width:220px}
-#kd-c{font-family:'VT323',monospace;font-size:28px;color:var(--active);
+#kd-c{font-family:var(--ff-label);font-size:calc(28px * var(--font-scale));color:var(--active);
   letter-spacing:0;min-height:32px}
-#kd-l{font-size:11px;color:var(--text-dim);margin-top:4px}
+#kd-l{font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:4px}
 #klog{width:100%;max-width:340px;max-height:110px;overflow-y:auto;
   background:var(--surface);border:1px solid var(--border);border-radius:4px;
-  padding:6px 10px;font-size:11px;color:var(--text-dim);line-height:1.8;
+  padding:6px 10px;font-size:calc(11px * var(--font-scale));color:var(--text-dim);line-height:1.8;
   font-family:monospace;text-align:left}
 
 /* BUTTONS */
 .btn-p{background:linear-gradient(135deg,var(--gold-dim),#5a4010);border:1px solid var(--gold);
-  color:var(--gold);font-family:'VT323',monospace;font-size:16px;letter-spacing:0;
+  color:var(--gold);font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));letter-spacing:0;
   padding:11px 22px;border-radius:2px;cursor:pointer}
 .btn-p:active{transform:scale(.97)}
 .btn-s{background:transparent;border:1px solid rgba(100,95,122,.8);color:rgba(200,192,215,.85);
-  font-family:'VT323',monospace;font-size:15px;letter-spacing:0;
+  font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
   padding:9px 18px;border-radius:2px;cursor:pointer}
 
 /* SETUP */
 .s-hdr{display:flex;align-items:center;justify-content:space-between;
   padding:11px 14px;border-bottom:1px solid var(--border);
   background:var(--surface);flex-shrink:0}
-.s-hdr h2{font-family:'VT323',monospace;color:var(--gold);font-size:17px;letter-spacing:0}
+.s-hdr h2{font-family:var(--ff-label);color:var(--gold);font-size:calc(17px * var(--font-scale));letter-spacing:0}
 .pbtn.ed{border-color:var(--gold)!important;box-shadow:0 0 8px rgba(201,168,76,.25)}
 #crop-dlg{position:fixed;inset:0;background:rgba(10,10,20,0.97);z-index:300;
   display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px}
-#crop-dlg h3{font-family:'VT323',monospace;font-size:16px;color:var(--gold);letter-spacing:0;margin:0}
-#crop-hint{font-size:11px;color:var(--text-dim);text-align:center;margin-top:-8px}
+#crop-dlg h3{font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));color:var(--gold);letter-spacing:0;margin:0}
+#crop-hint{font-size:calc(11px * var(--font-scale));color:var(--text-dim);text-align:center;margin-top:-8px}
 #crop-viewport{position:relative;overflow:hidden;width:280px;height:280px;
   cursor:grab;border-radius:6px;border:2px solid var(--gold-dim);flex-shrink:0}
 #crop-viewport:active{cursor:grabbing}
 #crop-img-el{position:absolute;display:block;pointer-events:none;user-select:none}
-.badge{font-size:13px;padding:1px 5px;border-radius:2px;
-  font-family:'VT323',monospace;margin-top:4px;display:inline-block}
+.badge{font-size:calc(13px * var(--font-scale));padding:1px 5px;border-radius:2px;
+  font-family:var(--ff-label);margin-top:4px;display:inline-block}
 .bl{background:#1a2a3a;color:var(--active);border:1px solid #1a3a5a}
 .bp{background:#1a2a1a;color:#81c784;border:1px solid #1a4a1a}
 .bo{background:#2a1a1a;color:#ef9a9a;border:1px solid #4a1a1a}
@@ -84,7 +106,7 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 /* EDIT PANEL */
 .pad-edit-banner{position:absolute;bottom:0;left:0;right:0;height:33%;
   background:rgba(10,10,20,.65);display:flex;align-items:center;justify-content:center;
-  font-family:'VT323',monospace;font-size:14px;letter-spacing:0;
+  font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;
   color:var(--active);cursor:pointer;z-index:1;
   border-top:1px solid rgba(79,195,247,.22);
   border-radius:0 0 var(--pad-radius) var(--pad-radius)}
@@ -96,42 +118,42 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
   padding:16px 16px 30px;transform:translateY(100%);
   transition:transform .3s ease;z-index:100;overflow-y:auto;max-height:90vh}
 #ep.open{transform:translateY(0)}
-#ep h3{font-family:'VT323',monospace;color:var(--gold);font-size:17px;
+#ep h3{font-family:var(--ff-label);color:var(--gold);font-size:calc(17px * var(--font-scale));
   letter-spacing:0;margin-bottom:12px}
 .fg{margin-bottom:11px}
-.fl{font-size:14px;color:rgba(180,170,195,.9);letter-spacing:0;
-  font-family:'VT323',monospace;margin-bottom:4px;display:block}
+.fl{font-size:calc(14px * var(--font-scale));color:rgba(180,170,195,.9);letter-spacing:0;
+  font-family:var(--ff-label);margin-bottom:4px;display:block}
 .fi{width:100%;background:var(--surface);border:1px solid var(--border);
-  color:var(--text);font-family:'Share Tech Mono',monospace;font-size:16px;
+  color:var(--text);font-family:var(--ff-body);font-size:calc(16px * var(--font-scale));
   padding:7px 10px;border-radius:2px;outline:none}
 .fi:focus{border-color:var(--gold-dim)}
 .pvbtn{background:none;border:1px solid var(--border);border-radius:2px;
-  color:var(--active);width:24px;height:24px;font-size:11px;cursor:pointer;flex-shrink:0}
+  color:var(--active);width:24px;height:24px;font-size:calc(11px * var(--font-scale));cursor:pointer;flex-shrink:0}
 .pvbtn:active{background:var(--surface)}
 .fbtn{width:100%;background:var(--surface);border:1px dashed var(--border);
-  color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size:13px;
+  color:var(--text-dim);font-family:var(--ff-body);font-size:calc(13px * var(--font-scale));
   padding:9px;border-radius:2px;cursor:pointer;text-align:center}
 .fbtn.hf{color:var(--text);border-color:var(--gold-dim);border-style:solid}
 .trow{display:flex;gap:6px}
 .topt{flex:1;text-align:center;padding:7px 2px;border-radius:2px;
-  font-family:'VT323',monospace;font-size:15px;letter-spacing:0;
+  font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
   cursor:pointer;border:1px solid rgba(62,62,96,.9);color:rgba(210,200,222,.8)}
 .topt.ao{background:rgba(122,95,40,.12);border-color:var(--gold-dim);color:var(--gold)}
 .topt.al{background:#1a2a3a;border-color:#1a5a8b;color:var(--active)}
 .topt.ap{background:#1a2a1a;border-color:#1a5a1a;color:#81c784}
 details.eff{margin-bottom:11px;border:1px solid var(--gold-dim);border-radius:2px}
-details.eff summary{font-family:'VT323',monospace;font-size:14px;color:var(--gold-dim);
+details.eff summary{font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));color:var(--gold-dim);
   letter-spacing:0;padding:7px 10px;cursor:pointer;list-style:none;
   display:flex;align-items:center;gap:6px}
 details.eff summary::-webkit-details-marker{display:none}
-details.eff summary::before{content:'▶';font-size:7px;transition:transform .2s;flex-shrink:0}
+details.eff summary::before{content:'▶';font-size:calc(7px * var(--font-scale));transition:transform .2s;flex-shrink:0}
 details.eff[open] summary::before{transform:rotate(90deg)}
 details.eff .eff-body{padding:0 10px 10px}
 #scrub{display:block;width:100%;border-radius:3px;cursor:pointer;background:var(--raised);border:1px solid var(--border)}
-#scrub-time{font-size:13px;color:var(--text-dim);font-family:'VT323',monospace;text-align:right;margin-top:2px;letter-spacing:0}
+#scrub-time{font-size:calc(13px * var(--font-scale));color:var(--text-dim);font-family:var(--ff-label);text-align:right;margin-top:2px;letter-spacing:0}
 .eact{display:flex;gap:7px;margin-top:12px}
 .btn-d{background:transparent;border:1px solid var(--blood);color:var(--blood-bright);
-  font-family:'VT323',monospace;font-size:15px;letter-spacing:0;
+  font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
   padding:9px 12px;border-radius:2px;cursor:pointer}
 input[type=file]{display:none}
 
@@ -141,16 +163,16 @@ input[type=file]{display:none}
 
 /* PERFORMANCE */
 /* TIPS */
-.tips-hdr{font-family:'VT323',monospace;font-size:15px;letter-spacing:0;
+.tips-hdr{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
   color:var(--gold-dim);padding:14px 14px 6px;border-top:1px solid var(--border);margin-top:4px}
 .tip{display:flex;gap:12px;padding:10px 14px;border-bottom:1px solid rgba(42,42,74,.4)}
-.tip-key{font-family:'VT323',monospace;font-size:14px;color:var(--active);
+.tip-key{font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));color:var(--active);
   background:var(--surface);border:1px solid var(--border);border-radius:3px;
   padding:3px 7px;white-space:nowrap;align-self:flex-start;flex-shrink:0;margin-top:1px}
 .tip-body{}
-.tip-ttl{font-family:'VT323',monospace;font-size:15px;letter-spacing:0;
+.tip-ttl{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
   color:var(--text);margin-bottom:2px}
-.tip-desc{font-size:12px;color:var(--text-dim);line-height:1.5}
+.tip-desc{font-size:calc(12px * var(--font-scale));color:var(--text-dim);line-height:1.5}
 
 #sp{background:var(--night);position:relative;overflow:hidden}
 .pbtn.dragging{opacity:0.25}
@@ -161,7 +183,7 @@ input[type=file]{display:none}
   padding:8px 13px 6px;border-bottom:1px solid rgba(42,42,74,.6);
   flex-shrink:0;position:relative;z-index:2}
 .hdr-center{display:flex;align-items:center;gap:10px}
-.board-title{font-family:'VT323',monospace;font-size:16px;letter-spacing:1px;
+.board-title{font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));letter-spacing:1px;
   padding:6px 16px;border:1px solid var(--gold-dim);border-radius:2px;
   background:linear-gradient(135deg,rgba(122,95,40,.12),rgba(90,64,16,.08));
   transition:color .4s ease,border-color .4s ease}
@@ -179,19 +201,19 @@ input[type=file]{display:none}
 .pbtn.empty:active,.pbtn.empty:hover{background:rgba(122,95,40,.07);border-color:var(--gold)}
 .pbtn.empty:active .e-plus,.pbtn.empty:hover .e-plus{color:var(--gold)}
 .pbtn.empty:active .e-lbl,.pbtn.empty:hover .e-lbl{color:var(--gold)}
-.e-plus{font-size:38px;line-height:1;color:var(--gold-dim);font-weight:300;
+.e-plus{font-size:calc(38px * var(--sym-scale));line-height:1;color:var(--gold-dim);font-weight:300;
   transition:color .15s}
-.e-lbl{font-family:'VT323',monospace;font-size:13px;letter-spacing:0;
+.e-lbl{font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;
   color:var(--gold-dim);transition:color .15s}
 .pbtn.playing{border-color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,.2)}
 .pbtn.plooping{border-color:var(--active);box-shadow:0 0 10px rgba(79,195,247,.2);
   animation:breathe 2s ease-in-out infinite}
 .pbtn.flash{background:var(--raised)}
-.pbtn .pico{font-size:20px;line-height:1}
-.pbtn .plbl{font-family:'VT323',monospace;font-size:12px;letter-spacing:0;
+.pbtn .pico{font-size:calc(20px * var(--sym-scale));line-height:1}
+.pbtn .plbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;
   color:var(--text-dim);text-align:center;line-height:1.3}
 .pbtn.playing .plbl,.pbtn.plooping .plbl{color:var(--text)}
-.pbtn .pnum{position:absolute;top:3px;right:5px;font-size:10px;
+.pbtn .pnum{position:absolute;top:3px;right:5px;font-size:calc(10px * var(--font-scale));
   color:rgba(201,168,76,.4);font-family:monospace}
 .pbtn.playing .pnum{color:var(--gold-dim)}
 .pbtn.has-img{background-size:cover;background-position:center;background-repeat:no-repeat}
@@ -201,7 +223,7 @@ input[type=file]{display:none}
 #pad-style-bar{flex-shrink:0;position:relative;z-index:2}
 #pad-style-toggle{width:100%;background:var(--surface);border:none;
   border-bottom:1px solid var(--border);color:rgba(180,170,195,.9);
-  font-family:'VT323',monospace;font-size:14px;letter-spacing:0;
+  font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;
   padding:6px 13px;cursor:pointer;display:flex;align-items:center;
   justify-content:space-between;transition:color .2s,border-color .2s}
 #pad-style-toggle:active{color:var(--gold-dim)}
@@ -212,13 +234,13 @@ input[type=file]{display:none}
 #pad-style-panel.open{max-height:130px}
 #pad-style-inner{padding:8px 13px 11px;display:flex;flex-direction:column;gap:5px}
 .gc-row{display:flex;align-items:center;gap:8px}
-.gc-ico{font-size:13px;color:var(--text-dim);flex-shrink:0;
-  font-family:'VT323',monospace;letter-spacing:0;white-space:nowrap}
+.gc-ico{font-size:calc(13px * var(--font-scale));color:var(--text-dim);flex-shrink:0;
+  font-family:var(--ff-label);letter-spacing:0;white-space:nowrap}
 .gc-row input[type=range]{flex:1;accent-color:var(--gold-dim);cursor:pointer}
 .topt.sh-act{background:rgba(201,168,76,.12);border-color:var(--gold-dim);color:var(--gold)}
 #img-prev{width:100%;height:90px;background-size:cover;background-position:center;border-radius:3px;border:1px solid var(--border);margin-bottom:6px;display:none}
 #np{padding:5px 13px;background:rgba(30,30,53,.8);border-top:1px solid var(--border);
-  font-size:11px;color:var(--text-dim);font-style:italic;min-height:25px;
+  font-size:calc(11px * var(--font-scale));color:var(--text-dim);font-style:italic;min-height:25px;
   display:flex;align-items:center;gap:6px;flex-shrink:0;position:relative;z-index:2;overflow:hidden}
 #eq-cv{position:absolute;inset:0;width:100%;pointer-events:none;opacity:.7}
 .npdot{width:5px;height:5px;border-radius:50%;background:var(--gold);
@@ -301,7 +323,7 @@ input[type=file]{display:none}
 #keymap-box{background:var(--surface);border:1px solid var(--gold-dim);border-radius:4px;
   width:min(380px,92vw);max-height:78vh;display:flex;flex-direction:column;overflow:hidden;
   box-shadow:0 0 40px rgba(201,168,76,.12)}
-.keymap-hdr{font-family:'VT323',monospace;font-size:15px;letter-spacing:0;color:var(--gold);
+.keymap-hdr{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;color:var(--gold);
   padding:10px 14px 9px;border-bottom:1px solid var(--border);flex-shrink:0}
 #keymap-body{overflow-y:auto;flex:1}
 .km-row{display:grid;padding:7px 14px;border-bottom:1px solid rgba(42,42,74,.4);
@@ -310,35 +332,35 @@ input[type=file]{display:none}
 .km-row.normal{grid-template-columns:46px 1fr auto}
 .km-row.verbose{grid-template-columns:46px 1fr auto auto auto}
 .km-row.km-act{background:rgba(79,195,247,.06)}
-.km-key{font-family:'VT323',monospace;font-size:14px;background:var(--raised);
+.km-key{font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));background:var(--raised);
   border:1px solid var(--border);border-radius:3px;padding:3px 5px;text-align:center;
   color:var(--gold-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.km-name{font-size:13px;color:var(--text);font-family:'Share Tech Mono',monospace;
+.km-name{font-size:calc(13px * var(--font-scale));color:var(--text);font-family:var(--ff-body);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.km-mode{font-size:12px;color:var(--text-dim);text-align:center}
-.km-files{font-size:13px;color:var(--text-dim);font-family:'VT323',monospace;letter-spacing:0;text-align:center}
-.km-stat{font-size:13px;color:var(--active);font-family:'VT323',monospace;white-space:nowrap}
-.keymap-footer{padding:8px 14px;font-size:13px;color:var(--text-dim);
-  font-family:'VT323',monospace;letter-spacing:0;text-align:center;
+.km-mode{font-size:calc(12px * var(--font-scale));color:var(--text-dim);text-align:center}
+.km-files{font-size:calc(13px * var(--font-scale));color:var(--text-dim);font-family:var(--ff-label);letter-spacing:0;text-align:center}
+.km-stat{font-size:calc(13px * var(--font-scale));color:var(--active);font-family:var(--ff-label);white-space:nowrap}
+.keymap-footer{padding:8px 14px;font-size:calc(13px * var(--font-scale));color:var(--text-dim);
+  font-family:var(--ff-label);letter-spacing:0;text-align:center;
   border-top:1px solid var(--border);flex-shrink:0}
 
 /* MAIN MENU */
 #smm{align-items:center;justify-content:center;gap:0;padding:32px 24px;
   background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
 .m-title{text-align:center;margin-bottom:28px}
-.m-title h1{font-family:'Press Start 2P',monospace;font-size:13px;letter-spacing:0;
+.m-title h1{font-family:var(--ff-title);font-size:calc(13px * var(--font-scale));letter-spacing:0;
   color:var(--gold);line-height:1.6}
-.m-title p{color:var(--text-dim);font-size:13px;font-style:italic;margin-top:5px}
+.m-title p{color:var(--text-dim);font-size:calc(13px * var(--font-scale));font-style:italic;margin-top:5px}
 .mopts{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
 .mopt{background:var(--surface);border:1px solid var(--border);border-radius:4px;
   padding:18px 20px;cursor:pointer;display:flex;align-items:center;gap:14px;
   transition:border-color .15s,background .15s}
 .mopt:active{background:var(--raised)}
 .mopt.mp{border-color:var(--gold-dim)}
-.mopt .mico{font-size:22px;width:32px;text-align:center;flex-shrink:0}
-.mopt .mlbl{font-family:'VT323',monospace;font-size:17px;letter-spacing:0;color:var(--text)}
+.mopt .mico{font-size:calc(22px * var(--font-scale));width:32px;text-align:center;flex-shrink:0}
+.mopt .mlbl{font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));letter-spacing:0;color:var(--text)}
 .mopt.mp .mlbl{color:var(--gold)}
-.mopt .msub{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text-dim);
+.mopt .msub{font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);
   font-style:italic;margin-top:2px}
 
 /* LOOP REPEAT COUNT */
@@ -356,31 +378,31 @@ input[type=file]{display:none}
   border-radius:3px;margin-bottom:8px}
 .combo-step-hdr{display:flex;align-items:center;padding:6px 8px;
   border-bottom:1px solid rgba(42,42,74,.5);gap:6px}
-.combo-step-lbl{font-family:'VT323',monospace;font-size:13px;letter-spacing:0;
+.combo-step-lbl{font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;
   color:var(--text-dim);flex:1}
 .combo-step-body{min-height:40px;padding:6px 8px;display:flex;flex-wrap:wrap;
   gap:5px;align-items:center;transition:background .1s}
 .combo-step-body.drag-over{background:rgba(201,168,76,.07);
   outline:1px dashed var(--gold-dim)}
 .combo-chip{background:var(--raised);border:1px solid var(--border);border-radius:2px;
-  padding:3px 6px 3px 8px;font-size:13px;font-family:'VT323',monospace;letter-spacing:0;
+  padding:3px 6px 3px 8px;font-size:calc(13px * var(--font-scale));font-family:var(--ff-label);letter-spacing:0;
   color:var(--text-dim);display:inline-flex;align-items:center;gap:3px;user-select:none}
 .combo-chip.is-bg{border-color:var(--mist);color:var(--mist)}
 .combo-chip-del{background:none;border:none;color:var(--blood);cursor:pointer;
-  padding:0 2px;font-size:13px;line-height:1}
+  padding:0 2px;font-size:calc(13px * var(--font-scale));line-height:1}
 .combo-palette{display:flex;flex-wrap:wrap;gap:6px;padding:8px;
   background:var(--deep);border-radius:3px;border:1px solid var(--border);
   margin-bottom:8px}
 .cpal-item{background:var(--raised);border:1px solid var(--border);border-radius:2px;
-  padding:5px 9px;font-size:13px;font-family:'VT323',monospace;letter-spacing:0;
+  padding:5px 9px;font-size:calc(13px * var(--font-scale));font-family:var(--ff-label);letter-spacing:0;
   cursor:grab;touch-action:none;color:var(--text-dim);user-select:none}
 .cpal-item.cpal-dragging{opacity:.3;pointer-events:none}
 #combo-ghost{position:fixed;pointer-events:none;z-index:300;display:none;
   background:var(--raised);border:1px solid var(--gold-dim);border-radius:2px;
-  padding:5px 10px;font-size:13px;font-family:'VT323',monospace;
+  padding:5px 10px;font-size:calc(13px * var(--font-scale));font-family:var(--ff-label);
   color:var(--gold);white-space:nowrap;letter-spacing:0}
 #combo-bg-warn{display:none;background:rgba(10,10,30,.8);border:1px solid var(--gold-dim);
-  border-radius:3px;padding:8px 10px;font-size:11px;color:var(--text-dim);margin-bottom:8px}
+  border-radius:3px;padding:8px 10px;font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-bottom:8px}
 /* PAD TYPE PICKER */
 #pad-type-picker{position:fixed;inset:0;z-index:160;background:rgba(10,10,20,.82);
   display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
@@ -388,15 +410,15 @@ input[type=file]{display:none}
 .ptp-box{background:var(--surface);border:1px solid var(--gold-dim);border-radius:4px;
   width:min(320px,88vw);overflow:hidden;
   box-shadow:0 0 40px rgba(201,168,76,.1)}
-.ptp-title{font-family:'VT323',monospace;font-size:14px;letter-spacing:0;
+.ptp-title{font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;
   color:var(--text-dim);padding:11px 14px 9px;border-bottom:1px solid var(--border)}
 .ptp-opt{display:flex;align-items:center;gap:13px;padding:14px;cursor:pointer;
   border-bottom:1px solid var(--border);transition:background .1s}
 .ptp-opt:last-child{border-bottom:none}
 .ptp-opt:active{background:var(--raised)}
-.ptp-ico{font-size:20px;width:28px;text-align:center;flex-shrink:0}
-.ptp-lbl{font-family:'VT323',monospace;font-size:15px;letter-spacing:0;color:var(--text)}
-.ptp-sub{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text-dim);
+.ptp-ico{font-size:calc(20px * var(--font-scale));width:28px;text-align:center;flex-shrink:0}
+.ptp-lbl{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;color:var(--text)}
+.ptp-sub{font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);
   font-style:italic;margin-top:2px}
 </style>
 </head>
@@ -413,7 +435,7 @@ input[type=file]{display:none}
 <!-- MAIN MENU -->
 <div id="smm" class="screen">
   <div class="m-title">
-    <div style="font-size:44px;margin-bottom:12px">🕯️</div>
+    <div style="font-size:calc(44px * var(--sym-scale));margin-bottom:12px">🕯️</div>
     <h1>SOUNDBOARD FOR<br>STORYTELLER</h1>
     <p>Was möchtest du tun?</p>
   </div>
@@ -424,7 +446,7 @@ input[type=file]{display:none}
     </div>
     <div class="mopt" onclick="show('sa')">
       <div class="mico">⚙</div>
-      <div><div class="mlbl">EINSTELLUNGEN</div><div class="msub">Startmodus, Tasten-Test &amp; Optionen</div></div>
+      <div><div class="mlbl">EINSTELLUNGEN</div><div class="msub">Design, Schriftgröße &amp; Startmodus</div></div>
     </div>
     <div class="mopt" onclick="show('st')">
       <div class="mico">☰</div>
@@ -442,7 +464,7 @@ input[type=file]{display:none}
     <div id="kd-l">Warte auf Tastendruck…</div>
   </div>
   <div id="klog"></div>
-  <p style="font-size:11px;color:var(--text-dim);max-width:280px">
+  <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);max-width:280px">
     Notiere welche Taste welchen Code sendet — du trägst ihn später im Setup ein.
   </p>
   <button class="btn-p" onclick="show('sp')">WEITER ZUM BOARD →</button>
@@ -453,7 +475,7 @@ input[type=file]{display:none}
 <div id="sa" class="screen">
   <div class="s-hdr">
     <h2>EINSTELLUNGEN</h2>
-    <button class="btn-s" onclick="show('smm')" style="font-size:13px;padding:5px 9px">← MENÜ</button>
+    <button class="btn-s" onclick="show('smm')" style="font-size:calc(13px * var(--font-scale));padding:5px 9px">← MENÜ</button>
   </div>
   <div style="flex:1;overflow-y:auto">
     <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
@@ -469,7 +491,7 @@ input[type=file]{display:none}
         <div class="topt" id="sm-locked" onclick="setStartMode('locked')">SPIEL</div>
         <div class="topt" id="sm-remember" onclick="setStartMode('remember')">LETZTER</div>
       </div>
-      <p style="font-size:11px;color:var(--text-dim);margin-top:9px;line-height:1.7">
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
         <b style="color:var(--text)">SETUP</b> — öffnet immer im Bearbeitungsmodus.<br>
         <b style="color:var(--text)">SPIEL</b> — öffnet direkt im Spielmodus.<br>
         <b style="color:var(--text)">LETZTER</b> — merkt sich den zuletzt genutzten Modus.
@@ -477,9 +499,9 @@ input[type=file]{display:none}
     </div>
     <div class="tips-hdr">HILFE-TASTE</div>
     <div style="padding:10px 14px 16px;display:flex;flex-direction:column;gap:8px">
-      <p style="font-size:11px;color:var(--text-dim);line-height:1.6;margin:0">Öffnet die Tastenbelegungs-Übersicht im Spielmodus. Diese Taste kann keinem Pad zugewiesen werden.</p>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:0">Öffnet die Tastenbelegungs-Übersicht im Spielmodus. Diese Taste kann keinem Pad zugewiesen werden.</p>
       <input type="text" class="fi" id="help-key-input" placeholder="Taste drücken…" readonly onkeydown="captureHelpKey(event)">
-      <div id="help-key-warn" style="display:none;color:var(--blood-bright);font-size:11px"></div>
+      <div id="help-key-warn" style="display:none;color:var(--blood-bright);font-size:calc(11px * var(--font-scale))"></div>
     </div>
     <div class="tips-hdr">ÜBERSICHT — INFO-DICHTE</div>
     <div style="padding:10px 14px 16px">
@@ -488,7 +510,7 @@ input[type=file]{display:none}
         <div class="topt" id="hd-normal" onclick="setHelpDensity('normal')">NORMAL</div>
         <div class="topt" id="hd-verbose" onclick="setHelpDensity('verbose')">DETAIL</div>
       </div>
-      <p style="font-size:11px;color:var(--text-dim);margin-top:9px;line-height:1.7">
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
         <b style="color:var(--text)">MINIMAL</b> — Taste + Name<br>
         <b style="color:var(--text)">NORMAL</b> — + Wiedergabe-Modus<br>
         <b style="color:var(--text)">DETAIL</b> — + Datei-Anzahl &amp; Aktivstatus
@@ -503,6 +525,37 @@ input[type=file]{display:none}
         <div class="topt" id="hdur-30" onclick="setHelpDuration('30')">30 SEK</div>
       </div>
     </div>
+    <div class="tips-hdr">DESIGN</div>
+    <div style="padding:10px 14px 16px">
+      <div class="trow">
+        <div class="topt" id="th-retro" onclick="setTheme('retro')">RETRO</div>
+        <div class="topt" id="th-modern" onclick="setTheme('modern')">MODERN</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        <b style="color:var(--text)">RETRO</b> — Pixel-Ästhetik mit Monospace-Schrift<br>
+        <b style="color:var(--text)">MODERN</b> — Elegantes Dark-UI mit System-Schrift
+      </p>
+    </div>
+    <div class="tips-hdr">SCHRIFTGRÖSSE</div>
+    <div style="padding:10px 14px 16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);width:20px;text-align:center">A</span>
+        <input type="range" id="font-scale-slider" min="0.8" max="1.8" step="0.1" value="1"
+          style="flex:1;accent-color:var(--gold)" oninput="setFontScale(this.value)">
+        <span style="font-size:calc(18px * var(--font-scale));color:var(--text-dim);width:20px;text-align:center">A</span>
+      </div>
+      <div style="text-align:center;font-size:calc(11px * var(--font-scale));color:var(--text-dim)" id="font-scale-label">100%</div>
+    </div>
+    <div class="tips-hdr">SYMBOLGRÖSSE</div>
+    <div style="padding:10px 14px 16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:calc(12px * var(--sym-scale));color:var(--text-dim);width:20px;text-align:center">✦</span>
+        <input type="range" id="sym-scale-slider" min="0.6" max="2.0" step="0.1" value="1"
+          style="flex:1;accent-color:var(--gold)" oninput="setSymScale(this.value)">
+        <span style="font-size:calc(20px * var(--sym-scale));color:var(--text-dim);width:20px;text-align:center">✦</span>
+      </div>
+      <div style="text-align:center;font-size:calc(11px * var(--font-scale));color:var(--text-dim)" id="sym-scale-label">100%</div>
+    </div>
   </div>
 </div>
 
@@ -510,7 +563,7 @@ input[type=file]{display:none}
 <div id="st" class="screen">
   <div class="s-hdr">
     <h2>TIPS &amp; TRICKS</h2>
-    <button class="btn-s" onclick="show('smm')" style="font-size:13px;padding:5px 9px">← MENÜ</button>
+    <button class="btn-s" onclick="show('smm')" style="font-size:calc(13px * var(--font-scale));padding:5px 9px">← MENÜ</button>
   </div>
   <div style="flex:1;overflow-y:auto">
     <div class="tip">
@@ -590,9 +643,9 @@ input[type=file]{display:none}
   <div class="fg">
     <label class="fl">TASTE — Feld anklicken, dann Taste drücken</label>
     <input type="text" class="fi" id="ek" placeholder="Taste drücken…" readonly onkeydown="captureKey(event)">
-    <div id="key-reserved-warn" style="display:none;font-size:11px;color:var(--blood-bright);margin-top:4px;padding:4px 8px;border-left:2px solid var(--blood)"></div>
+    <div id="key-reserved-warn" style="display:none;font-size:calc(11px * var(--font-scale));color:var(--blood-bright);margin-top:4px;padding:4px 8px;border-left:2px solid var(--blood)"></div>
   </div>
-  <div id="key-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:12px;color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
+  <div id="key-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:calc(12px * var(--font-scale));color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
     <span id="key-warn-txt"></span>
     <div style="display:flex;gap:7px;margin-top:8px">
       <button class="btn-s" style="flex:1" onclick="document.getElementById('key-warn').style.display='none'">ABBRECHEN</button>
@@ -609,11 +662,11 @@ input[type=file]{display:none}
     </div>
   </div>
   <div class="fg">
-    <label class="fl">BILD <span style="font-style:italic;color:var(--text-dim);font-size:10px">optional</span></label>
+    <label class="fl">BILD <span style="font-style:italic;color:var(--text-dim);font-size:calc(10px * var(--font-scale))">optional</span></label>
     <div id="img-prev"></div>
     <div style="display:flex;gap:7px">
       <div class="fbtn" style="flex:1" onclick="document.getElementById('ii').click()">+ Bild auswählen</div>
-      <button id="img-clr" onclick="clearImg()" style="display:none;background:transparent;border:1px solid var(--blood);color:var(--blood-bright);border-radius:2px;padding:0 10px;font-family:'VT323',monospace;font-size:14px;cursor:pointer;letter-spacing:0">✕</button>
+      <button id="img-clr" onclick="clearImg()" style="display:none;background:transparent;border:1px solid var(--blood);color:var(--blood-bright);border-radius:2px;padding:0 10px;font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));cursor:pointer;letter-spacing:0">✕</button>
     </div>
     <input type="file" id="ii" accept="image/*" onchange="onImg(this)" style="display:none">
   </div>
@@ -642,7 +695,7 @@ input[type=file]{display:none}
       <div class="topt" data-m="playlist" onclick="setMode('playlist')">PLAYLIST 🎲</div>
     </div>
   </div>
-  <div id="mode-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:12px;color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
+  <div id="mode-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:calc(12px * var(--font-scale));color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
     <span id="mode-warn-txt"></span>
     <div style="display:flex;gap:7px;margin-top:8px">
       <button class="btn-s" style="flex:1" onclick="cancelModeSwitch()">ABBRECHEN</button>
@@ -662,7 +715,7 @@ input[type=file]{display:none}
       <div class="topt" id="lc-inf" onclick="setLoopCount(0)" style="flex:0 0 52px;padding:7px 4px;text-align:center">∞</div>
       <input type="number" id="lc-val" min="1" max="999" placeholder="Anzahl…"
         style="flex:1;background:var(--deep);border:1px solid var(--border);border-radius:2px;
-               color:var(--text);font-family:'VT323',monospace;font-size:15px;padding:6px 8px;
+               color:var(--text);font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));padding:6px 8px;
                accent-color:var(--gold)" oninput="onLoopCountInput(this)">
     </div>
   </div>
@@ -710,7 +763,7 @@ input[type=file]{display:none}
     <canvas id="eq-cv" height="25"></canvas>
     <span id="nptxt" style="color:var(--text-dim);font-style:italic;position:relative;z-index:1">Kein Sound aktiv</span>
   </div>
-  <div id="dbg" style="display:none;padding:4px 13px;background:#0a0a14;border-top:1px solid #1e1e35;font-family:monospace;font-size:10px;color:#4a4a7a;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+  <div id="dbg" style="display:none;padding:4px 13px;background:#0a0a14;border-top:1px solid #1e1e35;font-family:monospace;font-size:calc(10px * var(--font-scale));color:#4a4a7a;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
 </div>
 
 <!-- PAD TYPE PICKER -->
@@ -734,9 +787,9 @@ input[type=file]{display:none}
 <div id="combo-ghost"></div>
 <div id="combo-ov">
   <div id="combo-hdr">
-    <button onclick="closeComboEditor()" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;padding:0 6px;line-height:1">←</button>
-    <span style="font-family:'VT323',monospace;font-size:17px;letter-spacing:0;color:var(--gold)">KOMBINATIONS-PAD</span>
-    <button id="combo-del-btn" onclick="deleteCombo()" style="display:none;margin-left:auto;background:none;border:1px solid var(--blood);color:var(--blood);font-family:'VT323',monospace;font-size:14px;letter-spacing:0;padding:4px 8px;border-radius:2px;cursor:pointer">LÖSCHEN</button>
+    <button onclick="closeComboEditor()" style="background:none;border:none;color:var(--text-dim);font-size:calc(18px * var(--font-scale));cursor:pointer;padding:0 6px;line-height:1">←</button>
+    <span style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));letter-spacing:0;color:var(--gold)">KOMBINATIONS-PAD</span>
+    <button id="combo-del-btn" onclick="deleteCombo()" style="display:none;margin-left:auto;background:none;border:1px solid var(--blood);color:var(--blood);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:4px 8px;border-radius:2px;cursor:pointer">LÖSCHEN</button>
   </div>
   <div id="combo-body">
     <div class="fg">
@@ -746,21 +799,21 @@ input[type=file]{display:none}
     <div class="fg">
       <label class="fl">TASTE</label>
       <input class="fi" id="ck" placeholder="Taste drücken…" readonly onkeydown="captureComboKey(event)">
-      <div id="combo-key-warn" style="display:none;font-size:11px;color:var(--blood-bright);margin-top:4px;padding:4px 8px;border-left:2px solid var(--blood)"></div>
+      <div id="combo-key-warn" style="display:none;font-size:calc(11px * var(--font-scale));color:var(--blood-bright);margin-top:4px;padding:4px 8px;border-left:2px solid var(--blood)"></div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
       <label class="fl" style="margin:0">SCHRITTE</label>
-      <button onclick="addComboStep()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'VT323',monospace;font-size:14px;letter-spacing:0;padding:4px 9px;border-radius:2px;cursor:pointer">+ SCHRITT</button>
+      <button onclick="addComboStep()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:4px 9px;border-radius:2px;cursor:pointer">+ SCHRITT</button>
     </div>
-    <p style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-dim);font-style:italic;margin:0 0 10px;line-height:1.5">
+    <p style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text-dim);font-style:italic;margin:0 0 10px;line-height:1.5">
       Pads innerhalb eines Schritts starten <em style="color:var(--text)">gleichzeitig</em>. Schritte laufen <em style="color:var(--text)">nacheinander</em> — der nächste Schritt beginnt erst, wenn alle Pads des vorherigen geendet haben. Ein Loop auf <em style="color:var(--text)">∞</em> läuft als <em style="color:var(--text)">Hintergrundsound</em> und blockiert den nächsten Schritt nicht — er stoppt automatisch wenn die Kombo endet.
     </p>
-    <div id="combo-err" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:3px;padding:7px 10px;font-size:13px;color:#ef9a9a;margin-bottom:8px"></div>
+    <div id="combo-err" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:3px;padding:7px 10px;font-size:calc(13px * var(--font-scale));color:#ef9a9a;margin-bottom:8px"></div>
     <div id="combo-steps-list"></div>
     <label class="fl" style="margin-bottom:6px">PADS — ZIEHEN ZUM HINZUFÜGEN</label>
     <div id="combo-palette" class="combo-palette"></div>
     <div id="combo-bg-warn">
-      <div style="font-family:'VT323',monospace;font-size:14px;letter-spacing:0;color:var(--gold-dim);margin-bottom:4px">HINTERGRUNDTRACKS</div>
+      <div style="font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;color:var(--gold-dim);margin-bottom:4px">HINTERGRUNDTRACKS</div>
       <span id="combo-bg-warn-txt"></span>
       <div style="margin-top:8px">
         <button onclick="doSaveCombo()" class="btn-p" style="width:100%">VERSTANDEN & SPEICHERN</button>
@@ -821,6 +874,53 @@ function load(){
   });
 }
 
+// ── THEME ──
+function initTheme(){
+  const t=localStorage.getItem('theme')||'retro';
+  document.body.classList.toggle('theme-modern',t==='modern');
+  document.documentElement.style.setProperty('--font-scale',parseFloat(localStorage.getItem('font-scale')||'1'));
+  document.documentElement.style.setProperty('--sym-scale',parseFloat(localStorage.getItem('sym-scale')||'1'));
+}
+function setTheme(t){
+  localStorage.setItem('theme',t);
+  document.body.classList.toggle('theme-modern',t==='modern');
+  ['retro','modern'].forEach(k=>{
+    const el=document.getElementById('th-'+k);
+    if(el) el.className='topt'+(k===t?' al':'');
+  });
+}
+function setFontScale(v){
+  v=parseFloat(v);
+  localStorage.setItem('font-scale',v);
+  document.documentElement.style.setProperty('--font-scale',v);
+  const lbl=document.getElementById('font-scale-label');
+  if(lbl) lbl.textContent=Math.round(v*100)+'%';
+}
+function setSymScale(v){
+  v=parseFloat(v);
+  localStorage.setItem('sym-scale',v);
+  document.documentElement.style.setProperty('--sym-scale',v);
+  const lbl=document.getElementById('sym-scale-label');
+  if(lbl) lbl.textContent=Math.round(v*100)+'%';
+}
+function initThemeSettings(){
+  const t=localStorage.getItem('theme')||'retro';
+  ['retro','modern'].forEach(k=>{
+    const el=document.getElementById('th-'+k);
+    if(el) el.className='topt'+(k===t?' al':'');
+  });
+  const fs=parseFloat(localStorage.getItem('font-scale')||'1');
+  const ss=parseFloat(localStorage.getItem('sym-scale')||'1');
+  const fsl=document.getElementById('font-scale-slider');
+  const ssl=document.getElementById('sym-scale-slider');
+  const fll=document.getElementById('font-scale-label');
+  const sll=document.getElementById('sym-scale-label');
+  if(fsl) fsl.value=fs;
+  if(ssl) ssl.value=ss;
+  if(fll) fll.textContent=Math.round(fs*100)+'%';
+  if(sll) sll.textContent=Math.round(ss*100)+'%';
+}
+
 // ── AUDIO ──
 function unlock(){
   // iOS silent-switch fix: playing a silent audio through HTMLAudioElement
@@ -842,6 +942,7 @@ function unlock(){
   analyser.connect(ctx.destination);
   const b=ctx.createBuffer(1,1,22050), s=ctx.createBufferSource();
   s.buffer=b; s.connect(ctx.destination); s.start(0);
+  initTheme();
   initGridCtrl();
   openDB().then(load).then(()=>{
     decodeAll();
@@ -1179,7 +1280,7 @@ function show(id){
   document.getElementById(id).classList.add('active');
   cur=id;
   if(id==='sp'){ renderBoard(); if(locked) focusKB(); }
-  if(id==='sa') initHelpSettings();
+  if(id==='sa'){ initHelpSettings(); initThemeSettings(); }
 }
 document.getElementById('kfocus').addEventListener('blur', ()=>{
   if(cur==='sp' && !document.getElementById('ep').classList.contains('open')){
@@ -1405,9 +1506,9 @@ function renderComboSteps(){
     return `<div class="combo-step" data-step="${si}">
       <div class="combo-step-hdr">
         <span class="combo-step-lbl">SCHRITT ${si+1}</span>
-        <button onclick="removeComboStep(${si})" style="background:none;border:none;color:var(--blood);font-size:15px;cursor:pointer;padding:0 4px;line-height:1">×</button>
+        <button onclick="removeComboStep(${si})" style="background:none;border:none;color:var(--blood);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">×</button>
       </div>
-      <div class="combo-step-body" data-step="${si}">${chips||'<span style="color:var(--text-dim);font-size:10px;font-style:italic">Pad hierher ziehen</span>'}</div>
+      <div class="combo-step-body" data-step="${si}">${chips||'<span style="color:var(--text-dim);font-size:calc(10px * var(--font-scale));font-style:italic">Pad hierher ziehen</span>'}</div>
     </div>`;
   }).join('');
   // attach drop listeners to step bodies
@@ -1421,10 +1522,10 @@ function renderComboPalette(){
   const items=pads.map((p,i)=>{
     if(!p||p.mode==='combo') return ''; // don't allow nesting combos in combos
     const lbl=(p.name||`Pad ${i+1}`).replace(/</g,'&lt;');
-    const bg=isInfiniteBg(p)?' <span style="color:var(--mist);font-size:11px">BG</span>':'';
+    const bg=isInfiniteBg(p)?' <span style="color:var(--mist);font-size:calc(11px * var(--font-scale))">BG</span>':'';
     return `<div class="cpal-item" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}">${ico(p)} ${lbl}${bg}</div>`;
   }).filter(Boolean).join('');
-  el.innerHTML=items||`<span style="color:var(--text-dim);font-size:11px;font-style:italic">Keine Pads vorhanden</span>`;
+  el.innerHTML=items||`<span style="color:var(--text-dim);font-size:calc(11px * var(--font-scale));font-style:italic">Keine Pads vorhanden</span>`;
   initComboPaletteDrag();
 }
 
@@ -1867,11 +1968,11 @@ function updFB(){
         <button class="pvbtn" onclick="${playAct}">▶</button>
         <button class="pvbtn" onclick="pausePreview()" style="${active&&!paused?'':''+dim}">⏸</button>
         <button class="pvbtn" onclick="stopPreview()" style="${active?'':''+dim}">⏹</button>
-        <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${f.name}</span>
+        <span style="font-size:calc(12px * var(--font-scale));flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${f.name}</span>
       </div>`;
     }).join('')+
     `<div style="text-align:right;padding-top:6px">
-      <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:14px;cursor:pointer;font-family:'VT323',monospace;letter-spacing:0">↺ ÄNDERN</button>
+      <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ ÄNDERN</button>
     </div>`;
     if(sw){ sw.style.display=''; initScrub(); drawScrubber(); }
   }
@@ -2045,7 +2146,7 @@ function renderKeymap(){
   rows.sort((a,b)=>(a.p.keyLabel||a.p.key||'').localeCompare(b.p.keyLabel||b.p.key||''));
   let html='';
   if(!rows.length){
-    html='<div style="padding:16px 14px;color:var(--text-dim);font-size:12px">Keine Tasten belegt.</div>';
+    html='<div style="padding:16px 14px;color:var(--text-dim);font-size:calc(12px * var(--font-scale))">Keine Tasten belegt.</div>';
   } else {
     for(const{p,i}of rows){
       const label=p.keyLabel||p.key||'?';
