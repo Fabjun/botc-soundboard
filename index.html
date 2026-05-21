@@ -34,7 +34,7 @@ body.theme-modern #ep{border-radius:18px 18px 0 0;box-shadow:0 -4px 20px rgba(0,
 body.theme-modern .btn-s,body.theme-modern .btn-p,body.theme-modern .btn-d,
 body.theme-modern .unlock-btn,body.theme-modern .fbtn{border-radius:8px;letter-spacing:0}
 body.theme-modern .topt{border-radius:8px}
-body.theme-modern .board-title{border-radius:8px;letter-spacing:.04em}
+body.theme-modern #mode-switch{border-radius:8px}
 body.theme-modern .pbtn.empty{border-style:solid}
 body.theme-modern #pad-style-panel{border-radius:0 0 12px 12px}
 body.theme-modern .km-bar{border-radius:12px}
@@ -183,12 +183,34 @@ input[type=file]{display:none}
   padding:8px 13px 6px;border-bottom:1px solid rgba(42,42,74,.6);
   flex-shrink:0;position:relative;z-index:2}
 .hdr-center{display:flex;align-items:center;gap:10px}
-.board-title{font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));letter-spacing:1px;
-  padding:6px 16px;border:1px solid var(--gold-dim);border-radius:2px;
-  background:linear-gradient(135deg,rgba(122,95,40,.12),rgba(90,64,16,.08));
-  transition:color .4s ease,border-color .4s ease}
-#sp.mode-edit .board-title{border-color:rgba(79,195,247,.35)}
-#sp.mode-play .board-title{border-color:rgba(201,168,76,.4)}
+/* MODE SWITCH */
+#mode-switch{position:relative;display:flex;align-items:stretch;
+  border:1px solid var(--gold-dim);border-radius:2px;cursor:pointer;overflow:hidden;
+  user-select:none;transition:border-color .3s ease,box-shadow .3s ease;
+  font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:1px}
+#mode-switch:active{transform:scale(.96)}
+#ms-slider{position:absolute;top:0;bottom:0;left:0;width:50%;
+  background:rgba(201,168,76,.15);transition:left .3s ease,background .3s ease;pointer-events:none}
+#ms-setup,#ms-play{position:relative;z-index:1;padding:6px 14px;transition:color .3s ease}
+.ms-sep{position:relative;z-index:1;display:flex;align-items:center;padding:0 1px;
+  transition:color .3s ease}
+#sp.mode-edit #mode-switch{border-color:var(--gold-dim);
+  box-shadow:0 0 10px rgba(201,168,76,.22),0 0 22px rgba(201,168,76,.09)}
+#sp.mode-edit #ms-setup{color:var(--gold)}
+#sp.mode-edit #ms-play{color:var(--mist)}
+#sp.mode-edit .ms-sep{color:var(--gold-dim)}
+#sp.mode-play #mode-switch{border-color:rgba(79,195,247,.45);
+  box-shadow:0 0 10px rgba(79,195,247,.22),0 0 22px rgba(79,195,247,.09)}
+#sp.mode-play #ms-slider{left:50%;background:rgba(79,195,247,.13)}
+#sp.mode-play #ms-play{color:var(--active)}
+#sp.mode-play #ms-setup{color:var(--mist)}
+#sp.mode-play .ms-sep{color:rgba(79,195,247,.35)}
+/* SPARKS */
+.spark{position:fixed;border-radius:50%;pointer-events:none;z-index:500;
+  animation:spark-fly .45s ease-out forwards}
+@keyframes spark-fly{
+  0%{transform:translate(0,0) scale(1);opacity:1}
+  100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0}}
 .pgrid{flex:1;overflow-y:auto;display:grid;
   grid-template-columns:repeat(auto-fill,var(--pad-sz));
   gap:var(--pad-gap);padding:8px;position:relative;z-index:2;align-content:start}
@@ -251,42 +273,11 @@ input[type=file]{display:none}
 @keyframes breathe{0%,100%{box-shadow:0 0 8px rgba(79,195,247,.2)}50%{box-shadow:0 0 20px rgba(79,195,247,.4)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes ripple-anim{to{transform:scale(3);opacity:0}}
-@keyframes flame-flicker{
-  0%  {transform:translateX(-50%) scaleX(1)    scaleY(1)    rotate(-2deg);  opacity:.88}
-  25% {transform:translateX(-50%) scaleX(.91) scaleY(1.06) rotate(1.5deg); opacity:1}
-  55% {transform:translateX(-50%) scaleX(1.07) scaleY(.96) rotate(-1deg);  opacity:.92}
-  80% {transform:translateX(-50%) scaleX(.95) scaleY(1.04) rotate(2deg);   opacity:1}
-  100%{transform:translateX(-50%) scaleX(1.02) scaleY(.98) rotate(-1.5deg);opacity:.9}}
-@keyframes flame-glow-edit{
-  0%,100%{filter:drop-shadow(0 0 5px rgba(201,168,76,.55)) drop-shadow(0 5px 10px rgba(201,168,76,.2))}
-  50%    {filter:drop-shadow(0 0 14px rgba(201,168,76,.95)) drop-shadow(0 5px 18px rgba(201,168,76,.45))}}
-@keyframes flame-glow-play{
-  0%,100%{filter:drop-shadow(0 0 6px rgba(79,195,247,.55)) drop-shadow(0 5px 10px rgba(79,195,247,.2))}
-  50%    {filter:drop-shadow(0 0 16px rgba(79,195,247,.95)) drop-shadow(0 5px 20px rgba(79,195,247,.45))}}
 @keyframes edge-breathe{0%,100%{box-shadow:inset 0 0 50px rgba(79,195,247,.12)}50%{box-shadow:inset 0 0 90px rgba(79,195,247,.3)}}
 @keyframes fog-drift{0%{transform:translate(0,0) scale(1);opacity:.8}33%{transform:translate(4%,2%) scale(1.06);opacity:1}66%{transform:translate(-2%,4%) scale(.97);opacity:.85}100%{transform:translate(0,0) scale(1);opacity:.8}}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
-/* PORTAL BUTTON — flame animation */
-#portal-btn{background:none;border:none;cursor:pointer;padding:2px 10px 4px;
-  display:flex;align-items:center;justify-content:center}
-#portal-btn:active .flame{transform:scale(.88)}
-.flame{position:relative;width:18px;height:30px;display:block;transition:color .4s ease}
-.flame::before{content:'';position:absolute;bottom:0;left:50%;
-  transform:translateX(-50%);width:18px;height:30px;
-  background:radial-gradient(ellipse at 50% 88%,currentColor 0%,rgba(0,0,0,0) 72%);
-  border-radius:50% 50% 22% 22%/58% 58% 42% 42%;
-  animation:flame-flicker 2s ease-in-out infinite alternate}
-.flame::after{content:'';position:absolute;bottom:3px;left:50%;
-  transform:translateX(-50%);width:9px;height:17px;
-  background:radial-gradient(ellipse at 50% 88%,rgba(255,255,255,.55) 0%,rgba(0,0,0,0) 70%);
-  border-radius:50% 50% 22% 22%/58% 58% 42% 42%;
-  animation:flame-flicker 1.3s ease-in-out infinite alternate-reverse}
-#portal-btn.mode-edit .flame{color:var(--gold);
-  animation:flame-glow-edit 3s ease-in-out infinite}
-#portal-btn.mode-play .flame{color:var(--active);
-  animation:flame-glow-play 2.2s ease-in-out infinite}
 
 /* RIPPLE */
 .ripple-el{position:absolute;border-radius:50%;background:rgba(201,168,76,.28);
@@ -791,8 +782,12 @@ input[type=file]{display:none}
 <div id="sp" class="screen">
   <div class="p-hdr">
     <div class="hdr-center">
-      <div id="board-title" class="board-title">SETUP-MODUS</div>
-      <button id="portal-btn" onclick="toggleLock()"><span class="flame"></span></button>
+      <div id="mode-switch" onclick="toggleLock()">
+        <div id="ms-slider"></div>
+        <span id="ms-setup">SETUP</span>
+        <span class="ms-sep">|</span>
+        <span id="ms-play">SPIEL</span>
+      </div>
     </div>
   </div>
   <div id="edge-glow"></div>
@@ -1621,15 +1616,8 @@ function initGridCtrl(){
 // ── MODE ──
 function applyModeVisuals(){
   const sp=document.getElementById('sp');
-  const btn=document.getElementById('portal-btn');
-  const title=document.getElementById('board-title');
   sp.classList.toggle('mode-edit',!locked);
   sp.classList.toggle('mode-play',locked);
-  if(btn){ btn.classList.toggle('mode-edit',!locked); btn.classList.toggle('mode-play',locked); }
-  if(title){
-    title.textContent=locked?'SPIEL-MODUS':'SETUP-MODUS';
-    title.style.color=locked?'var(--gold)':'var(--active)';
-  }
 }
 function applyStartMode(){
   const sm=localStorage.getItem('start-mode')||'unlocked';
@@ -2588,6 +2576,25 @@ function onDragEnd(e){
   dragSrc=null;
 }
 
+function spawnSparks(rect,toPlay){
+  const color=toPlay?'#4fc3f7':'#c9a84c';
+  const glow=toPlay?'rgba(79,195,247,.7)':'rgba(201,168,76,.7)';
+  const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+  for(let i=0;i<16;i++){
+    const el=document.createElement('div');
+    el.className='spark';
+    const angle=Math.PI*2*i/16+(Math.random()-.5)*.9;
+    const dist=22+Math.random()*38;
+    const w=Math.max(2,2+Math.random()*2|0), h=Math.max(2,2+Math.random()*3|0);
+    el.style.cssText=`left:${cx-w/2}px;top:${cy-h/2}px;width:${w}px;height:${h}px;`+
+      `background:${color};box-shadow:0 0 5px ${glow};`+
+      `--sx:${Math.cos(angle)*dist}px;--sy:${Math.sin(angle)*dist}px;`+
+      `animation-duration:${.35+Math.random()*.2}s`;
+    document.body.appendChild(el);
+    el.addEventListener('animationend',()=>el.remove());
+  }
+}
+
 function toggleLock(){
   locked=!locked;
   if(localStorage.getItem('start-mode')==='remember')
@@ -2597,6 +2604,8 @@ function toggleLock(){
   triggerModeFlash();
   renderBoard();
   if(locked) focusKB();
+  const sw=document.getElementById('mode-switch');
+  if(sw) spawnSparks(sw.getBoundingClientRect(),locked);
 }
 
 document.addEventListener('keydown', e=>{
