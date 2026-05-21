@@ -445,6 +445,10 @@ input[type=file]{display:none}
 .ptp-lbl{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;color:var(--text)}
 .ptp-sub{font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);
   font-style:italic;margin-top:2px}
+
+/* ── TOAST ── */
+#app-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:8px 18px;border-radius:4px;z-index:9999;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
+#app-toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
@@ -472,6 +476,10 @@ input[type=file]{display:none}
     <div class="mopt" onclick="show('smb')">
       <div class="mico">⊞</div>
       <div><div class="mlbl">MY BOARDS</div><div class="msub">Manage &amp; switch boards</div></div>
+    </div>
+    <div class="mopt" onclick="show('sli')">
+      <div class="mico">🗄</div>
+      <div><div class="mlbl">LIBRARY</div><div class="msub">All audio files in one place</div></div>
     </div>
     <div class="mopt" onclick="show('sa')">
       <div class="mico">⚙</div>
@@ -648,7 +656,34 @@ input[type=file]{display:none}
       </div>
       <div style="text-align:center;font-size:calc(11px * var(--font-scale));color:var(--text-dim)" id="sym-scale-label">100%</div>
     </div>
+    <div class="tips-hdr">DATA</div>
+    <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
+      <button onclick="doRemigrateAudio()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">RE-MIGRATE AUDIO TO LIBRARY</button>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Run if pads lost their sounds after an update. Moves any remaining raw audio data into the Library.</p>
+      <button onclick="doResetAllData()" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%;margin-top:4px">RESET ALL DATA</button>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--blood-bright);margin:0;line-height:1.6">Deletes all boards, pads, and Library files. Cannot be undone.</p>
+    </div>
    </div><!-- /.cx -->
+  </div>
+</div>
+
+<!-- LIBRARY -->
+<div id="sli" class="screen">
+  <div class="s-hdr"><div class="cx"><h2>LIBRARY</h2></div></div>
+  <div style="flex:1;overflow-y:auto">
+   <div class="cx" style="padding-top:14px;padding-bottom:14px">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;gap:6px">
+        <div class="topt" id="lf-all" onclick="libFilter('all')">ALL</div>
+        <div class="topt" id="lf-used" onclick="libFilter('used')">IN USE</div>
+        <div class="topt" id="lf-unused" onclick="libFilter('unused')">UNUSED</div>
+      </div>
+      <button class="btn-p" onclick="document.getElementById('lib-upload').click()" style="flex:1;min-width:120px">+ UPLOAD</button>
+      <input type="file" id="lib-upload" accept="audio/*" multiple style="display:none" onchange="onLibUpload(this)">
+    </div>
+    <div id="lib-stats" style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-bottom:10px"></div>
+    <div id="lib-list" style="display:flex;flex-direction:column;gap:8px"></div>
+   </div>
   </div>
 </div>
 
@@ -1038,6 +1073,7 @@ let pads = [];
 let currentBoardId = null, currentBoardName = '', renamingBoardId = null;
 let ctx = null, db = null, masterGain = null, analyser = null, analyserData = null;
 let bufs = {}, srcs = {}, gains = {};
+let libBufs = {};
 let eqRAF = null;
 let eId = null, eFiles = [], eMode = 'once', eImage = null, eShuffle = false, pendingMode = null, eLoopCount = 0, appendFiles = false;
 const playPos = {};
@@ -1058,9 +1094,11 @@ let dragStartX=0, dragStartY=0, dragGhostW=0, dragGhostH=0;
 // ── DB ──
 function openDB(){
   return new Promise((res,rej)=>{
-    const r = indexedDB.open('botc3',2);
+    const r = indexedDB.open('botc3',3);
     r.onupgradeneeded = e => {
       const dbv=e.target.result, tx=e.target.transaction;
+      if(!dbv.objectStoreNames.contains('lib'))
+        dbv.createObjectStore('lib',{keyPath:'hash'});
       if(e.oldVersion===0){
         dbv.createObjectStore('p',{keyPath:'id'});
       } else if(e.oldVersion===1){
@@ -1080,6 +1118,68 @@ function openDB(){
     r.onsuccess = e => { db=e.target.result; res(); };
     r.onerror = ()=>res();
   });
+}
+
+// ── LIBRARY HELPERS ──
+async function computeHash(buf){
+  const h=await crypto.subtle.digest('SHA-256',buf);
+  return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function libPut(e){
+  return new Promise((r,j)=>{
+    const tx=db.transaction('lib','readwrite');
+    tx.objectStore('lib').put(e).onsuccess=()=>r();
+    tx.onerror=()=>j();
+  });
+}
+function libGet(hash){
+  return new Promise(r=>{
+    db.transaction('lib','readonly').objectStore('lib').get(hash).onsuccess=e=>r(e.target.result||null);
+  });
+}
+function libGetAll(){
+  return new Promise(r=>{
+    db.transaction('lib','readonly').objectStore('lib').getAll().onsuccess=e=>r(e.target.result||[]);
+  });
+}
+function libDelete(hash){
+  return new Promise(r=>{
+    db.transaction('lib','readwrite').objectStore('lib').delete(hash).onsuccess=()=>r();
+  });
+}
+async function addToLib(buf,name,type=''){
+  const hash=await computeHash(buf);
+  const existing=await libGet(hash);
+  if(existing) return {hash,isDuplicate:true};
+  await libPut({hash,name,buf,size:buf.byteLength,type,added:Date.now()});
+  return {hash,isDuplicate:false};
+}
+async function migrateToLibrary(){
+  if(!db) return;
+  const all=await new Promise(r=>{
+    db.transaction('p','readonly').objectStore('p').getAll().onsuccess=e=>r(e.target.result||[]);
+  });
+  for(const board of all.filter(b=>b.id?.startsWith('board_'))){
+    if(!board.pads) continue;
+    let changed=false;
+    for(const pad of board.pads){
+      if(!pad?.files) continue;
+      const hashes=[];
+      for(const f of pad.files){
+        if(typeof f==='string'){ hashes.push(f); }
+        else if(f?.data){ const {hash}=await addToLib(f.data,f.name||'audio',f.type||''); hashes.push(hash); changed=true; }
+      }
+      pad.files=hashes;
+    }
+    if(changed){
+      await new Promise(r=>{
+        const tx=db.transaction('p','readwrite');
+        tx.objectStore('p').put(board);
+        tx.oncomplete=()=>r(); tx.onerror=()=>r();
+      });
+      if(board.id===currentBoardId) pads=board.pads||[];
+    }
+  }
 }
 function save(){
   if(!db||!currentBoardId) return Promise.resolve();
@@ -1372,7 +1472,8 @@ function unlock(){
   s.buffer=b; s.connect(ctx.destination); s.start(0);
   initTheme();
   initGridCtrl();
-  openDB().then(load).then(()=>{
+  openDB().then(load).then(async ()=>{
+    await migrateToLibrary();
     decodeAll();
     applyStartMode();
     initStartModeUI();
@@ -1381,13 +1482,18 @@ function unlock(){
   });
 }
 function decodeAll(){ pads.forEach((p,i)=>{ if(p&&p.files&&p.files.length) decodePad(i); }); }
-function decodePad(id){
-  const p=pads[id]; if(!p||!p.files) return;
+async function decodePad(id){
+  const p=pads[id]; if(!p||!p.files||!ctx) return;
   bufs[id]=[];
-  p.files.forEach((f,fi)=>{
-    if(!f.data) return;
-    ctx.decodeAudioData(f.data.slice(0), buf=>{ if(!bufs[id]) bufs[id]=[]; bufs[id][fi]=buf; }, e=>console.warn(e));
-  });
+  await Promise.all(p.files.map(async (f,fi)=>{
+    const hash=typeof f==='string'?f:null; if(!hash) return;
+    if(!libBufs[hash]){
+      const entry=await libGet(hash); if(!entry?.buf) return;
+      try{ libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0)); }catch(e){ console.warn(e); return; }
+    }
+    if(!bufs[id]) bufs[id]=[];
+    bufs[id][fi]=libBufs[hash];
+  }));
 }
 function fadeInGain(g, targetVol, fadeIn){
   if(fadeIn>0){
@@ -1712,6 +1818,99 @@ function setNP(txt){
 function focusKB(){
   setTimeout(()=>{ document.getElementById('kfocus')?.focus(); }, 50);
 }
+
+// ── LIBRARY SCREEN ──
+let libFilterMode='all';
+async function initLibScreen(){
+  const all=await libGetAll();
+  const usedHashes=new Set();
+  await new Promise(r=>{
+    db.transaction('p','readonly').objectStore('p').getAll().onsuccess=ev=>{
+      for(const board of ev.target.result||[])
+        for(const pad of board.pads||[])
+          for(const h of pad.files||[])
+            if(typeof h==='string') usedHashes.add(h);
+      r();
+    };
+  });
+  renderLibList(all,usedHashes);
+}
+function libFilter(mode){
+  libFilterMode=mode;
+  initLibScreen();
+}
+function fmtSize(bytes){
+  if(bytes<1024) return bytes+'B';
+  if(bytes<1048576) return (bytes/1024).toFixed(1)+'KB';
+  return (bytes/1048576).toFixed(1)+'MB';
+}
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function renderLibList(entries,usedHashes){
+  ['all','used','unused'].forEach(m=>document.getElementById('lf-'+m)?.classList.toggle('active',m===libFilterMode));
+  const list=document.getElementById('lib-list');
+  const stats=document.getElementById('lib-stats');
+  if(!list) return;
+  const filtered=libFilterMode==='used'?entries.filter(e=>usedHashes.has(e.hash)):
+                  libFilterMode==='unused'?entries.filter(e=>!usedHashes.has(e.hash)):entries;
+  const totalSize=entries.reduce((s,e)=>s+(e.size||0),0);
+  if(stats) stats.textContent=entries.length?`${entries.length} file${entries.length===1?'':'s'} · ${fmtSize(totalSize)}`:'Library is empty.';
+  if(!filtered.length){ list.innerHTML=`<p style="color:var(--text-dim);text-align:center;padding:20px 0">No files${libFilterMode!=='all'?' in this filter':''} yet.</p>`; return; }
+  list.innerHTML=filtered.map(e=>{
+    const inUse=usedHashes.has(e.hash);
+    const date=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);word-break:break-all;flex:1">${escHtml(e.name)}</div>
+        <button onclick="libDeleteFile('${escHtml(e.hash)}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">✕</button>
+      </div>
+      <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date} · ${inUse?'<span style="color:var(--active)">in use</span>':'<span style="color:var(--mist)">unused</span>'}</div>
+    </div>`;
+  }).join('');
+}
+async function onLibUpload(inp){
+  const files=Array.from(inp.files); inp.value='';
+  let dupes=0;
+  for(const f of files){
+    const buf=await new Promise(r=>{ const fr=new FileReader(); fr.onload=e=>r(e.target.result); fr.readAsArrayBuffer(f); });
+    const {isDuplicate}=await addToLib(buf,f.name,f.type||'');
+    if(isDuplicate) dupes++;
+  }
+  if(dupes) showToast(`${dupes} duplicate${dupes===1?'':'s'} skipped — already in Library.`);
+  else showToast(`${files.length} file${files.length===1?'':'s'} added to Library.`);
+  initLibScreen();
+}
+async function libDeleteFile(hash){
+  if(!confirm('Delete this file from the Library?\n\nPads referencing it will no longer play.')) return;
+  await libDelete(hash);
+  delete libBufs[hash];
+  showToast('File deleted from Library.');
+  initLibScreen();
+}
+
+// ── DATA MANAGEMENT ──
+async function doRemigrateAudio(){
+  showToast('Re-migrating audio…');
+  await migrateToLibrary();
+  showToast('Migration complete.');
+}
+async function doResetAllData(){
+  if(!confirm('Delete ALL boards, pads, and Library files?\n\nThis cannot be undone.')) return;
+  stopAll();
+  await new Promise(r=>{ const req=indexedDB.deleteDatabase('botc3'); req.onsuccess=r; req.onerror=r; });
+  localStorage.clear();
+  location.reload();
+}
+
+// ── TOAST ──
+let _toastTimer=null;
+function showToast(msg,dur=3000){
+  let el=document.getElementById('app-toast');
+  if(!el){ el=document.createElement('div'); el.id='app-toast'; document.body.appendChild(el); }
+  el.textContent=msg; el.classList.add('visible');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.classList.remove('visible'),dur);
+}
+
 function show(id){
   if(locked && id!=='sp') return;
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1721,6 +1920,7 @@ function show(id){
   if(id==='sp'){ renderBoard(); if(locked) focusKB(); }
   if(id==='sa'){ initHelpSettings(); initThemeSettings(); }
   if(id==='smb') initBoardScreen();
+  if(id==='sli') initLibScreen();
   updMenuBtn(id);
 }
 document.getElementById('kfocus').addEventListener('blur', ()=>{
@@ -1828,7 +2028,7 @@ function renderSetup(){
 }
 
 // ── EDIT ──
-function openEP(id){
+async function openEP(id){
   if(pads[id]?.mode==='combo'){ openComboEditor(id); return; }
   eId=id; const p=pads[id];
   document.getElementById('ep-t').textContent=`EDIT SOUND-PAD ${id+1}`;
@@ -1840,9 +2040,7 @@ function openEP(id){
   document.getElementById('eft').value=p?.fadeIn??0;
   document.getElementById('efo').value=p?.fadeOut??0;
   updFadeLabel('eft'); updFadeLabel('efo');
-  eFiles=p?.files?p.files.map(f=>({name:f.name,data:f.data})):[];
-  waveforms=[];
-  eFiles.forEach((_,i)=>decodeWaveform(i));
+  eFiles=[]; waveforms=[];
   eImage=p?.image||null;
   updImgPreview();
   eMode=p?.mode||'once';
@@ -1852,6 +2050,18 @@ function openEP(id){
   document.getElementById('ep').classList.add('open');
   document.getElementById('ebk').classList.add('open');
   document.querySelectorAll('#pgrid [data-id]').forEach(c=>c.classList.toggle('ed',+c.dataset.id===id));
+  if(p?.files?.length){
+    for(const f of p.files){
+      if(typeof f==='string'){
+        const entry=await libGet(f);
+        if(entry) eFiles.push({name:entry.name,data:entry.buf,hash:f});
+      } else if(f?.data){
+        eFiles.push({name:f.name,data:f.data});
+      }
+    }
+    eFiles.forEach((_,i)=>decodeWaveform(i));
+    updFB();
+  }
 }
 function closeEP(){
   document.getElementById('ep').classList.remove('open');
@@ -2316,7 +2526,14 @@ function onFile(inp){
   let n=0;
   files.forEach(f=>{
     const r=new FileReader();
-    r.onload=e=>{ eFiles.push({name:f.name,data:e.target.result}); decodeWaveform(eFiles.length-1); if(++n===files.length) updFB(); };
+    r.onload=async e=>{
+      const buf=e.target.result;
+      const {hash,isDuplicate}=await addToLib(buf,f.name,f.type||'');
+      if(isDuplicate) showToast('Already in Library — using existing copy.');
+      eFiles.push({name:f.name,data:buf,hash});
+      decodeWaveform(eFiles.length-1);
+      if(++n===files.length) updFB();
+    };
     r.readAsArrayBuffer(f);
   });
   inp.value='';
@@ -2539,7 +2756,7 @@ function saveForce(){
   if(conflict!==-1) pads[conflict]={...pads[conflict],key:'',keyLabel:''};
   doSave();
 }
-function doSave(){
+async function doSave(){
   const name=document.getElementById('en').value.trim();
   const keyEl=document.getElementById('ek');
   const key=keyEl.dataset.code||keyEl.value.trim();
@@ -2547,11 +2764,16 @@ function doSave(){
   const vol=+document.getElementById('ev').value;
   const fadeIn=+document.getElementById('eft').value;
   const fadeOut=+document.getElementById('efo').value;
+  const fileHashes=[];
+  for(const f of eFiles){
+    if(f.hash){ fileHashes.push(f.hash); }
+    else if(f.data){ const {hash}=await addToLib(f.data,f.name||'audio',f.type||''); fileHashes.push(hash); }
+  }
   pads[eId]={id:eId,name,key,keyLabel,mode:eMode,
     shuffle:eMode==='playlist'?eShuffle:undefined,
     loopCount:eMode==='loop'?eLoopCount:undefined,
-    volume:vol,fadeIn,fadeOut,files:eFiles,image:eImage||undefined};
-  decodePad(eId); save(); closeEP(); renderSetup();
+    volume:vol,fadeIn,fadeOut,files:fileHashes,image:eImage||undefined};
+  await decodePad(eId); await save(); closeEP(); renderSetup();
 }
 function delPad(){
   stopPad(eId); pads[eId]=null; delete bufs[eId];
