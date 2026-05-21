@@ -662,6 +662,16 @@ function load(){
 
 // ── AUDIO ──
 function unlock(){
+  // iOS silent-switch fix: playing a silent audio through HTMLAudioElement
+  // upgrades the AVAudioSession category from 'ambient' to 'playback'.
+  // Without this, Web Audio API output is muted by the ringer switch even
+  // though the analyser still reports signal (it reads before the HW output).
+  const sil = Object.assign(document.createElement('audio'), {
+    src: 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'
+  });
+  sil.setAttribute('playsinline', '');
+  sil.play().catch(()=>{});
+
   ctx = new (window.AudioContext||window.webkitAudioContext)();
   masterGain = ctx.createGain();
   analyser = ctx.createAnalyser();
@@ -1664,6 +1674,12 @@ document.addEventListener('keydown', e=>{
 });
 
 openDB().then(load).catch(()=>{});
+
+// Resume AudioContext when returning from background (iOS suspends it automatically)
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible' && ctx?.state==='suspended')
+    ctx.resume().catch(()=>{});
+});
 </script>
 
 <div id="keymap-ov" onclick="closeKeymap()">
