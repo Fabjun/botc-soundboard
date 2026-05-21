@@ -432,6 +432,14 @@ input[type=file]{display:none}
 #pad-type-picker{position:fixed;inset:0;z-index:160;background:rgba(10,10,20,.82);
   display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
 #pad-type-picker.open{display:flex}
+#lib-picker{position:fixed;inset:0;z-index:200;background:rgba(10,10,20,.85);
+  display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px)}
+.lp-box{background:var(--deep);border:1px solid var(--border);border-top:1px solid var(--gold-dim);
+  border-radius:4px 4px 0 0;width:100%;max-width:900px;max-height:72vh;display:flex;flex-direction:column}
+.lp-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;
+  border-bottom:1px solid var(--border);flex-shrink:0}
+.lp-row{background:var(--surface);border:1px solid var(--border);border-radius:4px;
+  padding:9px 12px;display:flex;align-items:center;gap:10px}
 .ptp-box{background:var(--surface);border:1px solid var(--gold-dim);border-radius:4px;
   width:min(320px,88vw);overflow:hidden;
   box-shadow:0 0 40px rgba(201,168,76,.1)}
@@ -891,7 +899,10 @@ input[type=file]{display:none}
   </div>
   <div class="fg">
     <label class="fl">AUDIO FILE(S)</label>
-    <div class="fbtn" id="fbd" onclick="document.getElementById('fi').click()">+ Choose file(s)</div>
+    <div style="display:flex;gap:6px">
+      <div class="fbtn" id="fbd" style="flex:1" onclick="document.getElementById('fi').click()">+ Choose file(s)</div>
+      <div class="fbtn" id="fbd-lib" style="flex:0 0 auto;padding-left:12px;padding-right:12px;white-space:nowrap" onclick="openLibPicker(false)">⊞ FROM LIB</div>
+    </div>
     <input type="file" id="fi" accept="audio/mpeg,audio/wav,audio/mp4,audio/aac,audio/x-m4a,audio/flac,audio/ogg,audio/opus,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus" onchange="onFile(this)">
     <div id="scrub-wrap" style="display:none;margin-top:7px">
       <canvas id="scrub" height="48"></canvas>
@@ -1021,6 +1032,17 @@ input[type=file]{display:none}
       <div><div class="ptp-lbl">COMBO-PAD</div>
            <div class="ptp-sub">Combine multiple pads</div></div>
     </div>
+  </div>
+</div>
+
+<!-- LIBRARY PICKER -->
+<div id="lib-picker" onclick="if(event.target===this)closeLibPicker()">
+  <div class="lp-box">
+    <div class="lp-hdr">
+      <span style="font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));color:var(--gold)">PICK FROM LIBRARY</span>
+      <button onclick="closeLibPicker()" style="background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);font-size:calc(18px * var(--font-scale));cursor:pointer;padding:0 4px;letter-spacing:0">✕</button>
+    </div>
+    <div id="lp-list" style="overflow-y:auto;flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:6px"></div>
   </div>
 </div>
 
@@ -1901,6 +1923,43 @@ async function doResetAllData(){
   location.reload();
 }
 
+// ── LIBRARY PICKER ──
+let libPickerAppend=false;
+async function openLibPicker(append=false){
+  libPickerAppend=append;
+  const modal=document.getElementById('lib-picker');
+  modal.style.display='flex';
+  const list=document.getElementById('lp-list');
+  list.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:20px 0">Loading…</p>';
+  const all=await libGetAll();
+  if(!all.length){
+    list.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:20px 0">Library is empty.<br>Upload audio files to the Library first.</p>';
+    return;
+  }
+  list.innerHTML=all.map(e=>{
+    const date=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    return `<div class="lp-row">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(e.name)}</div>
+        <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date}</div>
+      </div>
+      <button onclick="pickFromLib('${escHtml(e.hash)}')" style="background:var(--raised);border:1px solid var(--gold-dim);color:var(--gold);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));padding:5px 12px;border-radius:2px;cursor:pointer;white-space:nowrap;letter-spacing:0">SELECT</button>
+    </div>`;
+  }).join('');
+}
+function closeLibPicker(){
+  document.getElementById('lib-picker').style.display='none';
+}
+async function pickFromLib(hash){
+  const entry=await libGet(hash);
+  if(!entry){ showToast('File not found in Library.'); closeLibPicker(); return; }
+  if(!libPickerAppend){ stopPreview(); waveforms=[]; eFiles=[]; }
+  eFiles.push({name:entry.name,data:entry.buf,hash});
+  decodeWaveform(eFiles.length-1);
+  updFB();
+  closeLibPicker();
+}
+
 // ── TOAST ──
 let _toastTimer=null;
 function showToast(msg,dur=3000){
@@ -2662,9 +2721,11 @@ function updFB(){
     (eMode==='playlist'
       ? `<div style="display:flex;justify-content:flex-end;gap:8px;padding-top:6px">
           <button onclick="appendFiles=true;document.getElementById('fi').click()" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px">+ ADD</button>
+          <button onclick="openLibPicker(true)" style="background:none;border:1px solid var(--gold-dim);border-radius:2px;color:var(--gold);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px">⊞ FROM LIB</button>
           <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ REPLACE</button>
         </div>`
-      : `<div style="text-align:right;padding-top:6px">
+      : `<div style="display:flex;justify-content:flex-end;gap:8px;padding-top:6px">
+          <button onclick="openLibPicker(false)" style="background:none;border:1px solid var(--gold-dim);border-radius:2px;color:var(--gold);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px">⊞ FROM LIB</button>
           <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ CHANGE</button>
         </div>`);
     if(sw){ sw.style.display=''; initScrub(); drawScrubber(); }
