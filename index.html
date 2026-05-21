@@ -1900,7 +1900,7 @@ function applyMode(m){
   const sr=document.getElementById('shuffle-row');
   if(sr) sr.style.display=m==='playlist'?'':'none';
   const lr=document.getElementById('loopcount-row');
-  if(lr) lr.style.display=m==='loop'?'':'none';
+  if(lr) lr.style.display=m==='loop'?'block':'none';
   if(m==='loop') setLoopCount(eLoopCount);
   updateShuffleUI();
 }
