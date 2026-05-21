@@ -2128,10 +2128,11 @@ function onDragMove(e){
     const r=src.getBoundingClientRect();
     dragGhostW=r.width; dragGhostH=r.height;
     dragGhost=src.cloneNode(true);
+    const padRadius=getComputedStyle(document.documentElement).getPropertyValue('--pad-radius').trim()||'8px';
     dragGhost.style.cssText=`position:fixed;pointer-events:none;z-index:1000;`+
       `width:${r.width}px;height:${r.height}px;`+
       `left:${e.clientX-r.width/2}px;top:${e.clientY-r.height/2}px;`+
-      `opacity:0.85;transform:scale(1.06);border-radius:4px;`+
+      `opacity:0.85;transform:scale(1.06);border-radius:${padRadius};`+
       `box-shadow:0 6px 24px rgba(0,0,0,.7);transition:none;border:1px solid var(--gold)`;
     document.body.appendChild(dragGhost);
     src.classList.add('dragging');
