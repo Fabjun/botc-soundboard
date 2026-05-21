@@ -476,7 +476,7 @@ input[type=file]{display:none}
 
 <!-- UNLOCK -->
 <div id="su" class="screen active">
-  <div class="sigil">🕯️</div>
+  <div class="sigil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
   <h1>Soundboard of Storytelling</h1>
   <p class="sub">A tool for Game-Masters<br>and other creative Creatures</p>
   <button class="unlock-btn" onclick="unlock()">TAP TO START</button>
@@ -485,33 +485,33 @@ input[type=file]{display:none}
 <!-- MAIN MENU -->
 <div id="smm" class="screen">
   <div class="m-title">
-    <div style="font-size:calc(44px * var(--sym-scale));margin-bottom:12px">🕯️</div>
+    <div style="font-size:calc(44px * var(--sym-scale));margin-bottom:12px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
     <h1 style="font-family:var(--ff-hero);font-size:calc(22px * var(--font-scale));letter-spacing:.04em;color:var(--gold);line-height:1.3;text-shadow:0 0 24px rgba(201,168,76,.3);margin:0 0 6px">Soundboard of Storytelling</h1>
     <p style="font-family:var(--ff-subtitle);font-size:calc(14px * var(--font-scale));color:var(--text-dim);margin-top:4px;line-height:1.5">A tool for Game-Masters<br>and other creative Creatures</p>
   </div>
   <div class="mopts">
     <div class="mopt mp" onclick="show('sp')">
-      <div class="mico">◈</div>
+      <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M3 7h2v5H3zm4 0h2v13H7zm4-3h2v16h-2zm4 0h2v13h-2zM5 5h2v2H5zm4 15h2v2H9zm4-18h2v2h-2zm4 15h2v2h-2zm2-5h2v5h-2zm2-2h2v2h-2zM1 12h2v2H1z"/></svg></div>
       <div><div class="mlbl">BOARD</div><div class="msub" id="board-subtitle">Loading…</div></div>
     </div>
     <div class="mopt" onclick="show('smb')">
-      <div class="mico">⊞</div>
+      <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M4 2h16v2H4zm0 18h16v2H4zM2 4h2v16H2zm18 0h2v16h-2zM4 8h16v2H4zm0 6h16v2H4z"/><path d="M8 4h2v16H8zm6 0h2v16h-2z"/></svg></div>
       <div><div class="mlbl">MY BOARDS</div><div class="msub">Manage &amp; switch boards</div></div>
     </div>
     <div class="mopt" onclick="show('sli')">
-      <div class="mico"><svg viewBox="0 0 10 10" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="#c9a84c"/><rect x="1" y="1" width="6" height="3" fill="#16162a"/><rect x="8" y="1" width="1" height="2" fill="#7a5f28"/><rect x="1" y="5" width="8" height="4" fill="#0f0f1e"/><rect x="3" y="6" width="4" height="2" fill="#4a4a7a"/></svg></div>
+      <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M3 4h2v17H3zm4 4h2v13H7zm4-2h2v15h-2zm4 0h2v5h-2zm2 5h2v5h-2zm2 5h2v5h-2z"/></svg></div>
       <div><div class="mlbl">LIBRARY</div><div class="msub">All audio files in one place</div></div>
     </div>
     <div class="mopt" onclick="show('sa')">
-      <div class="mico">⚙</div>
+      <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M4 14h2v6H4zm6 0h2v6h-2zm-4-2h4v2H6zm0 8h4v2H6zm-4-4h2v2H2zm20-8h-4V6h4z"/><path d="M10 16h12v2H10zm4-8H2V6h12zm6-4v2h-2V4zm0 6V8h-2v2zm-6-8h4v2h-4zm0 10h4v-2h-4zm-2-8h2v2h-2zm0 6h2V8h-2z"/></svg></div>
       <div><div class="mlbl">SETTINGS</div><div class="msub">Theme, font size &amp; start mode</div></div>
     </div>
     <div class="mopt" onclick="show('st')">
-      <div class="mico">☰</div>
+      <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/></svg></div>
       <div><div class="mlbl">TIPS &amp; TRICKS</div><div class="msub">Controls and key bindings</div></div>
     </div>
     <div class="mopt" onclick="show('sab')">
-      <div class="mico"><svg viewBox="0 0 10 10" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="#4a4a7a"/><rect x="1" y="1" width="8" height="8" fill="#0f0f1e"/><rect x="4" y="2" width="2" height="2" fill="#c9a84c"/><rect x="3" y="5" width="4" height="1" fill="#c9a84c"/><rect x="4" y="5" width="2" height="3" fill="#c9a84c"/><rect x="3" y="7" width="4" height="1" fill="#c9a84c"/></svg></div>
+      <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M4 2h16v2H4zm0 18h16v2H4zM2 4h2v16H2zm18 0h2v16h-2zm-9 5h2V7h-2zm0 8h2v-6h-2z"/></svg></div>
       <div><div class="mlbl">ABOUT</div><div class="msub">What this is and how it works</div></div>
     </div>
   </div>
@@ -601,7 +601,7 @@ input[type=file]{display:none}
    <div class="cx">
     <div style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px">
       <div class="mopt" onclick="show('sk')">
-        <div class="mico">⌨</div>
+        <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M3 3h18v2H3zm0 16h18v2H3zM1 5h2v14H1zm20 0h2v14h-2zM3 11h18v2H3zm2-4h6v2H5zm8 0h2v2h-2zm4 0h2v2h-2zM5 13h2v4H5zm4 0h2v4H9zm4 0h2v4h-2zm4 0h2v4h-2z"/></svg></div>
         <div><div class="mlbl">KEY TEST</div><div class="msub">Identify numpad key codes</div></div>
       </div>
     </div>
@@ -888,7 +888,7 @@ input[type=file]{display:none}
       </div>
     </div>
     <div class="tip">
-      <div class="tip-key">⚠</div>
+      <div class="tip-key"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 2h16v2H4zm0 18h16v2H4zM20 4h2v16h-2zM2 4h2v16H2zm9 2h2v8h-2zm0 10h2v2h-2z"/></svg></div>
       <div class="tip-body">
         <div class="tip-ttl">KEY CONFLICT</div>
         <div class="tip-desc">When saving, the app checks whether a key is already assigned to another pad. If there is a conflict, a warning appears with the options Cancel or Overwrite.</div>
@@ -916,10 +916,10 @@ input[type=file]{display:none}
       </div>
     </div>
     <div class="tip">
-      <div class="tip-key">⚡ C-PAD</div>
+      <div class="tip-key"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> C-PAD</div>
       <div class="tip-body">
         <div class="tip-ttl">COMBO-PAD: STEPS IN SEQUENCE</div>
-        <div class="tip-desc">A Combo-PAD plays a sequence of steps one after another. Each step can contain one or more pads that play simultaneously. Tap ⚡ in Setup mode to build one. Combos cannot be nested inside other Combos.</div>
+        <div class="tip-desc">A Combo-PAD plays a sequence of steps one after another. Each step can contain one or more pads that play simultaneously. Tap <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> in Setup mode to build one. Combos cannot be nested inside other Combos.</div>
       </div>
     </div>
     <div class="tip">
@@ -1086,12 +1086,12 @@ input[type=file]{display:none}
   <div class="ptp-box">
     <div class="ptp-title">NEW PAD</div>
     <div class="ptp-opt" onclick="pickAudioPad()">
-      <div class="ptp-ico">🔊</div>
+      <div class="ptp-ico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M11 22H9v-2H7v-2h2V6H7V4h2V2h2v20Zm8 0h-6v-2h6v2Zm2-2h-2v-2h2v2ZM7 18H5v-2h2v2Zm10 0h-4v-2h4v2Zm6 0h-2V6h2v12ZM5 10H3v4h2v2H1V8h4v2Zm14 6h-2V8h2v8Zm-4-2h-2v-4h2v4ZM7 8H5V6h2v2Zm10 0h-4V6h4v2Zm4-2h-2V4h2v2Zm-2-2h-6V2h6v2Z"/></svg></div>
       <div><div class="ptp-lbl">AUDIO-PAD</div>
            <div class="ptp-sub">Solo, loop or list</div></div>
     </div>
     <div class="ptp-opt" onclick="pickKomboPad()">
-      <div class="ptp-ico">⚡</div>
+      <div class="ptp-ico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg></div>
       <div><div class="ptp-lbl">COMBO-PAD</div>
            <div class="ptp-sub">Combine multiple pads</div></div>
     </div>
@@ -2383,7 +2383,7 @@ function renderComboPalette(){
     if(!p) return '';
     const lbl=(p.name||`Pad ${i+1}`).replace(/</g,'&lt;');
     if(p.mode==='combo'){
-      return `<div class="cpal-item cpal-disabled" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-combo="1">⚡ ${lbl}</div>`;
+      return `<div class="cpal-item cpal-disabled" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-combo="1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> ${lbl}</div>`;
     }
     const bg=isInfiniteBg(p)?' <span style="color:var(--mist);font-size:calc(11px * var(--font-scale))">BG</span>':'';
     return `<div class="cpal-item" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}">${ico(p)} ${lbl}${bg}</div>`;
@@ -2996,20 +2996,21 @@ function delPad(){
 }
 
 // ── PERF ──
+function svgI(p){return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle">${p}</svg>`;}
 function ico(p){
   if(!p) return '·';
   const n=(p.name||'').toLowerCase();
-  if(n.includes('donner')||n.includes('thunder')) return '⛈';
-  if(n.includes('nacht')||n.includes('night')) return '🌙';
-  if(n.includes('hahn')||n.includes('tag')||n.includes('day')) return '🐓';
-  if(n.includes('musik')||n.includes('music')||n.includes('ambient')) return '🎵';
-  if(n.includes('tod')||n.includes('death')) return '💀';
-  if(n.includes('abstimm')||n.includes('vote')) return '⚖️';
-  if(n.includes('nom')) return '☝️';
-  if(p.mode==='combo') return '⚡';
-  if(p.mode==='loop') return isInfiniteBg(p)?'🔁':'🔂';
-  if(p.mode==='playlist') return p.shuffle?'🎲':'▶▶';
-  return '🔊';
+  if(n.includes('donner')||n.includes('thunder')) return svgI('<path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/>');
+  if(n.includes('nacht')||n.includes('night')) return svgI('<path d="M18 22H8v-2h10v2ZM8 20H6v-2h2v2Zm12 0h-2v-2h2v2ZM6 18H4v-2h2v2Zm16 0h-2v-4h-2v-2h2v-2h2v8ZM4 16H2V6h2v10Zm14 0h-6v-2h6v2Zm-6-2h-2v-2h2v2Zm-2-2H8V6h2v6ZM6 6H4V4h2v2Zm8-2h-2v2h-2V4H6V2h8v2Z"/>');
+  if(n.includes('hahn')||n.includes('tag')||n.includes('day')) return svgI('<path d="M14 22H4v-2h10v2ZM4 20H2v-4h2v4Zm12 0h-2v-4h2v4Zm-6-2H8v-2h2v2Zm-2-2H4v-2h4v2Zm6 0h-2v-2h2v2Zm-2-2H8v-2h4v2Zm12-1h-4v-2h4v2Zm-6-1h-2v-2h2v2ZM8 10H6V8h2v2Zm8 0h-2V8h2v2Zm-2-2H8V6h6v2ZM6 6H4V4h2v2Zm14 0h-2V4h2v2ZM4 4H2V2h2v2Zm9 0h-2V0h2v4Zm9 0h-2V2h2v2Z"/>');
+  if(n.includes('musik')||n.includes('music')||n.includes('ambient')) return svgI('<path d="M4 12h4v2H4zm-2 2h2v4H2zm2 4h4v2H4zM8 6h2v12H8zm10 0h2v12h-2zm-6 8h2v4h-2zm2-2h4v2h-4zm0 6h4v2h-4zM10 4h8v2h-8z"/>');
+  if(n.includes('tod')||n.includes('death')) return svgI('<path d="M7 20h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zm-6-4h2v4H9zm4 0h2v4h-2zm-8-2h2v6H5zm12 0h2v6h-2z"/><path d="M3 14h4v2H3zM1 4h2v10H1zm20 0h2v10h-2zM3 2h18v2H3zm14 12h4v2h-4zM8 7h2v4H8zm6 0h2v4h-2z"/>');
+  if(n.includes('abstimm')||n.includes('vote')) return svgI('<path d="M13 9h2v2h-2zm2-2h2v2h-2zm2-2h2v2h-2zm2-2h2v8h-2z"/><path d="M13 3h8v2h-8zm-2 12H9v-2h2zm-2 2H7v-2h2zm-2 2H5v-2h2zm-2 2H3v-8h2z"/><path d="M11 21H3v-2h8z"/>');
+  if(n.includes('nom')) return svgI('<path d="M21 7h2v5h-2zm-4-2h2v7h-2zm-4-2h2v8h-2zM9 3h2v8H9zM5 5h2v8H5zm14 0h2v2h-2zm-4-2h2v2h-2zm-4-2h2v2h-2zM7 3h2v2H7zm-4 8h2v2H3zm-2 2h2v2H1zm0 2h2v2H1zm2 2h2v2H3zm2 2h2v2H5zm2 2h12v2H7zm12-2h2v2h-2zm2-7h2v7h-2zM5 13h2v2H5zm2 2h2v2H7z"/>');
+  if(p.mode==='combo') return svgI('<path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/>');
+  if(p.mode==='loop') return svgI('<path d="M17 5h2v2h-2zM5 17h2v2H5zm6-14h2v6h-2zM9 1h2v8H9zm0 8h2v2H9zm10 8H9v2h10zM5 7H3v10h2z"/><path d="M13 15h-2v6h2zm2-2h-2v8h2zm0 8h-2v2h2zM5 5h10v2H5zm14 12h2V7h-2z"/>');
+  if(p.mode==='playlist') return p.shuffle?svgI('<path d="M10 19H2v-2h8v2Zm12 0h-8v-2h8v2Zm-10-2h-2v-6h2v6Zm6-10h2v2h2v2h-2v2h-2v2h-2v-4h-4V9h4V5h2v2ZM8 11H2V9h6v2Z"/>'):svgI('<path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/>');
+  return svgI('<path d="M11 22H9v-2H7v-2h2V6H7V4h2V2h2v20Zm8 0h-6v-2h6v2Zm2-2h-2v-2h2v2ZM7 18H5v-2h2v2Zm10 0h-4v-2h4v2Zm6 0h-2V6h2v12ZM5 10H3v4h2v2H1V8h4v2Zm14 6h-2V8h2v8Zm-4-2h-2v-4h2v4ZM7 8H5V6h2v2Zm10 0h-4V6h4v2Zm4-2h-2V4h2v2Zm-2-2h-6V2h6v2Z"/>');
 }
 function renderPerf(){
   const g=document.getElementById('pgrid'); g.innerHTML='';
