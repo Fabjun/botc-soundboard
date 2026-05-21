@@ -1,10 +1,16 @@
-// Cache name — bump the version string whenever index.html changes significantly
-// so that the old cache is replaced on next visit.
-const CACHE = 'storyteller-v23';
+// Cache name — bump whenever any cached asset changes.
+const CACHE = 'storyteller-v24';
 
-// The single asset to cache: the root document of this scope.
-// On GitHub Pages this resolves to index.html at /botc-soundboard/.
-const SHELL = ['./'];
+// All assets required for offline-first operation.
+// Fonts are now separate files; add any new font here when added.
+const SHELL = [
+  './',
+  'fonts/press-start-2p.woff2',
+  'fonts/share-tech-mono.woff2',
+  'fonts/vt323.woff2',
+  'fonts/dotgothic16.woff2',
+  'fonts/uncial-antiqua.woff2',
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(
