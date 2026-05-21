@@ -404,6 +404,19 @@ input[type=file]{display:none}
   padding:3px 6px 3px 8px;font-size:calc(13px * var(--font-scale));font-family:var(--ff-label);letter-spacing:0;
   color:var(--text-dim);display:inline-flex;align-items:center;gap:3px;user-select:none}
 .combo-chip.is-bg{border-color:var(--mist);color:var(--mist)}
+.combo-chip.has-opt{border-color:var(--gold-dim)}
+.combo-chip.expanded{flex-direction:column;align-items:stretch}
+.combo-chip-top{display:flex;align-items:center;gap:3px}
+.chip-exp-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;
+  padding:0 1px;font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));line-height:1;letter-spacing:0}
+.combo-chip.expanded .chip-exp-btn,.combo-chip.has-opt .chip-exp-btn{color:var(--gold-dim)}
+.chip-opt-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;
+  padding-top:5px;margin-top:3px;border-top:1px solid var(--border)}
+.chip-opt-lbl{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--text-dim);letter-spacing:0}
+.chip-inp{width:44px;background:var(--deep);border:1px solid var(--border);border-radius:2px;
+  color:var(--text);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));
+  padding:2px 4px;letter-spacing:0;-moz-appearance:textfield}
+.chip-inp::-webkit-inner-spin-button,.chip-inp::-webkit-outer-spin-button{-webkit-appearance:none}
 .combo-chip-del{background:none;border:none;color:var(--blood);cursor:pointer;
   padding:0 2px;font-size:calc(13px * var(--font-scale));line-height:1}
 .combo-palette{display:flex;flex-wrap:wrap;gap:6px;padding:8px;
@@ -1101,6 +1114,7 @@ let eId = null, eFiles = [], eMode = 'once', eImage = null, eShuffle = false, pe
 const playPos = {};
 // Combo editor state
 let comboSteps = [], comboKey = '', comboKeyLabel = '', comboEditId = null, comboDragId = null;
+const comboChipExpanded = new Set();
 // Combo runtime state: comboState[padId] = {stopped, bgInstances, currentFgInstances}
 const comboState = {};
 let cropOffX=0, cropOffY=0, cropImgDispW=0, cropImgDispH=0, cropDragging=false, cropDragX=0, cropDragY=0;
@@ -1618,11 +1632,13 @@ function isInfiniteBg(p){ return p&&p.mode==='loop'&&(!p.loopCount||p.loopCount=
 
 // Creates a self-contained playable instance from a pad config.
 // onEnded is called when the pad finishes (not called for infinite bg loops).
-function createPadInstance(padId){
+function createPadInstance(padId,volOverride,fadeOverride){
   const p=pads[padId], padBufs=bufs[padId];
   if(!p||!padBufs||!padBufs.length) return null;
   const g=ctx.createGain();
-  fadeInGain(g,(p.volume||80)/100,p.fadeIn||0);
+  const vol=(volOverride!=null?volOverride:(p.volume||80))/100;
+  const fadeIn=fadeOverride!=null?fadeOverride:(p.fadeIn||0);
+  fadeInGain(g,vol,fadeIn);
   g.connect(masterGain);
   const active=[]; let stopped=false;
 
@@ -1686,12 +1702,14 @@ function playCombo(id){
 
 function playComboStep(id,state,steps,stepIdx){
   if(state.stopped||stepIdx>=steps.length){ finishCombo(id,state); return; }
-  const padIds=(steps[stepIdx].pads||[]).filter(pid=>pads[pid]&&bufs[pid]);
+  const rawPads=steps[stepIdx].pads||[];
+  const rawOpts=steps[stepIdx].chipOpts||[];
+  const validEntries=rawPads.map((pid,i)=>({pid,opt:rawOpts[i]||null})).filter(({pid})=>pads[pid]&&bufs[pid]);
   state.currentFgInstances=[];
   let fgRem=0;
 
-  for(const padId of padIds){
-    const inst=createPadInstance(padId);
+  for(const {pid:padId,opt} of validEntries){
+    const inst=createPadInstance(padId,opt?.vol,opt?.fade);
     if(!inst) continue;
     if(isInfiniteBg(pads[padId])){
       state.bgInstances.push(inst);
@@ -2148,10 +2166,12 @@ function openComboEditor(editId=null){
     cn.value=p.name||'';
     ck.value=p.keyLabel||p.key||''; ck.dataset.code=p.key||'';
     comboKey=p.key||''; comboKeyLabel=p.keyLabel||p.key||'';
-    comboSteps=(p.steps||[]).map(s=>({pads:[...s.pads],dur:s.dur||0}));
+    comboSteps=(p.steps||[]).map(s=>({pads:[...s.pads],dur:s.dur||0,chipOpts:(s.chipOpts||[]).map(o=>o?{...o}:null)}));
+    comboChipExpanded.clear();
   } else {
     cn.value=''; ck.value=''; ck.dataset.code='';
-    comboSteps=[{pads:[],dur:1}];
+    comboSteps=[{pads:[],dur:1,chipOpts:[]}];
+    comboChipExpanded.clear();
   }
   document.getElementById('combo-bg-warn').style.display='none';
   document.getElementById('combo-key-warn').style.display='none';
@@ -2182,7 +2202,7 @@ function captureComboKey(e){
   } else { cw.style.display='none'; }
 }
 
-function addComboStep(){ comboSteps.push({pads:[],dur:1}); renderComboSteps(); }
+function addComboStep(){ comboSteps.push({pads:[],dur:1,chipOpts:[]}); renderComboSteps(); }
 
 function removeComboStep(i){
   comboSteps.splice(i,1);
@@ -2190,8 +2210,25 @@ function removeComboStep(i){
   renderComboSteps();
 }
 
-function removePadFromStep(si,pi){ comboSteps[si].pads.splice(pi,1); renderComboSteps(); }
+function removePadFromStep(si,pi){
+  comboSteps[si].pads.splice(pi,1);
+  if(comboSteps[si].chipOpts) comboSteps[si].chipOpts.splice(pi,1);
+  comboChipExpanded.delete(`${si}-${pi}`);
+  renderComboSteps();
+}
 function setStepDur(si,val){ comboSteps[si].dur=isNaN(val)||val<0?0:val; }
+function setChipOpt(si,pi,key,val){
+  if(!comboSteps[si].chipOpts) comboSteps[si].chipOpts=[];
+  if(!comboSteps[si].chipOpts[pi]) comboSteps[si].chipOpts[pi]={};
+  if(val===''||val===null||isNaN(+val)) delete comboSteps[si].chipOpts[pi][key];
+  else comboSteps[si].chipOpts[pi][key]=+val;
+  if(!Object.keys(comboSteps[si].chipOpts[pi]).length) comboSteps[si].chipOpts[pi]=null;
+}
+function toggleChipExpand(si,pi){
+  const k=`${si}-${pi}`;
+  if(comboChipExpanded.has(k)) comboChipExpanded.delete(k); else comboChipExpanded.add(k);
+  renderComboSteps();
+}
 
 function renderComboSteps(){
   const el=document.getElementById('combo-steps-list'); if(!el) return;
@@ -2199,15 +2236,29 @@ function renderComboSteps(){
     const chips=step.pads.map((padId,pi)=>{
       const p=pads[padId];
       if(!p){
-        // Pad was deleted after this combo was saved — mark it clearly so user can remove it
         return `<span class="combo-chip" style="border-color:var(--blood);color:var(--blood-bright)">` +
                `⚠ Pad ${padId+1} (deleted)` +
                `<button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button></span>`;
       }
       const isBg=isInfiniteBg(p);
       const lbl=p.name.replace(/</g,'&lt;');
-      return `<span class="combo-chip${isBg?' is-bg':''}">${isBg?'⬤ ':''}<span>${lbl}</span>`+
-             `<button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button></span>`;
+      const opt=step.chipOpts?.[pi]||null;
+      const hasOpt=!!(opt&&(opt.vol!=null||opt.fade!=null));
+      const expanded=comboChipExpanded.has(`${si}-${pi}`);
+      const chipClass=`combo-chip${isBg?' is-bg':''}${hasOpt?' has-opt':''}${expanded?' expanded':''}`;
+      const optRow=expanded?`<div class="chip-opt-row">
+        <span class="chip-opt-lbl">VOL</span>
+        <input class="chip-inp" type="number" min="0" max="100" placeholder="${p.volume??80}" value="${opt?.vol??''}"
+          oninput="setChipOpt(${si},${pi},'vol',this.value)" onclick="event.stopPropagation()">
+        <span class="chip-opt-lbl">FADE</span>
+        <input class="chip-inp" type="number" min="0" max="10" step="0.5" placeholder="${p.fadeIn??0}" value="${opt?.fade??''}"
+          oninput="setChipOpt(${si},${pi},'fade',this.value)" onclick="event.stopPropagation()">
+      </div>`:'';
+      return `<span class="${chipClass}"><div class="combo-chip-top">
+        <button class="chip-exp-btn" onclick="toggleChipExpand(${si},${pi})">⚙</button>
+        ${isBg?'<span>⬤</span>':''}<span>${lbl}</span>
+        <button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button>
+      </div>${optRow}</span>`;
     }).join('');
     const dur=comboSteps[si].dur||0;
     const stepBody=chips||`<div class="combo-pause-ui">
@@ -2291,7 +2342,10 @@ function initComboPaletteDrag(){
         zone.classList.remove('drag-over');
         const r=zone.getBoundingClientRect();
         if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
-          comboSteps[+zone.dataset.step].pads.push(comboDragId);
+          const si=+zone.dataset.step;
+          comboSteps[si].pads.push(comboDragId);
+          if(!comboSteps[si].chipOpts) comboSteps[si].chipOpts=[];
+          comboSteps[si].chipOpts.push(null);
           renderComboSteps();
         }
       });
@@ -2339,7 +2393,10 @@ function doSaveCombo(){
     const conflict=pads.findIndex((p,i)=>p&&p.key===key&&i!==comboEditId);
     if(conflict!==-1) pads[conflict]={...pads[conflict],key:'',keyLabel:''};
   }
-  const pad={id:0,name,key,keyLabel,mode:'combo',steps:comboSteps.map(s=>({pads:[...s.pads],...(s.dur>0?{dur:s.dur}:{})})),volume:80};
+  const pad={id:0,name,key,keyLabel,mode:'combo',steps:comboSteps.map(s=>{
+    const opts=(s.chipOpts||[]).map(o=>o&&Object.keys(o).length?{...o}:null);
+    return {pads:[...s.pads],...(s.dur>0?{dur:s.dur}:{}),...(opts.some(Boolean)?{chipOpts:opts}:{})};
+  }),volume:80};
   if(comboEditId!==null){
     pad.id=comboEditId; pads[comboEditId]=pad;
   } else {

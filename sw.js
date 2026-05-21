@@ -1,6 +1,6 @@
 // Cache name — bump the version string whenever index.html changes significantly
 // so that the old cache is replaced on next visit.
-const CACHE = 'storyteller-v18';
+const CACHE = 'storyteller-v19';
 
 // The single asset to cache: the root document of this scope.
 // On GitHub Pages this resolves to index.html at /botc-soundboard/.
