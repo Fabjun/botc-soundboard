@@ -448,8 +448,8 @@ input[type=file]{display:none}
 <div id="su" class="screen active">
   <div class="sigil">🕯️</div>
   <h1>SOUNDBOARD FOR<br>STORYTELLER</h1>
-  <p>Soundboard für den Geschichtenerzähler</p>
-  <button class="unlock-btn" onclick="unlock()">BERÜHREN ZUM STARTEN</button>
+  <p>A soundboard for game masters &amp; storytellers</p>
+  <button class="unlock-btn" onclick="unlock()">TAP TO START</button>
 </div>
 
 <!-- MAIN MENU -->
@@ -457,37 +457,37 @@ input[type=file]{display:none}
   <div class="m-title">
     <div style="font-size:calc(44px * var(--sym-scale));margin-bottom:12px">🕯️</div>
     <h1>SOUNDBOARD FOR<br>STORYTELLER</h1>
-    <p>Was möchtest du tun?</p>
+    <p>What would you like to do?</p>
   </div>
   <div class="mopts">
     <div class="mopt mp" onclick="show('sp')">
       <div class="mico">◈</div>
-      <div><div class="mlbl">BOARD</div><div class="msub" id="board-subtitle">Lade…</div></div>
+      <div><div class="mlbl">BOARD</div><div class="msub" id="board-subtitle">Loading…</div></div>
     </div>
     <div class="mopt" onclick="show('smb')">
       <div class="mico">⊞</div>
-      <div><div class="mlbl">MEINE BOARDS</div><div class="msub">Boards verwalten &amp; wechseln</div></div>
+      <div><div class="mlbl">MY BOARDS</div><div class="msub">Manage &amp; switch boards</div></div>
     </div>
     <div class="mopt" onclick="show('sa')">
       <div class="mico">⚙</div>
-      <div><div class="mlbl">EINSTELLUNGEN</div><div class="msub">Design, Schriftgröße &amp; Startmodus</div></div>
+      <div><div class="mlbl">SETTINGS</div><div class="msub">Theme, font size &amp; start mode</div></div>
     </div>
     <div class="mopt" onclick="show('st')">
       <div class="mico">☰</div>
-      <div><div class="mlbl">TIPS &amp; TRICKS</div><div class="msub">Bedienhinweise und Tastenbelegung</div></div>
+      <div><div class="mlbl">TIPS &amp; TRICKS</div><div class="msub">Controls and key bindings</div></div>
     </div>
   </div>
 </div>
 
-<!-- MEINE BOARDS -->
+<!-- MY BOARDS -->
 <div id="smb" class="screen">
-  <div class="s-hdr"><div class="cx"><h2>MEINE BOARDS</h2></div></div>
+  <div class="s-hdr"><div class="cx"><h2>MY BOARDS</h2></div></div>
   <div style="flex:1;overflow-y:auto">
     <div id="board-list" class="cx" style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px"></div>
   </div>
   <div style="border-top:1px solid var(--border);flex-shrink:0">
     <div class="cx" style="padding-top:10px;padding-bottom:10px">
-      <button class="btn-p" onclick="showCreateBoard()" style="width:100%">+ NEUES BOARD</button>
+      <button class="btn-p" onclick="showCreateBoard()" style="width:100%">+ NEW BOARD</button>
     </div>
   </div>
 </div>
@@ -495,12 +495,12 @@ input[type=file]{display:none}
 <!-- BOARD NAME DIALOG -->
 <div id="board-name-dlg" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.75);align-items:center;justify-content:center">
   <div style="background:var(--raised);border:1px solid var(--gold-dim);border-radius:8px;padding:20px;width:88%;max-width:320px;display:flex;flex-direction:column;gap:12px">
-    <div id="bnd-title" style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));color:var(--gold);letter-spacing:0">NEUES BOARD</div>
-    <input id="bnd-input" class="fi" placeholder="Board-Name…" style="font-size:calc(15px * var(--font-scale))"
+    <div id="bnd-title" style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));color:var(--gold);letter-spacing:0">NEW BOARD</div>
+    <input id="bnd-input" class="fi" placeholder="Board name…" style="font-size:calc(15px * var(--font-scale))"
       onkeydown="if(event.key==='Enter')confirmBoardName();else if(event.key==='Escape')closeBoardNameDlg()">
     <div style="display:flex;gap:8px">
-      <button class="btn-s" onclick="closeBoardNameDlg()" style="flex:1">ABBRECHEN</button>
-      <button class="btn-p" onclick="confirmBoardName()" style="flex:2" id="bnd-confirm-lbl">ERSTELLEN</button>
+      <button class="btn-s" onclick="closeBoardNameDlg()" style="flex:1">CANCEL</button>
+      <button class="btn-p" onclick="confirmBoardName()" style="flex:2" id="bnd-confirm-lbl">CREATE</button>
     </div>
   </div>
 </div>
@@ -513,7 +513,7 @@ input[type=file]{display:none}
          color:var(--gold);font-family:var(--ff-label);
          font-size:calc(13px * var(--font-scale));letter-spacing:0;
          padding:5px 10px;border-radius:2px;cursor:pointer;
-         backdrop-filter:blur(4px)">← MENÜ</button>
+         backdrop-filter:blur(4px)">← MENU</button>
 
 <!-- PLAY-MODE MENU CONFIRMATION OVERLAY -->
 <div id="menu-confirm-ov" onclick="if(event.target===this)hideMenuConfirm()"
@@ -523,18 +523,18 @@ input[type=file]{display:none}
               border-radius:8px;padding:20px;width:88%;max-width:310px;
               display:flex;flex-direction:column;gap:12px">
     <div style="font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));
-                color:var(--gold);letter-spacing:0">SPIEL VERLASSEN?</div>
+                color:var(--gold);letter-spacing:0">LEAVE PLAY MODE?</div>
     <p style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));
               color:var(--text-dim);line-height:1.6;margin:0">
-      Alle laufenden Sounds werden gestoppt.<br>
-      Das Fenster schließt sich automatisch.
+      All running sounds will be stopped.<br>
+      The screen closes automatically.
     </p>
     <div id="menu-confirm-bar"
       style="height:3px;background:var(--gold-dim);border-radius:2px;
              transform-origin:left;transition:transform 1s linear"></div>
     <div style="display:flex;gap:8px">
-      <button class="btn-s" onclick="hideMenuConfirm()" style="flex:1">BLEIBEN</button>
-      <button class="btn-p" id="mcb" onclick="confirmMenuNav()" style="flex:2">BESTÄTIGEN (5)</button>
+      <button class="btn-s" onclick="hideMenuConfirm()" style="flex:1">STAY</button>
+      <button class="btn-p" id="mcb" onclick="confirmMenuNav()" style="flex:2">CONFIRM (5)</button>
     </div>
   </div>
 </div>
@@ -542,51 +542,51 @@ input[type=file]{display:none}
 
 <!-- KEY DETECT -->
 <div id="sk" class="screen">
-  <h2>TASTEN-ERKENNUNG</h2>
-  <p>Drücke jede Taste deines Numpads.<br>Die Codes erscheinen hier.</p>
+  <h2>KEY DETECTION</h2>
+  <p>Press each key on your numpad.<br>The codes will appear here.</p>
   <div id="kd">
     <div id="kd-c">—</div>
-    <div id="kd-l">Warte auf Tastendruck…</div>
+    <div id="kd-l">Waiting for key press…</div>
   </div>
   <div id="klog"></div>
   <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);max-width:280px">
-    Notiere welche Taste welchen Code sendet — du trägst ihn später im Setup ein.
+    Note which key sends which code — you will enter it later when setting up your pads.
   </p>
-  <button class="btn-p" onclick="show('sp')">WEITER ZUM BOARD →</button>
-  <button class="btn-s" onclick="show('sp')" style="margin-top:4px">Direkt zum Soundboard</button>
+  <button class="btn-p" onclick="show('sp')">GO TO BOARD →</button>
+  <button class="btn-s" onclick="show('sp')" style="margin-top:4px">Go directly to the soundboard</button>
 </div>
 
 <!-- APP SETTINGS -->
 <div id="sa" class="screen">
-  <div class="s-hdr"><div class="cx"><h2>EINSTELLUNGEN</h2></div></div>
+  <div class="s-hdr"><div class="cx"><h2>SETTINGS</h2></div></div>
   <div style="flex:1;overflow-y:auto">
    <div class="cx">
     <div style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px">
       <div class="mopt" onclick="show('sk')">
         <div class="mico">⌨</div>
-        <div><div class="mlbl">TASTEN-TEST</div><div class="msub">Codes des Numpads erkennen</div></div>
+        <div><div class="mlbl">KEY TEST</div><div class="msub">Identify numpad key codes</div></div>
       </div>
     </div>
-    <div class="tips-hdr">STARTMODUS</div>
+    <div class="tips-hdr">START MODE</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="sm-unlocked" onclick="setStartMode('unlocked')">SETUP</div>
-        <div class="topt" id="sm-locked" onclick="setStartMode('locked')">SPIEL</div>
-        <div class="topt" id="sm-remember" onclick="setStartMode('remember')">LETZTER</div>
+        <div class="topt" id="sm-locked" onclick="setStartMode('locked')">PLAY</div>
+        <div class="topt" id="sm-remember" onclick="setStartMode('remember')">LAST</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        <b style="color:var(--text)">SETUP</b> — öffnet immer im Bearbeitungsmodus.<br>
-        <b style="color:var(--text)">SPIEL</b> — öffnet direkt im Spielmodus.<br>
-        <b style="color:var(--text)">LETZTER</b> — merkt sich den zuletzt genutzten Modus.
+        <b style="color:var(--text)">SETUP</b> — always opens in edit mode.<br>
+        <b style="color:var(--text)">PLAY</b> — opens directly in play mode.<br>
+        <b style="color:var(--text)">LAST</b> — remembers the last used mode.
       </p>
     </div>
-    <div class="tips-hdr">HILFE-TASTE</div>
+    <div class="tips-hdr">HELP KEY</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
-      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:0">Öffnet die Tastenbelegungs-Übersicht im Spielmodus. Diese Taste kann keinem Pad zugewiesen werden.</p>
-      <input type="text" class="fi" id="help-key-input" placeholder="Taste drücken…" readonly onkeydown="captureHelpKey(event)">
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:0">Opens the key map overlay in play mode. This key cannot be assigned to any pad.</p>
+      <input type="text" class="fi" id="help-key-input" placeholder="Press a key…" readonly onkeydown="captureHelpKey(event)">
       <div id="help-key-warn" style="display:none;color:var(--blood-bright);font-size:calc(11px * var(--font-scale))"></div>
     </div>
-    <div class="tips-hdr">ÜBERSICHT — INFO-DICHTE</div>
+    <div class="tips-hdr">KEY MAP — INFO DENSITY</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="hd-minimal" onclick="setHelpDensity('minimal')">MINIMAL</div>
@@ -594,32 +594,32 @@ input[type=file]{display:none}
         <div class="topt" id="hd-verbose" onclick="setHelpDensity('verbose')">DETAIL</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        <b style="color:var(--text)">MINIMAL</b> — Taste + Name<br>
-        <b style="color:var(--text)">NORMAL</b> — + Wiedergabe-Modus<br>
-        <b style="color:var(--text)">DETAIL</b> — + Datei-Anzahl &amp; Aktivstatus
+        <b style="color:var(--text)">MINIMAL</b> — key + name<br>
+        <b style="color:var(--text)">NORMAL</b> — + playback mode<br>
+        <b style="color:var(--text)">DETAIL</b> — + file count &amp; active state
       </p>
     </div>
-    <div class="tips-hdr">ÜBERSICHT — ANZEIGEDAUER</div>
+    <div class="tips-hdr">KEY MAP — DISPLAY DURATION</div>
     <div class="sec-body">
       <div class="trow">
-        <div class="topt" id="hdur-toggle" onclick="setHelpDuration('toggle')">BIS TASTE</div>
-        <div class="topt" id="hdur-5" onclick="setHelpDuration('5')">5 SEK</div>
-        <div class="topt" id="hdur-10" onclick="setHelpDuration('10')">10 SEK</div>
-        <div class="topt" id="hdur-30" onclick="setHelpDuration('30')">30 SEK</div>
+        <div class="topt" id="hdur-toggle" onclick="setHelpDuration('toggle')">UNTIL KEY</div>
+        <div class="topt" id="hdur-5" onclick="setHelpDuration('5')">5 SEC</div>
+        <div class="topt" id="hdur-10" onclick="setHelpDuration('10')">10 SEC</div>
+        <div class="topt" id="hdur-30" onclick="setHelpDuration('30')">30 SEC</div>
       </div>
     </div>
-    <div class="tips-hdr">DESIGN</div>
+    <div class="tips-hdr">THEME</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="th-retro" onclick="setTheme('retro')">RETRO</div>
         <div class="topt" id="th-modern" onclick="setTheme('modern')">MODERN</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        <b style="color:var(--text)">RETRO</b> — Pixel-Ästhetik mit Monospace-Schrift<br>
-        <b style="color:var(--text)">MODERN</b> — Elegantes Dark-UI mit System-Schrift
+        <b style="color:var(--text)">RETRO</b> — pixel aesthetic with monospace font<br>
+        <b style="color:var(--text)">MODERN</b> — elegant dark UI with system font
       </p>
     </div>
-    <div class="tips-hdr">SCHRIFTGRÖSSE</div>
+    <div class="tips-hdr">FONT SIZE</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);width:20px;text-align:center">A</span>
@@ -629,7 +629,7 @@ input[type=file]{display:none}
       </div>
       <div style="text-align:center;font-size:calc(11px * var(--font-scale));color:var(--text-dim)" id="font-scale-label">100%</div>
     </div>
-    <div class="tips-hdr">SYMBOLGRÖSSE</div>
+    <div class="tips-hdr">SYMBOL SIZE</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:calc(12px * var(--sym-scale));color:var(--text-dim);width:20px;text-align:center">✦</span>
@@ -649,66 +649,66 @@ input[type=file]{display:none}
   <div style="flex:1;overflow-y:auto">
    <div class="cx">
     <div class="tip">
-      <div class="tip-key">◈ Portal</div>
+      <div class="tip-key">SETUP|PLAY</div>
       <div class="tip-body">
-        <div class="tip-ttl">SETUP ↔ SPIELMODUS</div>
-        <div class="tip-desc">Der Portal-Button oben im Board schaltet zwischen den beiden Modi um. Im Setup-Modus (golden) kannst du Pads bearbeiten. Im Spielmodus (blau) lösen Tasten und Tippen Sounds aus.</div>
+        <div class="tip-ttl">SETUP ↔ PLAY MODE</div>
+        <div class="tip-desc">The SETUP|PLAY switch at the top of the board toggles between modes. In Setup mode (blue) you can edit pads. In Play mode (gold) keys and taps trigger sounds.</div>
       </div>
     </div>
     <div class="tip">
       <div class="tip-key">↕ Drag</div>
       <div class="tip-body">
-        <div class="tip-ttl">PADS VERSCHIEBEN</div>
-        <div class="tip-desc">Im Setup-Modus ein Pad gedrückt halten und auf eine andere Position ziehen — die beiden Pads tauschen ihre Plätze. Kurzes Antippen öffnet das Bearbeitungsfenster. Im Spielmodus ist Drag &amp; Drop deaktiviert.</div>
+        <div class="tip-ttl">MOVING PADS</div>
+        <div class="tip-desc">In Setup mode, hold a pad and drag it to another position — the two pads swap places. A short tap opens the edit panel. Drag &amp; drop is disabled in Play mode.</div>
       </div>
     </div>
     <div class="tip">
       <div class="tip-key">Fade</div>
       <div class="tip-body">
         <div class="tip-ttl">FADE-IN / FADE-OUT</div>
-        <div class="tip-desc">Im Bearbeitungsfenster pro Pad einstellbar (0–10s). Fade-In blendet den Sound beim Start ein. Fade-Out blendet ihn beim Stoppen aus. Enter stoppt sofort ohne Fade.</div>
+        <div class="tip-desc">Configurable per pad in the edit panel (0–10s). Fade-In gradually raises the volume when the sound starts. Fade-Out lowers it when stopping. Enter stops immediately without a fade.</div>
       </div>
     </div>
     <div class="tip">
-      <div class="tip-key">Leertaste</div>
+      <div class="tip-key">Space</div>
       <div class="tip-body">
-        <div class="tip-ttl">PAUSE / WEITER</div>
-        <div class="tip-desc">Pausiert alle laufenden Sounds und setzt sie auf Druck fort. Funktioniert auf jedem Screen und auch im Spielmodus. Einzige Ausnahme: wenn ein Texteingabefeld aktiv ist.</div>
+        <div class="tip-ttl">PAUSE / RESUME</div>
+        <div class="tip-desc">Pauses all running sounds and resumes them on the next press. Works on every screen and in Play mode. Exception: when a text input field is active.</div>
       </div>
     </div>
     <div class="tip">
       <div class="tip-key">Enter</div>
       <div class="tip-body">
-        <div class="tip-ttl">ALLE STOPPEN</div>
-        <div class="tip-desc">Stoppt sofort alle laufenden Sounds und setzt die Position zurück auf Anfang. Funktioniert auf jedem Screen und auch im Spielmodus.</div>
+        <div class="tip-ttl">STOP ALL</div>
+        <div class="tip-desc">Immediately stops all running sounds and resets their position to the beginning. Works on every screen and in Play mode.</div>
       </div>
     </div>
     <div class="tip">
       <div class="tip-key">Escape</div>
       <div class="tip-body">
-        <div class="tip-ttl">ZURÜCK / ABBRECHEN</div>
-        <div class="tip-desc">Navigiert zurück zum Hauptmenü. Wenn das Bearbeitungsfenster offen ist, schließt Escape es (= Abbrechen). Im Spielmodus wirkungslos.</div>
+        <div class="tip-ttl">BACK / CANCEL</div>
+        <div class="tip-desc">Navigates back to the main menu. If the edit panel is open, Escape closes it (= Cancel). Has no effect in Play mode.</div>
       </div>
     </div>
     <div class="tip">
-      <div class="tip-key">Tippen</div>
+      <div class="tip-key">Tap</div>
       <div class="tip-body">
-        <div class="tip-ttl">SOUND-PAD BELEGEN</div>
-        <div class="tip-desc">Im Setup-Modus ein Pad antippen — das Bearbeitungsfenster öffnet sich. Dort das Tastenfeld anklicken und die gewünschte Taste drücken — der Code wird automatisch erkannt.</div>
+        <div class="tip-ttl">ASSIGN SOUND-PAD</div>
+        <div class="tip-desc">In Setup mode, tap a pad to open the edit panel. Click the key field and press the desired key — the code is detected automatically.</div>
       </div>
     </div>
     <div class="tip">
       <div class="tip-key">⚠</div>
       <div class="tip-body">
-        <div class="tip-ttl">DOPPELBELEGUNG</div>
-        <div class="tip-desc">Beim Speichern wird geprüft ob eine Taste bereits einem anderen Pad zugewiesen ist. Bei Konflikt erscheint eine Warnung mit den Optionen Abbrechen oder Überschreiben.</div>
+        <div class="tip-ttl">KEY CONFLICT</div>
+        <div class="tip-desc">When saving, the app checks whether a key is already assigned to another pad. If there is a conflict, a warning appears with the options Cancel or Overwrite.</div>
       </div>
     </div>
     <div class="tip">
       <div class="tip-key">1 ≠ 1</div>
       <div class="tip-body">
-        <div class="tip-ttl">NUMPAD VS. ZIFFERNTASTE</div>
-        <div class="tip-desc">Die "1" auf dem Numpad und die "1" auf der Haupttastatur werden intern unterschiedlich erkannt. Eine Taste belegt also nie versehentlich die andere.</div>
+        <div class="tip-ttl">NUMPAD VS. NUMBER KEY</div>
+        <div class="tip-desc">The "1" on the numpad and the "1" on the main keyboard are detected as different codes internally. Assigning one never accidentally affects the other.</div>
       </div>
     </div>
    </div><!-- /.cx -->
@@ -718,26 +718,26 @@ input[type=file]{display:none}
 <!-- EDIT -->
 <div id="ebk" onclick="closeEP()"></div>
 <div id="ep">
-  <h3 id="ep-t">SOUND-PAD BELEGEN</h3>
+  <h3 id="ep-t">EDIT SOUND-PAD</h3>
   <div class="fg">
     <label class="fl">NAME</label>
-    <input type="text" class="fi" id="en" placeholder="z.B. Donner, Nacht-Musik…">
+    <input type="text" class="fi" id="en" placeholder="e.g. Thunder, Night Music…">
   </div>
   <div class="fg">
-    <label class="fl">TASTE — Feld anklicken, dann Taste drücken</label>
-    <input type="text" class="fi" id="ek" placeholder="Taste drücken…" readonly onkeydown="captureKey(event)">
+    <label class="fl">KEY — click field, then press a key</label>
+    <input type="text" class="fi" id="ek" placeholder="Press a key…" readonly onkeydown="captureKey(event)">
     <div id="key-reserved-warn" style="display:none;font-size:calc(11px * var(--font-scale));color:var(--blood-bright);margin-top:4px;padding:4px 8px;border-left:2px solid var(--blood)"></div>
   </div>
   <div id="key-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:calc(12px * var(--font-scale));color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
     <span id="key-warn-txt"></span>
     <div style="display:flex;gap:7px;margin-top:8px">
-      <button class="btn-s" style="flex:1" onclick="document.getElementById('key-warn').style.display='none'">ABBRECHEN</button>
-      <button class="btn-d" style="flex:1" onclick="saveForce()">ÜBERSCHREIBEN</button>
+      <button class="btn-s" style="flex:1" onclick="document.getElementById('key-warn').style.display='none'">CANCEL</button>
+      <button class="btn-d" style="flex:1" onclick="saveForce()">OVERWRITE</button>
     </div>
   </div>
   <div class="fg">
-    <label class="fl">AUDIODATEI(EN)</label>
-    <div class="fbtn" id="fbd" onclick="document.getElementById('fi').click()">+ Datei(en) auswählen</div>
+    <label class="fl">AUDIO FILE(S)</label>
+    <div class="fbtn" id="fbd" onclick="document.getElementById('fi').click()">+ Choose file(s)</div>
     <input type="file" id="fi" accept="audio/mpeg,audio/wav,audio/mp4,audio/aac,audio/x-m4a,audio/flac,audio/ogg,audio/opus,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus" onchange="onFile(this)">
     <div id="scrub-wrap" style="display:none;margin-top:7px">
       <canvas id="scrub" height="48"></canvas>
@@ -745,67 +745,67 @@ input[type=file]{display:none}
     </div>
   </div>
   <div class="fg">
-    <label class="fl">BILD <span style="font-style:italic;color:var(--text-dim);font-size:calc(10px * var(--font-scale))">optional</span></label>
+    <label class="fl">IMAGE <span style="font-style:italic;color:var(--text-dim);font-size:calc(10px * var(--font-scale))">optional</span></label>
     <div id="img-prev"></div>
     <div style="display:flex;gap:7px">
-      <div class="fbtn" style="flex:1" onclick="document.getElementById('ii').click()">+ Bild auswählen</div>
+      <div class="fbtn" style="flex:1" onclick="document.getElementById('ii').click()">+ Choose image</div>
       <button id="img-clr" onclick="clearImg()" style="display:none;background:transparent;border:1px solid var(--blood);color:var(--blood-bright);border-radius:2px;padding:0 10px;font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));cursor:pointer;letter-spacing:0">✕</button>
     </div>
     <input type="file" id="ii" accept="image/*" onchange="onImg(this)" style="display:none">
   </div>
   <details class="eff">
-    <summary>EFFEKTE</summary>
+    <summary>EFFECTS</summary>
     <div class="eff-body">
       <div class="fg">
-        <label class="fl">LAUTSTÄRKE</label>
+        <label class="fl">VOLUME</label>
         <input type="range" id="ev" min="0" max="100" value="80" oninput="liveVol()" style="width:100%;accent-color:var(--gold)">
       </div>
       <div class="fg">
-        <label class="fl">FADE-IN — <span id="eft-lbl">Kein</span></label>
+        <label class="fl">FADE-IN — <span id="eft-lbl">Off</span></label>
         <input type="range" id="eft" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('eft')" style="width:100%;accent-color:var(--gold)">
       </div>
       <div class="fg" style="margin-bottom:0">
-        <label class="fl">FADE-OUT — <span id="efo-lbl">Kein</span></label>
+        <label class="fl">FADE-OUT — <span id="efo-lbl">Off</span></label>
         <input type="range" id="efo" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('efo')" style="width:100%;accent-color:var(--gold)">
       </div>
     </div>
   </details>
   <div class="fg">
-    <label class="fl">MODUS</label>
+    <label class="fl">MODE</label>
     <div class="trow">
-      <div class="topt" data-m="once" onclick="setMode('once')">EINMALIG</div>
+      <div class="topt" data-m="once" onclick="setMode('once')">SOLO</div>
       <div class="topt" data-m="loop" onclick="setMode('loop')">LOOP</div>
-      <div class="topt" data-m="playlist" onclick="setMode('playlist')">PLAYLIST 🎲</div>
+      <div class="topt" data-m="playlist" onclick="setMode('playlist')">LIST 🎲</div>
     </div>
   </div>
   <div id="mode-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:calc(12px * var(--font-scale));color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
     <span id="mode-warn-txt"></span>
     <div style="display:flex;gap:7px;margin-top:8px">
-      <button class="btn-s" style="flex:1" onclick="cancelModeSwitch()">ABBRECHEN</button>
-      <button class="btn-d" style="flex:1" onclick="confirmModeSwitch()">VERWERFEN</button>
+      <button class="btn-s" style="flex:1" onclick="cancelModeSwitch()">CANCEL</button>
+      <button class="btn-d" style="flex:1" onclick="confirmModeSwitch()">DISCARD</button>
     </div>
   </div>
   <div id="shuffle-row" class="fg" style="display:none">
-    <label class="fl">REIHENFOLGE</label>
+    <label class="fl">ORDER</label>
     <div class="trow">
-      <div class="topt" id="sh-seq" onclick="setShuffle(false)">▶ IN REIHENFOLGE</div>
-      <div class="topt" id="sh-rnd" onclick="setShuffle(true)">🎲 ZUFALL</div>
+      <div class="topt" id="sh-seq" onclick="setShuffle(false)">▶ SEQUENTIAL</div>
+      <div class="topt" id="sh-rnd" onclick="setShuffle(true)">🎲 SHUFFLE</div>
     </div>
   </div>
   <div id="loopcount-row" class="fg">
-    <label class="fl">WIEDERHOLUNGEN</label>
+    <label class="fl">REPEAT</label>
     <div style="display:flex;gap:8px;align-items:center">
       <div class="topt" id="lc-inf" onclick="setLoopCount(0)" style="flex:0 0 52px;padding:7px 4px;text-align:center">∞</div>
-      <input type="number" id="lc-val" min="1" max="999" placeholder="Anzahl…"
+      <input type="number" id="lc-val" min="1" max="999" placeholder="Count…"
         style="flex:1;background:var(--deep);border:1px solid var(--border);border-radius:2px;
                color:var(--text);font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));padding:6px 8px;
                accent-color:var(--gold)" oninput="onLoopCountInput(this)">
     </div>
   </div>
   <div class="eact">
-    <button class="btn-d" onclick="delPad()">LÖSCHEN</button>
-    <button class="btn-s" style="flex:1" onclick="closeEP()">ABBRECHEN</button>
-    <button class="btn-p" style="flex:2" onclick="savePad()">SPEICHERN</button>
+    <button class="btn-d" onclick="delPad()">DELETE</button>
+    <button class="btn-s" style="flex:1" onclick="closeEP()">CANCEL</button>
+    <button class="btn-p" style="flex:2" onclick="savePad()">SAVE</button>
   </div>
 </div>
 
@@ -817,7 +817,7 @@ input[type=file]{display:none}
         <div id="ms-slider"></div>
         <span id="ms-setup">SETUP</span>
         <span class="ms-sep">|</span>
-        <span id="ms-play">SPIEL</span>
+        <span id="ms-play">PLAY</span>
       </div>
     </div>
   </div>
@@ -830,17 +830,17 @@ input[type=file]{display:none}
     <div id="pad-style-panel">
       <div id="pad-style-inner">
         <div class="gc-row">
-          <span class="gc-ico">▦ GR.</span>
+          <span class="gc-ico">▦ SIZE</span>
           <input type="range" id="sz-slider" min="60" max="320" value="90">
         </div>
         <div class="gc-row">
-          <span class="gc-ico">↔ ABSt.</span>
+          <span class="gc-ico">↔ GAP</span>
           <input type="range" id="gap-slider" min="2" max="48" value="8">
         </div>
         <div class="trow">
-          <div class="topt" id="sh-sq" onclick="setPadShape('0px','sq')">◼ ECKIG</div>
-          <div class="topt" id="sh-rd" onclick="setPadShape('8px','rd')">▢ GERUNDET</div>
-          <div class="topt" id="sh-ci" onclick="setPadShape('50%','ci')">● KREIS</div>
+          <div class="topt" id="sh-sq" onclick="setPadShape('0px','sq')">◼ SQUARE</div>
+          <div class="topt" id="sh-rd" onclick="setPadShape('8px','rd')">▢ ROUNDED</div>
+          <div class="topt" id="sh-ci" onclick="setPadShape('50%','ci')">● CIRCLE</div>
         </div>
       </div>
     </div>
@@ -848,7 +848,7 @@ input[type=file]{display:none}
   <div class="pgrid" id="pgrid"></div>
   <div id="np">
     <canvas id="eq-cv" height="25"></canvas>
-    <span id="nptxt" style="color:var(--text-dim);font-style:italic;position:relative;z-index:1">Kein Sound aktiv</span>
+    <span id="nptxt" style="color:var(--text-dim);font-style:italic;position:relative;z-index:1">No sound active</span>
   </div>
   <div id="dbg" style="display:none;padding:4px 13px;background:#0a0a14;border-top:1px solid #1e1e35;font-family:monospace;font-size:calc(10px * var(--font-scale));color:#4a4a7a;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
 </div>
@@ -856,16 +856,16 @@ input[type=file]{display:none}
 <!-- PAD TYPE PICKER -->
 <div id="pad-type-picker" onclick="if(event.target===this)closePadTypePicker()">
   <div class="ptp-box">
-    <div class="ptp-title">NEUES PAD</div>
+    <div class="ptp-title">NEW PAD</div>
     <div class="ptp-opt" onclick="pickAudioPad()">
       <div class="ptp-ico">🔊</div>
       <div><div class="ptp-lbl">AUDIO-PAD</div>
-           <div class="ptp-sub">Einmalig, Loop oder Playlist</div></div>
+           <div class="ptp-sub">Solo, loop or list</div></div>
     </div>
     <div class="ptp-opt" onclick="pickKomboPad()">
       <div class="ptp-ico">⚡</div>
-      <div><div class="ptp-lbl">KOMBO-PAD</div>
-           <div class="ptp-sub">Mehrere Pads kombinieren</div></div>
+      <div><div class="ptp-lbl">COMBO-PAD</div>
+           <div class="ptp-sub">Combine multiple pads</div></div>
     </div>
   </div>
 </div>
@@ -875,42 +875,42 @@ input[type=file]{display:none}
 <div id="combo-ov">
   <div id="combo-hdr">
     <button onclick="closeComboEditor()" style="background:none;border:none;color:var(--text-dim);font-size:calc(18px * var(--font-scale));cursor:pointer;padding:0 6px;line-height:1">←</button>
-    <span style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));letter-spacing:0;color:var(--gold)">KOMBINATIONS-PAD</span>
-    <button id="combo-del-btn" onclick="deleteCombo()" style="display:none;margin-left:auto;background:none;border:1px solid var(--blood);color:var(--blood);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:4px 8px;border-radius:2px;cursor:pointer">LÖSCHEN</button>
+    <span style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));letter-spacing:0;color:var(--gold)">COMBO-PAD</span>
+    <button id="combo-del-btn" onclick="deleteCombo()" style="display:none;margin-left:auto;background:none;border:1px solid var(--blood);color:var(--blood);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:4px 8px;border-radius:2px;cursor:pointer">DELETE</button>
   </div>
   <div id="combo-body">
     <div class="fg">
       <label class="fl">NAME</label>
-      <input class="fi" id="cn" placeholder="z.B. Gewitterszene…" autocomplete="off">
+      <input class="fi" id="cn" placeholder="e.g. Thunderstorm Scene…" autocomplete="off">
     </div>
     <div class="fg">
-      <label class="fl">TASTE</label>
-      <input class="fi" id="ck" placeholder="Taste drücken…" readonly onkeydown="captureComboKey(event)">
+      <label class="fl">KEY</label>
+      <input class="fi" id="ck" placeholder="Press a key…" readonly onkeydown="captureComboKey(event)">
       <div id="combo-key-warn" style="display:none;font-size:calc(11px * var(--font-scale));color:var(--blood-bright);margin-top:4px;padding:4px 8px;border-left:2px solid var(--blood)"></div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <label class="fl" style="margin:0">SCHRITTE</label>
-      <button onclick="addComboStep()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:4px 9px;border-radius:2px;cursor:pointer">+ SCHRITT</button>
+      <label class="fl" style="margin:0">STEPS</label>
+      <button onclick="addComboStep()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:4px 9px;border-radius:2px;cursor:pointer">+ STEP</button>
     </div>
     <p style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text-dim);font-style:italic;margin:0 0 10px;line-height:1.5">
-      Pads innerhalb eines Schritts starten <em style="color:var(--text)">gleichzeitig</em>. Schritte laufen <em style="color:var(--text)">nacheinander</em> — der nächste Schritt beginnt erst, wenn alle Pads des vorherigen geendet haben. Ein Loop auf <em style="color:var(--text)">∞</em> läuft als <em style="color:var(--text)">Hintergrundsound</em> und blockiert den nächsten Schritt nicht — er stoppt automatisch wenn die Kombo endet.
+      Pads within the same step start <em style="color:var(--text)">simultaneously</em>. Steps run <em style="color:var(--text)">sequentially</em> — the next step begins only when all pads of the previous one have finished. A loop set to <em style="color:var(--text)">∞</em> runs as a <em style="color:var(--text)">background sound</em> and does not block the next step — it stops automatically when the combo ends.
     </p>
     <div id="combo-err" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:3px;padding:7px 10px;font-size:calc(13px * var(--font-scale));color:#ef9a9a;margin-bottom:8px"></div>
     <div id="combo-hint" style="display:none;background:rgba(79,195,247,.07);border:1px solid rgba(79,195,247,.3);border-radius:3px;padding:7px 10px;font-size:calc(12px * var(--font-scale));font-family:var(--ff-body);color:var(--active);margin-bottom:8px"></div>
     <div id="combo-steps-list"></div>
-    <label class="fl" style="margin-bottom:6px">PADS — ZIEHEN ZUM HINZUFÜGEN</label>
+    <label class="fl" style="margin-bottom:6px">PADS — DRAG TO ADD</label>
     <div id="combo-palette" class="combo-palette"></div>
     <div id="combo-bg-warn">
-      <div style="font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;color:var(--gold-dim);margin-bottom:4px">HINTERGRUNDTRACKS</div>
+      <div style="font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;color:var(--gold-dim);margin-bottom:4px">BACKGROUND TRACKS</div>
       <span id="combo-bg-warn-txt"></span>
       <div style="margin-top:8px">
-        <button onclick="doSaveCombo()" class="btn-p" style="width:100%">VERSTANDEN & SPEICHERN</button>
+        <button onclick="doSaveCombo()" class="btn-p" style="width:100%">GOT IT & SAVE</button>
       </div>
     </div>
   </div>
   <div class="eact" style="padding:10px 13px;flex-shrink:0;border-top:1px solid var(--border)">
-    <button class="btn-s" style="flex:1" onclick="closeComboEditor()">ABBRECHEN</button>
-    <button class="btn-p" style="flex:2" onclick="saveCombo()">SPEICHERN</button>
+    <button class="btn-s" style="flex:1" onclick="closeComboEditor()">CANCEL</button>
+    <button class="btn-p" style="flex:2" onclick="saveCombo()">SAVE</button>
   </div>
 </div>
 
@@ -1009,7 +1009,7 @@ function onMenuBtn(){
 function showMenuConfirm(){
   menuConfirmTick = 0;
   document.getElementById('menu-confirm-bar').style.transform = 'scaleX(1)';
-  document.getElementById('mcb').textContent = 'BESTÄTIGEN (5)';
+  document.getElementById('mcb').textContent = 'CONFIRM (5)';
   document.getElementById('menu-confirm-ov').style.display = 'flex';
   // Start shrinking bar after first frame so transition fires
   requestAnimationFrame(()=>{
@@ -1022,7 +1022,7 @@ function showMenuConfirm(){
     menuConfirmTick++;
     const rem = 5 - menuConfirmTick;
     const btn = document.getElementById('mcb');
-    if(btn && rem > 0) btn.textContent = `BESTÄTIGEN (${rem})`;
+    if(btn && rem > 0) btn.textContent = `CONFIRM (${rem})`;
     if(menuConfirmTick >= 5) hideMenuConfirm();
   }, 1000);
 }
@@ -1129,9 +1129,9 @@ function renderBoardList(boards){
       <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${b.padCount} Pad${b.padCount===1?'':'s'} · ${dateStr}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button onclick="switchBoard('${b.id}')" style="background:${active?'rgba(201,168,76,.15)':'var(--raised)'};border:1px solid ${active?'var(--gold-dim)':'var(--border)'};color:${active?'var(--gold)':'var(--text)'};font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">${active?'◈ OFFEN':'→ ÖFFNEN'}</button>
-        <button onclick="startRename('${b.id}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">✎ UMBENENNEN</button>
-        <button onclick="triggerDuplicate('${b.id}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">⧉ DUPLIZIEREN</button>
-        ${boards.length>1?`<button onclick="triggerDelete('${b.id}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">✕ LÖSCHEN</button>`:''}
+        <button onclick="startRename('${b.id}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">✎ RENAME</button>
+        <button onclick="triggerDuplicate('${b.id}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">⧉ DUPLICATE</button>
+        ${boards.length>1?`<button onclick="triggerDelete('${b.id}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">✕ DELETE</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -1158,9 +1158,9 @@ async function triggerDuplicate(id){
 }
 async function triggerDelete(id){
   const boards=await loadBoardsMeta();
-  if(boards.length<=1){ alert('Das letzte Board kann nicht gelöscht werden.'); return; }
+  if(boards.length<=1){ alert('The last board cannot be deleted.'); return; }
   const b=boards.find(x=>x.id===id);
-  if(!confirm(`Board "${b?.name||id}" wirklich löschen?`)) return;
+  if(!confirm(`Really delete board "${b?.name||id}"?`)) return;
   if(id===currentBoardId){
     const other=boards.find(x=>x.id!==id);
     if(other) await switchBoard(other.id);
@@ -1169,7 +1169,7 @@ async function triggerDelete(id){
   loadBoardsMeta().then(renderBoardList);
 }
 function showCreateBoard(){
-  document.getElementById('bnd-input').value='Neues Board';
+  document.getElementById('bnd-input').value='New Board';
   document.getElementById('board-name-dlg').style.display='flex';
   setTimeout(()=>{ const i=document.getElementById('bnd-input'); i.focus(); i.select(); },50);
 }
@@ -1503,7 +1503,7 @@ function stopAll(){
   if(ctx) ctx.resume().catch(()=>{});
   stopPreview();
   Object.keys(srcs).forEach(id=>stopPad(+id,true));
-  document.getElementById('nptxt').textContent='Kein Sound aktiv';
+  document.getElementById('nptxt').textContent='No sound active';
   document.getElementById('nptxt').style.color='var(--text-dim)';
   const d=document.querySelector('.npdot'); if(d) d.remove();
   updEdgeGlow(); stopEQ();
@@ -1522,7 +1522,7 @@ function updBtn(id,on,loop){
 }
 function chkNP(){
   if(!Object.keys(srcs).length){
-    document.getElementById('nptxt').textContent='Kein Sound aktiv';
+    document.getElementById('nptxt').textContent='No sound active';
     document.getElementById('nptxt').style.color='var(--text-dim)';
     const d=document.querySelector('.npdot'); if(d) d.remove();
     updEdgeGlow(); stopEQ();
@@ -1703,7 +1703,7 @@ function renderSetup(){
   }
   const add=document.createElement('div');
   add.className='pbtn empty';
-  add.innerHTML='<div class="e-plus">+</div><div class="e-lbl">NEUES PAD</div>';
+  add.innerHTML='<div class="e-plus">+</div><div class="e-lbl">NEW PAD</div>';
   add.onclick=()=>openPadTypePicker();
   g.appendChild(add);
 }
@@ -1712,7 +1712,7 @@ function renderSetup(){
 function openEP(id){
   if(pads[id]?.mode==='combo'){ openComboEditor(id); return; }
   eId=id; const p=pads[id];
-  document.getElementById('ep-t').textContent=`SOUND-PAD ${id+1} BELEGEN`;
+  document.getElementById('ep-t').textContent=`EDIT SOUND-PAD ${id+1}`;
   document.getElementById('en').value=p?.name||'';
   const keyEl=document.getElementById('ek');
   keyEl.value=p?.keyLabel||p?.key||'';
@@ -1787,7 +1787,7 @@ function captureComboKey(e){
   const conflict=pads.findIndex((p,i)=>p&&p.key===e.code&&i!==comboEditId);
   const cw=document.getElementById('combo-key-warn');
   if(conflict!==-1){
-    cw.textContent=`Bereits belegt: Pad ${conflict+1} "${pads[conflict].name||''}"`;
+    cw.textContent=`Already assigned: Pad ${conflict+1} "${pads[conflict].name||''}"`;
     cw.style.display='block';
   } else { cw.style.display='none'; }
 }
@@ -1811,7 +1811,7 @@ function renderComboSteps(){
       if(!p){
         // Pad was deleted after this combo was saved — mark it clearly so user can remove it
         return `<span class="combo-chip" style="border-color:var(--blood);color:var(--blood-bright)">` +
-               `⚠ Pad ${padId+1} (gelöscht)` +
+               `⚠ Pad ${padId+1} (deleted)` +
                `<button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button></span>`;
       }
       const isBg=isInfiniteBg(p);
@@ -1824,12 +1824,12 @@ function renderComboSteps(){
       <span class="combo-pause-lbl">⏱ PAUSE</span>
       <input class="combo-pause-inp" type="number" min="0.5" max="60" step="0.5" value="${dur||1}"
              oninput="setStepDur(${si},+this.value)" onclick="event.stopPropagation()">
-      <span class="combo-pause-unit">Sek.</span>
-      <span class="combo-pause-hint">— Pad ziehen zum Aktivieren</span>
+      <span class="combo-pause-unit">sec.</span>
+      <span class="combo-pause-hint">— drag a pad here to activate</span>
     </div>`;
     return `<div class="combo-step" data-step="${si}">
       <div class="combo-step-hdr">
-        <span class="combo-step-lbl">SCHRITT ${si+1}</span>
+        <span class="combo-step-lbl">STEP ${si+1}</span>
         <button onclick="removeComboStep(${si})" style="background:none;border:none;color:var(--blood);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">×</button>
       </div>
       <div class="combo-step-body" data-step="${si}">${stepBody}</div>
@@ -1869,7 +1869,7 @@ function initComboPaletteDrag(){
     item.addEventListener('pointerdown',e=>{
       e.preventDefault();
       if(item.dataset.combo){
-        showComboHint('Kombinations-PADs können nicht in einen anderen Kombinations-PAD geladen werden.');
+        showComboHint('Combo-PADs cannot be nested inside another Combo-PAD.');
         return;
       }
       comboDragId=+item.dataset.padid;
@@ -1920,8 +1920,8 @@ function saveCombo(){
   const err=document.getElementById('combo-err');
   const hasPads=comboSteps.some(s=>s.pads.length>0);
   const hasFg=comboSteps.some(s=>s.pads.some(pid=>!isInfiniteBg(pads[pid])));
-  if(!hasPads){ err.textContent='Mindestens ein Schritt muss ein Pad enthalten.'; err.style.display='block'; return; }
-  if(!hasFg){ err.textContent='Eine Combo darf nicht nur aus unendlichen Loops bestehen — füge mindestens ein Einmalig-, Playlist- oder endliches Loop-Pad hinzu.'; err.style.display='block'; return; }
+  if(!hasPads){ err.textContent='At least one step must contain a pad.'; err.style.display='block'; return; }
+  if(!hasFg){ err.textContent='A combo cannot consist only of infinite loops — add at least one Solo, List, or finite Loop pad.'; err.style.display='block'; return; }
   err.style.display='none';
   // Collect background pads for warning
   const bgNames=[];
@@ -1931,7 +1931,7 @@ function saveCombo(){
   if(bgNames.length){
     const bw=document.getElementById('combo-bg-warn');
     document.getElementById('combo-bg-warn-txt').textContent=
-      `${bgNames.join(', ')} — ${bgNames.length===1?'dieser Loop läuft':'diese Loops laufen'} als Hintergrundtrack und stoppt automatisch wenn alle anderen Pads der Combo fertig sind.`;
+      `${bgNames.join(', ')} — ${bgNames.length===1?'this loop runs':'these loops run'} as a background track and stop automatically when all other pads of the combo have finished.`;
     bw.style.display='block';
     bw.scrollIntoView({behavior:'smooth',block:'nearest'});
     return; // user must click VERSTANDEN & SPEICHERN
@@ -2301,7 +2301,7 @@ function updFB(){
   const b=document.getElementById('fbd');
   const sw=document.getElementById('scrub-wrap');
   if(!eFiles.length){
-    b.innerHTML='+ Datei(en) auswählen';
+    b.innerHTML='+ Choose file(s)';
     b.classList.remove('hf');
     b.onclick=()=>document.getElementById('fi').click();
     b.style.cursor='pointer';
@@ -2325,11 +2325,11 @@ function updFB(){
     }).join('')+
     (eMode==='playlist'
       ? `<div style="display:flex;justify-content:flex-end;gap:8px;padding-top:6px">
-          <button onclick="appendFiles=true;document.getElementById('fi').click()" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px">+ HINZUFÜGEN</button>
-          <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ ERSETZEN</button>
+          <button onclick="appendFiles=true;document.getElementById('fi').click()" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px">+ ADD</button>
+          <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ REPLACE</button>
         </div>`
       : `<div style="text-align:right;padding-top:6px">
-          <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ ÄNDERN</button>
+          <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ CHANGE</button>
         </div>`);
     if(sw){ sw.style.display=''; initScrub(); drawScrubber(); }
   }
@@ -2339,7 +2339,7 @@ function setMode(m){
   if(m!=='playlist' && eMode==='playlist' && eFiles.length>1){
     pendingMode=m;
     document.getElementById('mode-warn-txt').textContent=
-      `${eFiles.length} Files werden verworfen — nur das erste bleibt.`;
+      `${eFiles.length} files will be discarded — only the first one remains.`;
     document.getElementById('mode-warn').style.display='block';
     return;
   }
@@ -2398,7 +2398,7 @@ function updateShuffleUI(){
     rn.className='topt'+(eShuffle?' ap':'');
   }
   const plBtn=document.querySelector('.topt[data-m="playlist"]');
-  if(plBtn) plBtn.textContent='PLAYLIST '+(eMode==='playlist'?(eShuffle?'🎲':'▶▶'):'🎲');
+  if(plBtn) plBtn.textContent='LIST '+(eMode==='playlist'?(eShuffle?'🎲':'▶▶'):'🎲');
 }
 function savePad(){
   const keyEl=document.getElementById('ek');
@@ -2407,7 +2407,7 @@ function savePad(){
   if(conflict!==-1){
     const cl=pads[conflict].keyLabel||pads[conflict].key;
     document.getElementById('key-warn-txt').textContent=
-      `"${cl}" ist bereits belegt von Pad ${conflict+1} — "${pads[conflict].name}"`;
+      `"${cl}" is already assigned to Pad ${conflict+1} — "${pads[conflict].name}"`;
     document.getElementById('key-warn').style.display='block';
     return;
   }
@@ -2475,7 +2475,7 @@ function renderPerf(){
 
 function updFadeLabel(id){
   const v=+document.getElementById(id).value;
-  document.getElementById(id+'-lbl').textContent=v>0?v+'s':'Kein';
+  document.getElementById(id+'-lbl').textContent=v>0?v+'s':'Off';
   drawScrubber();
 }
 
@@ -2524,7 +2524,7 @@ function renderKeymap(){
   document.getElementById('keymap-body').innerHTML=html;
   const hLabel=localStorage.getItem('help-key-label')||'?';
   document.getElementById('keymap-footer').textContent=
-    dur==='toggle'?`[${hLabel}] erneut drücken zum Schließen`:`Schließt automatisch nach ${dur}s`;
+    dur==='toggle'?`[${hLabel}] press again to close`:`Closes automatically after ${dur}s`;
 }
 
 // ── HELP-KEY SETTINGS ──
@@ -2533,7 +2533,7 @@ function captureHelpKey(e){
   const warn=document.getElementById('help-key-warn');
   const conflict=pads.findIndex(p=>p&&p.key===e.code);
   if(conflict!==-1){
-    warn.textContent=`Bereits belegt: Pad "${pads[conflict].name||'?'}"`;
+    warn.textContent=`Already assigned: Pad "${pads[conflict].name||'?'}"`;
     warn.style.display='block'; return;
   }
   warn.style.display='none';
@@ -2568,7 +2568,7 @@ function captureKey(e){
   const helpCode=localStorage.getItem('help-key-code');
   const rw=document.getElementById('key-reserved-warn');
   if(helpCode&&e.code===helpCode){
-    if(rw){ rw.textContent='Diese Taste ist als Hilfe-Taste reserviert.'; rw.style.display='block'; }
+    if(rw){ rw.textContent='This key is reserved for the help function.'; rw.style.display='block'; }
     return;
   }
   if(rw) rw.style.display='none';
@@ -2780,7 +2780,7 @@ document.addEventListener('keydown', e=>{
       dbg.textContent=`▶ ${code} → pad[${id}] "${pads[id].name}" | bufs:${loaded}`;
       togglePad(id);
     } else {
-      dbg.textContent=`? ${code} → kein Match | konfiguriert: [${cfgKeys}]`;
+      dbg.textContent=`? ${code} → no match | configured: [${cfgKeys}]`;
     }
   }
 });
@@ -2801,7 +2801,7 @@ if('serviceWorker' in navigator){
 
 <div id="keymap-ov" onclick="closeKeymap()">
   <div id="keymap-box" onclick="event.stopPropagation()">
-    <div class="keymap-hdr">TASTENBELEGUNG</div>
+    <div class="keymap-hdr">KEY MAP</div>
     <div id="keymap-body"></div>
     <div id="keymap-footer" class="keymap-footer"></div>
   </div>
@@ -2810,12 +2810,12 @@ if('serviceWorker' in navigator){
 <div id="mode-flash"></div>
 
 <div id="crop-dlg">
-  <h3>BILD ZUSCHNEIDEN</h3>
-  <div id="crop-hint">Bild verschieben, um den Ausschnitt zu wählen</div>
+  <h3>CROP IMAGE</h3>
+  <div id="crop-hint">Move the image to choose the crop area</div>
   <div id="crop-viewport"><img id="crop-img-el" alt=""></div>
   <div style="display:flex;gap:10px">
-    <button class="btn-s" onclick="cancelCrop()">ABBRECHEN</button>
-    <button class="btn-p" style="flex:1" onclick="confirmCrop()">ZUSCHNEIDEN</button>
+    <button class="btn-s" onclick="cancelCrop()">CANCEL</button>
+    <button class="btn-p" style="flex:1" onclick="confirmCrop()">CROP</button>
   </div>
 </div>
 </body>
