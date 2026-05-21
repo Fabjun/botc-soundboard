@@ -530,7 +530,7 @@ input[type=file]{display:none}
   <div class="fg">
     <label class="fl">AUDIODATEI(EN)</label>
     <div class="fbtn" id="fbd" onclick="document.getElementById('fi').click()">+ Datei(en) auswählen</div>
-    <input type="file" id="fi" accept="audio/mpeg,audio/wav,audio/mp4,audio/aac,audio/x-m4a,audio/flac,audio/ogg,audio/opus,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus" multiple onchange="onFile(this)">
+    <input type="file" id="fi" accept="audio/mpeg,audio/wav,audio/mp4,audio/aac,audio/x-m4a,audio/flac,audio/ogg,audio/opus,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus" onchange="onFile(this)">
     <div id="scrub-wrap" style="display:none;margin-top:7px">
       <canvas id="scrub" height="48"></canvas>
       <div id="scrub-time"></div>
@@ -568,6 +568,20 @@ input[type=file]{display:none}
       <div class="topt" data-m="once" onclick="setMode('once')">EINMALIG</div>
       <div class="topt" data-m="loop" onclick="setMode('loop')">LOOP</div>
       <div class="topt" data-m="playlist" onclick="setMode('playlist')">PLAYLIST 🎲</div>
+    </div>
+  </div>
+  <div id="mode-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:12px;color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
+    <span id="mode-warn-txt"></span>
+    <div style="display:flex;gap:7px;margin-top:8px">
+      <button class="btn-s" style="flex:1" onclick="cancelModeSwitch()">ABBRECHEN</button>
+      <button class="btn-d" style="flex:1" onclick="confirmModeSwitch()">VERWERFEN</button>
+    </div>
+  </div>
+  <div id="shuffle-row" class="fg" style="display:none">
+    <label class="fl">REIHENFOLGE</label>
+    <div class="trow">
+      <div class="topt" id="sh-seq" onclick="setShuffle(false)">▶ IN REIHENFOLGE</div>
+      <div class="topt" id="sh-rnd" onclick="setShuffle(true)">🎲 ZUFALL</div>
     </div>
   </div>
   <div class="eact">
@@ -622,7 +636,8 @@ let pads = [];
 let ctx = null, db = null, masterGain = null, analyser = null, analyserData = null;
 let bufs = {}, srcs = {}, gains = {};
 let eqRAF = null;
-let eId = null, eFiles = [], eMode = 'once', eImage = null;
+let eId = null, eFiles = [], eMode = 'once', eImage = null, eShuffle = false, pendingMode = null;
+const playPos = {};
 let cropOffX=0, cropOffY=0, cropImgDispW=0, cropImgDispH=0, cropDragging=false, cropDragX=0, cropDragY=0;
 const CROP_SIZE=280;
 let previewAudio=null, previewFileIdx=null, previewURL=null, previewFadeGen=0;
@@ -736,7 +751,14 @@ function play(id){
 }
 function playNext(id,all){
   const p=pads[id]; if(!p) return;
-  const i=Math.floor(Math.random()*all.length);
+  let i;
+  if(p.shuffle){
+    i=Math.floor(Math.random()*all.length);
+  } else {
+    playPos[id]=(playPos[id]||0)%all.length;
+    i=playPos[id];
+    playPos[id]++;
+  }
   const s=ctx.createBufferSource(), g=ctx.createGain();
   fadeInGain(g,(p.volume||80)/100,p.fadeIn||0);
   s.buffer=all[i]; s.connect(g); g.connect(masterGain); s.start(0);
@@ -756,10 +778,11 @@ function stopPad(id, immediate=false){
     g.gain.linearRampToValueAtTime(0, ctx.currentTime+fo);
     srcs[id].forEach(s=>{ try{ s.onended=null; s.stop(ctx.currentTime+fo); }catch(e){} });
     const cid=id;
-    setTimeout(()=>{ delete srcs[cid]; delete gains[cid]; updBtn(cid,false); chkNP(); }, fo*1000+100);
+    setTimeout(()=>{ delete srcs[cid]; delete gains[cid]; delete playPos[cid]; updBtn(cid,false); chkNP(); }, fo*1000+100);
   } else {
     srcs[id].forEach(s=>{ try{ s.onended=null; s.stop(); }catch(e){} });
     delete srcs[id];
+    delete playPos[id];
     updBtn(id,false);
   }
 }
@@ -1007,6 +1030,7 @@ function openEP(id){
   eImage=p?.image||null;
   updImgPreview();
   eMode=p?.mode||'once';
+  eShuffle=p?.shuffle||false;
   updFB(); setMode(eMode);
   document.getElementById('ep').classList.add('open');
   document.getElementById('ebk').classList.add('open');
@@ -1124,6 +1148,9 @@ function initScrub(){
   }
   function getMode(frac){
     const dur=getDur(); if(!dur) return 'seek';
+    // playhead always wins within ±8px hit zone
+    const seekFrac=previewAudio?.duration?(previewAudio.currentTime/previewAudio.duration):previewSeekPos;
+    if(Math.abs(frac-seekFrac)*(c.offsetWidth||1)<8) return 'seek';
     const fi=+(document.getElementById('eft')?.value||0);
     const fo=+(document.getElementById('efo')?.value||0);
     if(fi>0&&frac<Math.min(fi/dur,1)) return 'fi';
@@ -1241,7 +1268,9 @@ function previewFile(i){
 }
 function onFile(inp){
   stopPreview(); waveforms=[];
-  const files=Array.from(inp.files); eFiles=[]; let n=0;
+  const isPlaylist=eMode==='playlist';
+  const files=Array.from(inp.files).slice(0, isPlaylist?Infinity:1);
+  eFiles=[]; let n=0;
   files.forEach(f=>{
     const r=new FileReader();
     r.onload=e=>{ eFiles.push({name:f.name,data:e.target.result}); decodeWaveform(eFiles.length-1); if(++n===files.length) updFB(); };
@@ -1365,11 +1394,50 @@ function updFB(){
   }
 }
 function setMode(m){
+  // warn before discarding playlist files
+  if(m!=='playlist' && eMode==='playlist' && eFiles.length>1){
+    pendingMode=m;
+    document.getElementById('mode-warn-txt').textContent=
+      `${eFiles.length} Files werden verworfen — nur das erste bleibt.`;
+    document.getElementById('mode-warn').style.display='block';
+    return;
+  }
+  applyMode(m);
+}
+function confirmModeSwitch(){
+  document.getElementById('mode-warn').style.display='none';
+  if(pendingMode) applyMode(pendingMode);
+  pendingMode=null;
+}
+function cancelModeSwitch(){
+  document.getElementById('mode-warn').style.display='none';
+  pendingMode=null;
+}
+function applyMode(m){
   eMode=m;
   document.querySelectorAll('.topt').forEach(o=>{
     o.className='topt';
     if(o.dataset.m===m) o.classList.add(m==='once'?'ao':m==='loop'?'al':'ap');
   });
+  const fi=document.getElementById('fi');
+  if(fi) fi.multiple=m==='playlist';
+  if(m!=='playlist' && eFiles.length>1){
+    eFiles=eFiles.slice(0,1); waveforms=waveforms.slice(0,1); updFB();
+  }
+  const sr=document.getElementById('shuffle-row');
+  if(sr) sr.style.display=m==='playlist'?'':'none';
+  if(m==='playlist') updateShuffleUI();
+}
+function setShuffle(v){
+  eShuffle=v;
+  updateShuffleUI();
+}
+function updateShuffleUI(){
+  const sq=document.getElementById('sh-seq');
+  const rn=document.getElementById('sh-rnd');
+  if(!sq||!rn) return;
+  sq.className='topt'+(eShuffle?'':' ap');
+  rn.className='topt'+(eShuffle?' ap':'');
 }
 function savePad(){
   const keyEl=document.getElementById('ek');
@@ -1399,7 +1467,7 @@ function doSave(){
   const vol=+document.getElementById('ev').value;
   const fadeIn=+document.getElementById('eft').value;
   const fadeOut=+document.getElementById('efo').value;
-  pads[eId]={id:eId,name,key,keyLabel,mode:eMode,volume:vol,fadeIn,fadeOut,files:eFiles,image:eImage||undefined};
+  pads[eId]={id:eId,name,key,keyLabel,mode:eMode,shuffle:eMode==='playlist'?eShuffle:undefined,volume:vol,fadeIn,fadeOut,files:eFiles,image:eImage||undefined};
   decodePad(eId); save(); closeEP(); renderSetup();
 }
 function delPad(){
@@ -1419,7 +1487,7 @@ function ico(p){
   if(n.includes('abstimm')||n.includes('vote')) return '⚖️';
   if(n.includes('nom')) return '☝️';
   if(p.mode==='loop') return '🔁';
-  if(p.mode==='playlist') return '🎲';
+  if(p.mode==='playlist') return p.shuffle?'🎲':'▶▶';
   return '🔊';
 }
 function renderPerf(){
