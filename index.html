@@ -45,7 +45,7 @@ body.theme-modern .trow .topt{font-weight:500}
 html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch-action:manipulation;
   font-family:var(--ff-body);overflow:hidden;user-select:none}
 .screen{display:none;width:100%;height:100%;flex-direction:column}
-.screen.active{display:flex}
+.screen.active{display:flex;animation:screen-in 90ms ease-out}
 
 /* UNLOCK */
 #su{align-items:center;justify-content:center;text-align:center;gap:12px;padding:32px;
@@ -239,7 +239,8 @@ input[type=file]{display:none}
   transition:color .15s}
 .e-lbl{font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;
   color:var(--gold-dim);transition:color .15s}
-.pbtn.playing{border-color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,.2)}
+.pbtn.playing{border-color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,.2);
+  animation:breathe-gold 1.8s ease-in-out infinite}
 .pbtn.plooping{border-color:var(--active);box-shadow:0 0 10px rgba(79,195,247,.2);
   animation:breathe 2s ease-in-out infinite}
 .pbtn.flash{background:var(--raised)}
@@ -282,7 +283,13 @@ input[type=file]{display:none}
 
 
 @keyframes pulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
-@keyframes breathe{0%,100%{box-shadow:0 0 8px rgba(79,195,247,.2)}50%{box-shadow:0 0 20px rgba(79,195,247,.4)}}
+@keyframes breathe{
+  0%,100%{box-shadow:0 0 8px rgba(79,195,247,.25),inset 0 0 10px rgba(79,195,247,.05)}
+  50%    {box-shadow:0 0 22px rgba(79,195,247,.55),inset 0 0 18px rgba(79,195,247,.12)}}
+@keyframes breathe-gold{
+  0%,100%{box-shadow:0 0 8px rgba(201,168,76,.25),inset 0 0 10px rgba(201,168,76,.05)}
+  50%    {box-shadow:0 0 22px rgba(201,168,76,.55),inset 0 0 18px rgba(201,168,76,.12)}}
+@keyframes screen-in{from{opacity:0}to{opacity:1}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes ripple-anim{to{transform:scale(3);opacity:0}}
 @keyframes edge-breathe{0%,100%{box-shadow:inset 0 0 50px rgba(79,195,247,.12)}50%{box-shadow:inset 0 0 90px rgba(79,195,247,.3)}}
