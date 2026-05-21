@@ -631,12 +631,12 @@ input[type=file]{display:none}
   </div>
   <div id="loopcount-row" class="fg">
     <label class="fl">WIEDERHOLUNGEN</label>
-    <div class="trow" id="loopcount-btns">
-      <div class="topt" data-lc="0" onclick="setLoopCount(0)">∞</div>
-      <div class="topt" data-lc="2" onclick="setLoopCount(2)">2×</div>
-      <div class="topt" data-lc="3" onclick="setLoopCount(3)">3×</div>
-      <div class="topt" data-lc="5" onclick="setLoopCount(5)">5×</div>
-      <div class="topt" data-lc="10" onclick="setLoopCount(10)">10×</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="topt" id="lc-inf" onclick="setLoopCount(0)" style="flex:0 0 52px;padding:7px 4px;text-align:center">∞</div>
+      <input type="number" id="lc-val" min="1" max="999" placeholder="Anzahl…"
+        style="flex:1;background:var(--deep);border:1px solid var(--border);border-radius:2px;
+               color:var(--text);font-family:'Cinzel',serif;font-size:11px;padding:6px 8px;
+               accent-color:var(--gold)" oninput="onLoopCountInput(this)">
     </div>
   </div>
   <div class="eact">
@@ -709,6 +709,7 @@ input[type=file]{display:none}
       <label class="fl" style="margin:0">SCHRITTE</label>
       <button onclick="addComboStep()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;padding:4px 9px;border-radius:2px;cursor:pointer">+ SCHRITT</button>
     </div>
+    <div id="combo-err" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:3px;padding:7px 10px;font-size:11px;color:#ef9a9a;margin-bottom:8px"></div>
     <div id="combo-steps-list"></div>
     <label class="fl" style="margin-bottom:6px">PADS — ZIEHEN ZUM HINZUFÜGEN</label>
     <div id="combo-palette" class="combo-palette"></div>
@@ -1420,9 +1421,12 @@ function initComboPaletteDrag(){
 }
 
 function saveCombo(){
-  if(!comboSteps.some(s=>s.pads.length>0)){
-    alert('Mindestens ein Schritt muss ein Pad enthalten.'); return;
-  }
+  const err=document.getElementById('combo-err');
+  const hasPads=comboSteps.some(s=>s.pads.length>0);
+  const hasFg=comboSteps.some(s=>s.pads.some(pid=>!isInfiniteBg(pads[pid])));
+  if(!hasPads){ err.textContent='Mindestens ein Schritt muss ein Pad enthalten.'; err.style.display='block'; return; }
+  if(!hasFg){ err.textContent='Eine Combo darf nicht nur aus unendlichen Loops bestehen — füge mindestens ein Einmalig-, Playlist- oder endliches Loop-Pad hinzu.'; err.style.display='block'; return; }
+  err.style.display='none';
   // Collect background pads for warning
   const bgNames=[];
   comboSteps.forEach(step=>step.pads.forEach(pid=>{
@@ -1860,9 +1864,17 @@ function setShuffle(v){
 }
 function setLoopCount(n){
   eLoopCount=n;
-  document.querySelectorAll('#loopcount-btns .topt').forEach(o=>{
-    o.className='topt'+(+o.dataset.lc===n?' al':'');
-  });
+  const inf=document.getElementById('lc-inf');
+  const val=document.getElementById('lc-val');
+  if(inf) inf.className='topt'+(n===0?' al':'');
+  if(val){ val.value=n>0?n:''; val.style.borderColor=n>0?'var(--gold-dim)':'var(--border)'; }
+}
+function onLoopCountInput(el){
+  const n=Math.max(1,Math.min(999,parseInt(el.value)||1));
+  eLoopCount=n;
+  const inf=document.getElementById('lc-inf');
+  if(inf) inf.className='topt';
+  el.style.borderColor='var(--gold-dim)';
 }
 function updateShuffleUI(){
   const sq=document.getElementById('sh-seq');
