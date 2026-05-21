@@ -1,5 +1,6 @@
 // Cache name — bump whenever any cached asset changes.
-const CACHE = 'storyteller-v41';
+const VERSION = 42;
+const CACHE = `storyteller-v${VERSION}`;
 
 // All assets required for offline-first operation.
 // Fonts are now separate files; add any new font here when added.
@@ -21,11 +22,11 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  // Delete all caches that don't match the current version
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.matchAll({type:'window'}))
+      .then(clients => clients.forEach(c => c.postMessage({type:'SW_UPDATED', version:VERSION})))
   );
   self.clients.claim();
 });
