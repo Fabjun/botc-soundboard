@@ -188,6 +188,11 @@ input[type=file]{display:none}
 /* TIPS */
 .tips-hdr{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
   color:var(--gold-dim);padding:14px 0 6px;border-top:1px solid var(--border);margin-top:4px;text-align:center}
+.sg-hdr{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));letter-spacing:.2em;
+  color:var(--gold);border-top:1px solid var(--gold-dim);padding:16px 0 8px;margin-top:12px;text-align:center}
+.sg-hdr:first-child{border-top:none;margin-top:0;padding-top:4px}
+.sg-sub{font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;
+  color:var(--gold-dim);padding:10px 0 4px;border-top:1px solid var(--border);margin-top:4px}
 .tip{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(42,42,74,.4)}
 .tip-key{font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));color:var(--active);
   background:var(--surface);border:1px solid var(--border);border-radius:3px;
@@ -678,7 +683,8 @@ input[type=file]{display:none}
         <div><div class="mlbl">KEY TEST</div><div class="msub">Identify numpad key codes</div></div>
       </div>
     </div>
-    <div class="tips-hdr">START MODE</div>
+    <!-- CONTROLS -->
+    <div class="sg-hdr">CONTROLS</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="sm-unlocked" onclick="setStartMode('unlocked')">SETUP</div>
@@ -686,18 +692,23 @@ input[type=file]{display:none}
         <div class="topt" id="sm-remember" onclick="setStartMode('remember')">LAST</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        <b style="color:var(--text)">SETUP</b> — always opens in edit mode.<br>
-        <b style="color:var(--text)">PLAY</b> — opens directly in play mode.<br>
-        <b style="color:var(--text)">LAST</b> — remembers the last used mode.
+        Start mode — <b style="color:var(--text)">SETUP</b> always opens in edit mode ·
+        <b style="color:var(--text)">PLAY</b> opens directly in play mode ·
+        <b style="color:var(--text)">LAST</b> remembers the last used mode.
       </p>
     </div>
-    <div class="tips-hdr">HELP KEY</div>
+
+    <!-- KEYBINDING -->
+    <div class="sg-hdr">KEYBINDING</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
-      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:0">Opens the key map overlay in play mode. This key cannot be assigned to any pad.</p>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:0">Help key — opens the key map overlay in play mode. Cannot be assigned to any pad.</p>
       <input type="text" class="fi" id="help-key-input" placeholder="Press a key…" readonly onkeydown="captureHelpKey(event)">
       <div id="help-key-warn" style="display:none;color:var(--blood-bright);font-size:calc(11px * var(--font-scale))"></div>
     </div>
-    <div class="tips-hdr">KEY MAP — INFO DENSITY</div>
+
+    <!-- INTERFACES -->
+    <div class="sg-hdr">INTERFACES</div>
+    <div class="sg-sub">INFO DENSITY</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="hd-minimal" onclick="setHelpDensity('minimal')">MINIMAL</div>
@@ -705,12 +716,12 @@ input[type=file]{display:none}
         <div class="topt" id="hd-verbose" onclick="setHelpDensity('verbose')">DETAIL</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        <b style="color:var(--text)">MINIMAL</b> — key + name<br>
-        <b style="color:var(--text)">NORMAL</b> — + playback mode<br>
-        <b style="color:var(--text)">DETAIL</b> — + file count &amp; active state
+        Key map overlay — <b style="color:var(--text)">MINIMAL</b> key + name ·
+        <b style="color:var(--text)">NORMAL</b> + playback mode ·
+        <b style="color:var(--text)">DETAIL</b> + file count &amp; active state
       </p>
     </div>
-    <div class="tips-hdr">KEY MAP — DISPLAY DURATION</div>
+    <div class="sg-sub">DISPLAY DURATION</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="hdur-toggle" onclick="setHelpDuration('toggle')">UNTIL KEY</div>
@@ -719,18 +730,21 @@ input[type=file]{display:none}
         <div class="topt" id="hdur-30" onclick="setHelpDuration('30')">30 SEC</div>
       </div>
     </div>
-    <div class="tips-hdr">THEME</div>
+
+    <!-- GRAPHICS -->
+    <div class="sg-hdr">GRAPHICS</div>
+    <div class="sg-sub">THEME</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="th-retro" onclick="setTheme('retro')">RETRO</div>
         <div class="topt" id="th-modern" onclick="setTheme('modern')">MODERN</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        <b style="color:var(--text)">RETRO</b> — pixel aesthetic with monospace font<br>
+        <b style="color:var(--text)">RETRO</b> — pixel aesthetic with monospace font ·
         <b style="color:var(--text)">MODERN</b> — elegant dark UI with system font
       </p>
     </div>
-    <div class="tips-hdr">CONTENT WIDTH</div>
+    <div class="sg-sub">CONTENT WIDTH</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="cw-compact" onclick="setContentWidth('compact')">COMPACT</div>
@@ -739,13 +753,13 @@ input[type=file]{display:none}
         <div class="topt" id="cw-auto" onclick="setContentWidth('auto')">AUTO</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        <b style="color:var(--text)">COMPACT</b> — 900px (default)<br>
-        <b style="color:var(--text)">MEDIUM</b> — 1100px<br>
-        <b style="color:var(--text)">WIDE</b> — 1400px<br>
-        <b style="color:var(--text)">AUTO</b> — scales with the viewport
+        <b style="color:var(--text)">COMPACT</b> 900px ·
+        <b style="color:var(--text)">MEDIUM</b> 1100px ·
+        <b style="color:var(--text)">WIDE</b> 1400px ·
+        <b style="color:var(--text)">AUTO</b> scales with viewport
       </p>
     </div>
-    <div class="tips-hdr">FONT SIZE</div>
+    <div class="sg-sub">FONT SIZE</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);width:20px;text-align:center">A</span>
@@ -755,7 +769,7 @@ input[type=file]{display:none}
       </div>
       <div style="text-align:center;font-size:calc(11px * var(--font-scale));color:var(--text-dim)" id="font-scale-label">100%</div>
     </div>
-    <div class="tips-hdr">SYMBOL SIZE</div>
+    <div class="sg-sub">SYMBOL SIZE</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:calc(12px * var(--sym-scale));color:var(--text-dim);width:20px;text-align:center">✦</span>
@@ -765,7 +779,9 @@ input[type=file]{display:none}
       </div>
       <div style="text-align:center;font-size:calc(11px * var(--font-scale));color:var(--text-dim)" id="sym-scale-label">100%</div>
     </div>
-    <div class="tips-hdr">DATA</div>
+
+    <!-- DATA -->
+    <div class="sg-hdr">DATA</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
       <button onclick="doRemigrateAudio()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">RE-MIGRATE AUDIO TO LIBRARY</button>
       <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Run if pads lost their sounds after an update. Moves any remaining raw audio data into the Library.</p>
