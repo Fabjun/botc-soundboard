@@ -326,6 +326,51 @@ input[type=file]{display:none}
 .mopt.mp .mlbl{color:var(--gold)}
 .mopt .msub{font-family:'Crimson Pro',serif;font-size:11px;color:var(--text-dim);
   font-style:italic;margin-top:2px}
+
+/* LOOP REPEAT COUNT */
+#loopcount-row{display:none}
+
+/* COMBO EDITOR */
+#combo-ov{position:fixed;inset:0;z-index:150;background:var(--night);
+  display:none;flex-direction:column;overflow:hidden}
+#combo-ov.open{display:flex}
+#combo-hdr{padding:11px 13px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;flex-shrink:0}
+#combo-body{flex:1;overflow-y:auto;padding:10px 13px;
+  display:flex;flex-direction:column;gap:0}
+.combo-step{background:var(--surface);border:1px solid var(--border);
+  border-radius:3px;margin-bottom:8px}
+.combo-step-hdr{display:flex;align-items:center;padding:6px 8px;
+  border-bottom:1px solid rgba(42,42,74,.5);gap:6px}
+.combo-step-lbl{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;
+  color:var(--text-dim);flex:1}
+.combo-step-body{min-height:40px;padding:6px 8px;display:flex;flex-wrap:wrap;
+  gap:5px;align-items:center;transition:background .1s}
+.combo-step-body.drag-over{background:rgba(201,168,76,.07);
+  outline:1px dashed var(--gold-dim)}
+.combo-chip{background:var(--raised);border:1px solid var(--border);border-radius:2px;
+  padding:3px 6px 3px 8px;font-size:10px;font-family:'Cinzel',serif;letter-spacing:.5px;
+  color:var(--text-dim);display:inline-flex;align-items:center;gap:3px;user-select:none}
+.combo-chip.is-bg{border-color:var(--mist);color:var(--mist)}
+.combo-chip-del{background:none;border:none;color:var(--blood);cursor:pointer;
+  padding:0 2px;font-size:13px;line-height:1}
+.combo-palette{display:flex;flex-wrap:wrap;gap:6px;padding:8px;
+  background:var(--deep);border-radius:3px;border:1px solid var(--border);
+  margin-bottom:8px}
+.cpal-item{background:var(--raised);border:1px solid var(--border);border-radius:2px;
+  padding:5px 9px;font-size:10px;font-family:'Cinzel',serif;letter-spacing:.5px;
+  cursor:grab;touch-action:none;color:var(--text-dim);user-select:none}
+.cpal-item.cpal-dragging{opacity:.3;pointer-events:none}
+#combo-ghost{position:fixed;pointer-events:none;z-index:300;display:none;
+  background:var(--raised);border:1px solid var(--gold-dim);border-radius:2px;
+  padding:5px 10px;font-size:10px;font-family:'Cinzel',serif;
+  color:var(--gold);white-space:nowrap;letter-spacing:.5px}
+#combo-bg-warn{display:none;background:rgba(10,10,30,.8);border:1px solid var(--gold-dim);
+  border-radius:3px;padding:8px 10px;font-size:11px;color:var(--text-dim);margin-bottom:8px}
+#combo-new-btn{display:none;position:absolute;left:13px;background:none;
+  border:1px solid var(--border);color:var(--text-dim);font-family:'Cinzel',serif;
+  font-size:8px;letter-spacing:1px;padding:5px 8px;border-radius:2px;cursor:pointer}
+#combo-new-btn:active{background:var(--raised)}
 </style>
 </head>
 <body>
@@ -584,6 +629,16 @@ input[type=file]{display:none}
       <div class="topt" id="sh-rnd" onclick="setShuffle(true)">🎲 ZUFALL</div>
     </div>
   </div>
+  <div id="loopcount-row" class="fg">
+    <label class="fl">WIEDERHOLUNGEN</label>
+    <div class="trow" id="loopcount-btns">
+      <div class="topt" data-lc="0" onclick="setLoopCount(0)">∞</div>
+      <div class="topt" data-lc="2" onclick="setLoopCount(2)">2×</div>
+      <div class="topt" data-lc="3" onclick="setLoopCount(3)">3×</div>
+      <div class="topt" data-lc="5" onclick="setLoopCount(5)">5×</div>
+      <div class="topt" data-lc="10" onclick="setLoopCount(10)">10×</div>
+    </div>
+  </div>
   <div class="eact">
     <button class="btn-d" onclick="delPad()">LÖSCHEN</button>
     <button class="btn-s" style="flex:1" onclick="closeEP()">ABBRECHEN</button>
@@ -594,6 +649,7 @@ input[type=file]{display:none}
 <!-- BOARD (Setup + Performance fusioniert) -->
 <div id="sp" class="screen">
   <div class="p-hdr">
+    <button id="combo-new-btn" onclick="openComboEditor()">⊕ COMBO</button>
     <div class="hdr-center">
       <div id="board-title" class="board-title">SETUP-MODUS</div>
       <button id="portal-btn" onclick="toggleLock()"><span class="flame"></span></button>
@@ -631,13 +687,56 @@ input[type=file]{display:none}
   <div id="dbg" style="display:none;padding:4px 13px;background:#0a0a14;border-top:1px solid #1e1e35;font-family:monospace;font-size:10px;color:#4a4a7a;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
 </div>
 
+<!-- COMBO EDITOR OVERLAY -->
+<div id="combo-ghost"></div>
+<div id="combo-ov">
+  <div id="combo-hdr">
+    <button onclick="closeComboEditor()" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;padding:0 6px;line-height:1">←</button>
+    <span style="font-family:'Cinzel',serif;font-size:12px;letter-spacing:3px;color:var(--gold)">KOMBINATIONS-PAD</span>
+    <button id="combo-del-btn" onclick="deleteCombo()" style="display:none;margin-left:auto;background:none;border:1px solid var(--blood);color:var(--blood);font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;padding:4px 8px;border-radius:2px;cursor:pointer">LÖSCHEN</button>
+  </div>
+  <div id="combo-body">
+    <div class="fg">
+      <label class="fl">NAME</label>
+      <input class="fi" id="cn" placeholder="z.B. Gewitterszene…" autocomplete="off">
+    </div>
+    <div class="fg">
+      <label class="fl">TASTE</label>
+      <input class="fi" id="ck" placeholder="Taste drücken…" readonly onkeydown="captureComboKey(event)">
+      <div id="combo-key-warn" style="display:none;font-size:11px;color:var(--blood-bright);margin-top:4px;padding:4px 8px;border-left:2px solid var(--blood)"></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <label class="fl" style="margin:0">SCHRITTE</label>
+      <button onclick="addComboStep()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;padding:4px 9px;border-radius:2px;cursor:pointer">+ SCHRITT</button>
+    </div>
+    <div id="combo-steps-list"></div>
+    <label class="fl" style="margin-bottom:6px">PADS — ZIEHEN ZUM HINZUFÜGEN</label>
+    <div id="combo-palette" class="combo-palette"></div>
+    <div id="combo-bg-warn">
+      <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:1px;color:var(--gold-dim);margin-bottom:4px">HINTERGRUNDTRACKS</div>
+      <span id="combo-bg-warn-txt"></span>
+      <div style="margin-top:8px">
+        <button onclick="doSaveCombo()" class="btn-p" style="width:100%;font-size:10px">VERSTANDEN & SPEICHERN</button>
+      </div>
+    </div>
+  </div>
+  <div class="eact" style="padding:10px 13px;flex-shrink:0;border-top:1px solid var(--border)">
+    <button class="btn-s" style="flex:1" onclick="closeComboEditor()">ABBRECHEN</button>
+    <button class="btn-p" style="flex:2" onclick="saveCombo()">SPEICHERN</button>
+  </div>
+</div>
+
 <script>
 let pads = [];
 let ctx = null, db = null, masterGain = null, analyser = null, analyserData = null;
 let bufs = {}, srcs = {}, gains = {};
 let eqRAF = null;
-let eId = null, eFiles = [], eMode = 'once', eImage = null, eShuffle = false, pendingMode = null;
+let eId = null, eFiles = [], eMode = 'once', eImage = null, eShuffle = false, pendingMode = null, eLoopCount = 0;
 const playPos = {};
+// Combo editor state
+let comboSteps = [], comboKey = '', comboKeyLabel = '', comboEditId = null, comboDragId = null;
+// Combo runtime state: comboState[padId] = {stopped, bgInstances, currentFgInstances}
+const comboState = {};
 let cropOffX=0, cropOffY=0, cropImgDispW=0, cropImgDispH=0, cropDragging=false, cropDragX=0, cropDragY=0;
 const CROP_SIZE=280;
 let previewAudio=null, previewFileIdx=null, previewURL=null, previewFadeGen=0;
@@ -722,7 +821,9 @@ function fadeInGain(g, targetVol, fadeIn){
   }
 }
 function play(id){
-  const p=pads[id]; if(!p||!bufs[id]||!bufs[id].length) return;
+  const p=pads[id]; if(!p) return;
+  if(p.mode==='combo'){ playCombo(id); return; }
+  if(!bufs[id]||!bufs[id].length) return;
   if(ctx?.state==='suspended') ctx.resume().catch(()=>{});
   flash(id);
   const vol=(p.volume||80)/100, fi=p.fadeIn||0;
@@ -738,11 +839,30 @@ function play(id){
   } else if(p.mode==='loop'){
     if(srcs[id]){ stopPad(id); return; }
     const b=bufs[id][0]; if(!b) return;
-    const s=ctx.createBufferSource(), g=ctx.createGain();
-    fadeInGain(g,vol,fi);
-    s.buffer=b; s.loop=true; s.connect(g); g.connect(masterGain); s.start(0);
-    srcs[id]=[s]; gains[id]=g;
-    updBtn(id,true,true); setNP(p.name+' ↻');
+    const lc=p.loopCount||0;
+    const g=ctx.createGain();
+    fadeInGain(g,vol,fi); g.connect(masterGain);
+    gains[id]=g;
+    if(lc===0){
+      const s=ctx.createBufferSource();
+      s.buffer=b; s.loop=true; s.connect(g); s.start(0);
+      srcs[id]=[s];
+    } else {
+      srcs[id]=[null]; // mark active immediately
+      let rem=lc;
+      (function loopOne(){
+        if(!srcs[id]) return;
+        const s=ctx.createBufferSource();
+        s.buffer=b; s.connect(g); s.start(0);
+        srcs[id]=[s]; rem--;
+        if(rem<=0){
+          s.onended=()=>{ if(srcs[id]){ delete srcs[id]; delete gains[id]; updBtn(id,false); chkNP(); } };
+        } else {
+          s.onended=()=>{ if(srcs[id]) loopOne(); };
+        }
+      })();
+    }
+    updBtn(id,true,lc===0); setNP(p.name+' ↻');
   } else {
     if(srcs[id]){ stopPad(id); return; }
     const all=(bufs[id]||[]).filter(Boolean); if(!all.length) return;
@@ -769,6 +889,7 @@ function playNext(id,all){
   s.onended=()=>{ if(srcs[id]) playNext(id,all); };
 }
 function stopPad(id, immediate=false){
+  if(pads[id]?.mode==='combo'){ stopCombo(id); return; }
   if(!srcs[id]) return;
   const fo=(!immediate&&pads[id]?.fadeOut)||0;
   if(fo>0&&gains[id]){
@@ -786,6 +907,118 @@ function stopPad(id, immediate=false){
     updBtn(id,false);
   }
 }
+// ── COMBO PLAYBACK ENGINE ──
+function isInfiniteBg(p){ return p&&p.mode==='loop'&&(!p.loopCount||p.loopCount===0); }
+
+// Creates a self-contained playable instance from a pad config.
+// onEnded is called when the pad finishes (not called for infinite bg loops).
+function createPadInstance(padId){
+  const p=pads[padId], padBufs=bufs[padId];
+  if(!p||!padBufs||!padBufs.length) return null;
+  const g=ctx.createGain();
+  fadeInGain(g,(p.volume||80)/100,p.fadeIn||0);
+  g.connect(masterGain);
+  const active=[]; let stopped=false;
+
+  function doStart(onEnded){
+    if(p.mode==='once'){
+      const b=padBufs[0]; if(!b){onEnded&&onEnded();return;}
+      const s=ctx.createBufferSource();
+      s.buffer=b; s.connect(g); active.push(s);
+      s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
+      s.start(0);
+    } else if(p.mode==='loop'){
+      const b=padBufs[0]; if(!b){onEnded&&onEnded();return;}
+      const lc=p.loopCount||0;
+      if(lc===0){
+        const s=ctx.createBufferSource();
+        s.buffer=b; s.loop=true; s.connect(g); active.push(s); s.start(0);
+        // infinite: never calls onEnded — caller treats this as background
+      } else {
+        let rem=lc;
+        (function loopOne(){
+          if(stopped) return;
+          const s=ctx.createBufferSource(); s.buffer=b; s.connect(g); active.push(s); rem--;
+          if(rem<=0) s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
+          else s.onended=()=>{ if(!stopped){ active.splice(active.indexOf(s),1); loopOne(); } };
+          s.start(0);
+        })();
+      }
+    } else if(p.mode==='playlist'){
+      const all=padBufs.filter(Boolean);
+      if(!all.length){onEnded&&onEnded();return;}
+      let pos=0;
+      (function nextTrack(){
+        if(stopped) return;
+        if(pos>=all.length){onEnded&&onEnded();return;}
+        const i=p.shuffle?Math.floor(Math.random()*all.length):pos; pos++;
+        const s=ctx.createBufferSource(); s.buffer=all[i]; s.connect(g); active.push(s);
+        s.onended=()=>{ if(stopped) return; active.splice(active.indexOf(s),1); nextTrack(); };
+        s.start(0);
+      })();
+    } else { onEnded&&onEnded(); }
+  }
+
+  function doStop(){
+    stopped=true;
+    [...active].forEach(s=>{try{s.onended=null;s.stop();}catch(e){}});
+    active.length=0;
+  }
+  return {start:doStart, stop:doStop};
+}
+
+function playCombo(id){
+  const p=pads[id]; if(!p||p.mode!=='combo') return;
+  if(ctx?.state==='suspended') ctx.resume().catch(()=>{});
+  if(comboState[id]) stopCombo(id); // restart if already playing
+  const state={stopped:false, bgInstances:[], currentFgInstances:[]};
+  comboState[id]=state;
+  srcs[id]=[{}]; // mark as active so togglePad / stopPad work
+  updBtn(id,true,false); flash(id); setNP(p.name);
+  playComboStep(id,state,p.steps||[],0);
+}
+
+function playComboStep(id,state,steps,stepIdx){
+  if(state.stopped||stepIdx>=steps.length){ finishCombo(id,state); return; }
+  const padIds=(steps[stepIdx].pads||[]).filter(pid=>pads[pid]&&bufs[pid]);
+  state.currentFgInstances=[];
+  let fgRem=0;
+
+  for(const padId of padIds){
+    const inst=createPadInstance(padId);
+    if(!inst) continue;
+    if(isInfiniteBg(pads[padId])){
+      state.bgInstances.push(inst);
+      inst.start(null);
+    } else {
+      fgRem++;
+      state.currentFgInstances.push(inst);
+      inst.start(()=>{
+        if(state.stopped) return;
+        fgRem--;
+        if(fgRem===0) playComboStep(id,state,steps,stepIdx+1);
+      });
+    }
+  }
+  // Step with only background pads (or empty) advances immediately
+  if(fgRem===0) playComboStep(id,state,steps,stepIdx+1);
+}
+
+function finishCombo(id,state){
+  state.bgInstances.forEach(i=>i.stop());
+  delete comboState[id]; delete srcs[id];
+  updBtn(id,false); chkNP();
+}
+
+function stopCombo(id){
+  const state=comboState[id]; if(!state) return;
+  state.stopped=true;
+  state.bgInstances.forEach(i=>i.stop());
+  state.currentFgInstances.forEach(i=>i.stop());
+  delete comboState[id]; delete srcs[id];
+  updBtn(id,false); chkNP();
+}
+
 function pauseAllAudio(){
   const epOpen=document.getElementById('ep').classList.contains('open');
   if(epOpen){
@@ -852,7 +1085,7 @@ function updEdgeGlow(){
   const el=document.getElementById('edge-glow'); if(!el) return;
   const ids=Object.keys(srcs);
   if(!ids.length){ el.className=''; return; }
-  const hasLoop=ids.some(id=>{ const p=pads[+id]; return p&&(p.mode==='loop'||p.mode==='playlist'); });
+  const hasLoop=ids.some(id=>{ const p=pads[+id]; return p&&(p.mode==='loop'||p.mode==='playlist'||p.mode==='combo'); });
   el.className=hasLoop?'glow-loop':'glow-once';
 }
 function drawEQ(){
@@ -963,6 +1196,8 @@ function applyModeVisuals(){
     title.textContent=locked?'SPIEL-MODUS':'SETUP-MODUS';
     title.style.color=locked?'var(--gold)':'var(--active)';
   }
+  const comboBtn=document.getElementById('combo-new-btn');
+  if(comboBtn) comboBtn.style.display=locked?'none':'block';
 }
 function applyStartMode(){
   const sm=localStorage.getItem('start-mode')||'unlocked';
@@ -1014,6 +1249,7 @@ function renderSetup(){
 
 // ── EDIT ──
 function openEP(id){
+  if(pads[id]?.mode==='combo'){ openComboEditor(id); return; }
   eId=id; const p=pads[id];
   document.getElementById('ep-t').textContent=`SOUND-PAD ${id+1} BELEGEN`;
   document.getElementById('en').value=p?.name||'';
@@ -1031,6 +1267,7 @@ function openEP(id){
   updImgPreview();
   eMode=p?.mode||'once';
   eShuffle=p?.shuffle||false;
+  eLoopCount=p?.loopCount||0;
   updFB(); setMode(eMode);
   document.getElementById('ep').classList.add('open');
   document.getElementById('ebk').classList.add('open');
@@ -1044,6 +1281,192 @@ function closeEP(){
   stopPreview();
   eFiles=[]; eId=null;
 }
+// ── COMBO EDITOR ──
+function openComboEditor(editId=null){
+  comboEditId=editId;
+  comboKey=''; comboKeyLabel='';
+  const cn=document.getElementById('cn'), ck=document.getElementById('ck');
+  if(editId!==null&&pads[editId]?.mode==='combo'){
+    const p=pads[editId];
+    cn.value=p.name||'';
+    ck.value=p.keyLabel||p.key||''; ck.dataset.code=p.key||'';
+    comboKey=p.key||''; comboKeyLabel=p.keyLabel||p.key||'';
+    comboSteps=(p.steps||[]).map(s=>({pads:[...s.pads]}));
+  } else {
+    cn.value=''; ck.value=''; ck.dataset.code='';
+    comboSteps=[{pads:[]}];
+  }
+  document.getElementById('combo-bg-warn').style.display='none';
+  document.getElementById('combo-key-warn').style.display='none';
+  const delBtn=document.getElementById('combo-del-btn');
+  if(delBtn) delBtn.style.display=editId!==null?'block':'none';
+  renderComboSteps(); renderComboPalette();
+  document.getElementById('combo-ov').classList.add('open');
+}
+
+function closeComboEditor(){
+  document.getElementById('combo-ov').classList.remove('open');
+  comboDragId=null;
+  document.getElementById('combo-ghost').style.display='none';
+  document.querySelectorAll('.cpal-item').forEach(i=>i.classList.remove('cpal-dragging'));
+}
+
+function captureComboKey(e){
+  if(e.key==='Escape'){ closeComboEditor(); return; }
+  e.preventDefault();
+  const ck=document.getElementById('ck');
+  ck.value=e.key; ck.dataset.code=e.code;
+  comboKey=e.code; comboKeyLabel=e.key;
+  const conflict=pads.findIndex((p,i)=>p&&p.key===e.code&&i!==comboEditId);
+  const cw=document.getElementById('combo-key-warn');
+  if(conflict!==-1){
+    cw.textContent=`Bereits belegt: Pad ${conflict+1} "${pads[conflict].name||''}"`;
+    cw.style.display='block';
+  } else { cw.style.display='none'; }
+}
+
+function addComboStep(){ comboSteps.push({pads:[]}); renderComboSteps(); }
+
+function removeComboStep(i){
+  comboSteps.splice(i,1);
+  if(!comboSteps.length) comboSteps.push({pads:[]});
+  renderComboSteps();
+}
+
+function removePadFromStep(si,pi){ comboSteps[si].pads.splice(pi,1); renderComboSteps(); }
+
+function renderComboSteps(){
+  const el=document.getElementById('combo-steps-list'); if(!el) return;
+  el.innerHTML=comboSteps.map((step,si)=>{
+    const chips=step.pads.map((padId,pi)=>{
+      const p=pads[padId];
+      const isBg=isInfiniteBg(p);
+      const lbl=(p?.name||`Pad ${padId+1}`).replace(/</g,'&lt;');
+      return `<span class="combo-chip${isBg?' is-bg':''}">${isBg?'⬤ ':''}<span>${lbl}</span>`+
+             `<button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button></span>`;
+    }).join('');
+    return `<div class="combo-step" data-step="${si}">
+      <div class="combo-step-hdr">
+        <span class="combo-step-lbl">SCHRITT ${si+1}</span>
+        <button onclick="removeComboStep(${si})" style="background:none;border:none;color:var(--blood);font-size:15px;cursor:pointer;padding:0 4px;line-height:1">×</button>
+      </div>
+      <div class="combo-step-body" data-step="${si}">${chips||'<span style="color:var(--text-dim);font-size:10px;font-style:italic">Pad hierher ziehen</span>'}</div>
+    </div>`;
+  }).join('');
+  // attach drop listeners to step bodies
+  document.querySelectorAll('.combo-step-body').forEach(zone=>{
+    zone.addEventListener('dragover',e=>e.preventDefault());
+  });
+}
+
+function renderComboPalette(){
+  const el=document.getElementById('combo-palette'); if(!el) return;
+  const items=pads.map((p,i)=>{
+    if(!p||p.mode==='combo') return ''; // don't allow nesting combos in combos
+    const lbl=(p.name||`Pad ${i+1}`).replace(/</g,'&lt;');
+    const bg=isInfiniteBg(p)?' <span style="color:var(--mist);font-size:9px">BG</span>':'';
+    return `<div class="cpal-item" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}">${ico(p)} ${lbl}${bg}</div>`;
+  }).filter(Boolean).join('');
+  el.innerHTML=items||`<span style="color:var(--text-dim);font-size:11px;font-style:italic">Keine Pads vorhanden</span>`;
+  initComboPaletteDrag();
+}
+
+function initComboPaletteDrag(){
+  document.querySelectorAll('.cpal-item').forEach(item=>{
+    item.addEventListener('pointerdown',e=>{
+      e.preventDefault();
+      comboDragId=+item.dataset.padid;
+      item.classList.add('cpal-dragging');
+      item.setPointerCapture(e.pointerId);
+      const ghost=document.getElementById('combo-ghost');
+      ghost.textContent=item.dataset.name;
+      ghost.style.display='block';
+      ghost.style.left=(e.clientX-40)+'px';
+      ghost.style.top=(e.clientY-16)+'px';
+    });
+    item.addEventListener('pointermove',e=>{
+      if(comboDragId===null) return;
+      const ghost=document.getElementById('combo-ghost');
+      ghost.style.left=(e.clientX-40)+'px';
+      ghost.style.top=(e.clientY-16)+'px';
+      document.querySelectorAll('.combo-step-body').forEach(zone=>{
+        const r=zone.getBoundingClientRect();
+        zone.classList.toggle('drag-over',
+          e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom);
+      });
+    });
+    item.addEventListener('pointerup',e=>{
+      if(comboDragId===null) return;
+      const ghost=document.getElementById('combo-ghost');
+      ghost.style.display='none';
+      item.classList.remove('cpal-dragging');
+      document.querySelectorAll('.combo-step-body').forEach(zone=>{
+        zone.classList.remove('drag-over');
+        const r=zone.getBoundingClientRect();
+        if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
+          comboSteps[+zone.dataset.step].pads.push(comboDragId);
+          renderComboSteps();
+        }
+      });
+      comboDragId=null;
+    });
+    item.addEventListener('pointercancel',()=>{
+      document.getElementById('combo-ghost').style.display='none';
+      item.classList.remove('cpal-dragging');
+      document.querySelectorAll('.combo-step-body').forEach(z=>z.classList.remove('drag-over'));
+      comboDragId=null;
+    });
+  });
+}
+
+function saveCombo(){
+  if(!comboSteps.some(s=>s.pads.length>0)){
+    alert('Mindestens ein Schritt muss ein Pad enthalten.'); return;
+  }
+  // Collect background pads for warning
+  const bgNames=[];
+  comboSteps.forEach(step=>step.pads.forEach(pid=>{
+    if(isInfiniteBg(pads[pid])) bgNames.push(pads[pid]?.name||`Pad ${pid+1}`);
+  }));
+  if(bgNames.length){
+    const bw=document.getElementById('combo-bg-warn');
+    document.getElementById('combo-bg-warn-txt').textContent=
+      `${bgNames.join(', ')} — ${bgNames.length===1?'dieser Loop läuft':'diese Loops laufen'} als Hintergrundtrack und stoppt automatisch wenn alle anderen Pads der Combo fertig sind.`;
+    bw.style.display='block';
+    bw.scrollIntoView({behavior:'smooth',block:'nearest'});
+    return; // user must click VERSTANDEN & SPEICHERN
+  }
+  doSaveCombo();
+}
+
+function doSaveCombo(){
+  const name=(document.getElementById('cn')?.value||'').trim();
+  const ck=document.getElementById('ck');
+  const key=ck?.dataset.code||ck?.value.trim()||'';
+  const keyLabel=ck?.value.trim()||'';
+  // Release key from conflicting pad
+  if(key){
+    const conflict=pads.findIndex((p,i)=>p&&p.key===key&&i!==comboEditId);
+    if(conflict!==-1) pads[conflict]={...pads[conflict],key:'',keyLabel:''};
+  }
+  const pad={id:0,name,key,keyLabel,mode:'combo',steps:comboSteps.map(s=>({pads:[...s.pads]})),volume:80};
+  if(comboEditId!==null){
+    pad.id=comboEditId; pads[comboEditId]=pad;
+  } else {
+    const empty=pads.findIndex(p=>!p);
+    if(empty!==-1){ pad.id=empty; pads[empty]=pad; }
+    else { pad.id=pads.length; pads.push(pad); }
+  }
+  save(); closeComboEditor(); renderSetup();
+}
+
+function deleteCombo(){
+  if(comboEditId===null) return;
+  stopCombo(comboEditId);
+  pads[comboEditId]=null;
+  save(); closeComboEditor(); renderSetup();
+}
+
 function _fmtTime(s){
   if(!isFinite(s)) return '0:00';
   const m=Math.floor(s/60), sec=Math.floor(s%60);
@@ -1426,11 +1849,20 @@ function applyMode(m){
   }
   const sr=document.getElementById('shuffle-row');
   if(sr) sr.style.display=m==='playlist'?'':'none';
+  const lr=document.getElementById('loopcount-row');
+  if(lr) lr.style.display=m==='loop'?'':'none';
+  if(m==='loop') setLoopCount(eLoopCount);
   updateShuffleUI();
 }
 function setShuffle(v){
   eShuffle=v;
   updateShuffleUI();
+}
+function setLoopCount(n){
+  eLoopCount=n;
+  document.querySelectorAll('#loopcount-btns .topt').forEach(o=>{
+    o.className='topt'+(+o.dataset.lc===n?' al':'');
+  });
 }
 function updateShuffleUI(){
   const sq=document.getElementById('sh-seq');
@@ -1470,7 +1902,10 @@ function doSave(){
   const vol=+document.getElementById('ev').value;
   const fadeIn=+document.getElementById('eft').value;
   const fadeOut=+document.getElementById('efo').value;
-  pads[eId]={id:eId,name,key,keyLabel,mode:eMode,shuffle:eMode==='playlist'?eShuffle:undefined,volume:vol,fadeIn,fadeOut,files:eFiles,image:eImage||undefined};
+  pads[eId]={id:eId,name,key,keyLabel,mode:eMode,
+    shuffle:eMode==='playlist'?eShuffle:undefined,
+    loopCount:eMode==='loop'?eLoopCount:undefined,
+    volume:vol,fadeIn,fadeOut,files:eFiles,image:eImage||undefined};
   decodePad(eId); save(); closeEP(); renderSetup();
 }
 function delPad(){
@@ -1489,7 +1924,8 @@ function ico(p){
   if(n.includes('tod')||n.includes('death')) return '💀';
   if(n.includes('abstimm')||n.includes('vote')) return '⚖️';
   if(n.includes('nom')) return '☝️';
-  if(p.mode==='loop') return '🔁';
+  if(p.mode==='combo') return '⚡';
+  if(p.mode==='loop') return isInfiniteBg(p)?'🔁':'🔂';
   if(p.mode==='playlist') return p.shuffle?'🎲':'▶▶';
   return '🔊';
 }
@@ -1500,7 +1936,7 @@ function renderPerf(){
     const b=document.createElement('div');
     b.className='pbtn';
     b.dataset.id=i;
-    const isLoop=p.mode==='loop'||p.mode==='playlist';
+    const isLoop=p.mode==='loop'||p.mode==='playlist'||p.mode==='combo';
     if(srcs[i]) b.classList.add(isLoop?'plooping':'playing');
     b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
     if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
@@ -1535,7 +1971,7 @@ function closeKeymap(){
 function renderKeymap(){
   const density=localStorage.getItem('help-info-density')||'normal';
   const dur=localStorage.getItem('help-duration')||'toggle';
-  const modeIcon=m=>m==='loop'?'↺':m==='playlist'?'≡':'▶';
+  const modeIcon=m=>m==='loop'?'↺':m==='playlist'?'≡':m==='combo'?'⚡':'▶';
   const rows=[];
   for(let i=0;i<pads.length;i++){ const p=pads[i]; if(p&&p.key) rows.push({p,i}); }
   rows.sort((a,b)=>(a.p.keyLabel||a.p.key||'').localeCompare(b.p.keyLabel||b.p.key||''));
