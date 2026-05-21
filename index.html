@@ -169,7 +169,15 @@ input[type=file]{display:none}
   padding:4px;cursor:pointer;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:2px;aspect-ratio:1/1;
   transition:all .1s;position:relative;overflow:hidden}
-.pbtn.empty{opacity:.4;cursor:pointer;border-style:dashed}
+.pbtn.empty{cursor:pointer;border:1.5px dashed var(--gold-dim);
+  opacity:1;flex-direction:column;gap:5px;transition:background .15s,border-color .15s}
+.pbtn.empty:active,.pbtn.empty:hover{background:rgba(122,95,40,.07);border-color:var(--gold)}
+.pbtn.empty:active .e-plus,.pbtn.empty:hover .e-plus{color:var(--gold)}
+.pbtn.empty:active .e-lbl,.pbtn.empty:hover .e-lbl{color:var(--gold)}
+.e-plus{font-size:38px;line-height:1;color:var(--gold-dim);font-weight:300;
+  transition:color .15s}
+.e-lbl{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;
+  color:var(--gold-dim);transition:color .15s}
 .pbtn.playing{border-color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,.2)}
 .pbtn.plooping{border-color:var(--active);box-shadow:0 0 10px rgba(79,195,247,.2);
   animation:breathe 2s ease-in-out infinite}
@@ -1273,7 +1281,7 @@ function renderSetup(){
   }
   const add=document.createElement('div');
   add.className='pbtn empty';
-  add.innerHTML='<div class="pico" style="font-size:22px;color:var(--text-dim)">+</div>';
+  add.innerHTML='<div class="e-plus">+</div><div class="e-lbl">NEUES PAD</div>';
   add.onclick=()=>openPadTypePicker();
   g.appendChild(add);
 }
