@@ -151,6 +151,9 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 .fg{margin-bottom:11px}
 .fl{font-size:calc(14px * var(--font-scale));color:rgba(180,170,195,.9);letter-spacing:0;
   font-family:var(--ff-label);margin-bottom:4px;display:block}
+.ep-sep{border-top:1px solid var(--border);margin:4px 0 12px;padding-top:10px;
+  font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));
+  letter-spacing:.08em;color:var(--text-dim)}
 .fi{width:100%;background:var(--surface);border:1px solid var(--border);
   color:var(--text);font-family:var(--ff-body);font-size:calc(16px * var(--font-scale));
   padding:7px 10px;border-radius:2px;outline:none}
@@ -169,14 +172,6 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 .topt.ao{background:rgba(122,95,40,.12);border-color:var(--gold-dim);color:var(--gold)}
 .topt.al{background:#1a2a3a;border-color:#1a5a8b;color:var(--active)}
 .topt.ap{background:#1a2a1a;border-color:#1a5a1a;color:#81c784}
-details.eff{margin-bottom:11px;border:1px solid var(--gold-dim);border-radius:2px}
-details.eff summary{font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));color:var(--gold-dim);
-  letter-spacing:0;padding:7px 10px;cursor:pointer;list-style:none;
-  display:flex;align-items:center;gap:6px}
-details.eff summary::-webkit-details-marker{display:none}
-details.eff summary::before{content:'▶';font-size:calc(7px * var(--font-scale));transition:transform .2s;flex-shrink:0}
-details.eff[open] summary::before{transform:rotate(90deg)}
-details.eff .eff-body{padding:0 10px 10px}
 #scrub{display:block;width:100%;border-radius:3px;cursor:pointer;background:var(--raised);border:1px solid var(--border)}
 #scrub-time{font-size:calc(13px * var(--font-scale));color:var(--text-dim);font-family:var(--ff-label);text-align:right;margin-top:2px;letter-spacing:0}
 .eact{display:flex;gap:7px;margin-top:12px}
@@ -1022,6 +1017,8 @@ input[type=file]{display:none}
 <div id="ebk" onclick="closeEP()"></div>
 <div id="ep">
   <h3 id="ep-t">EDIT SOUND-PAD</h3>
+
+  <!-- ① IDENTITY -->
   <div class="fg">
     <label class="fl">NAME</label>
     <input type="text" class="fi" id="en" placeholder="e.g. Thunder, Night Music…" onkeydown="if(event.key==='Enter')savePad()">
@@ -1038,6 +1035,9 @@ input[type=file]{display:none}
       <button class="btn-d" style="flex:1" onclick="saveForce()">OVERWRITE</button>
     </div>
   </div>
+
+  <!-- ② SOUND -->
+  <div class="ep-sep">SOUND</div>
   <div class="fg">
     <label class="fl">AUDIO FILE(S)</label>
     <div style="display:flex;gap:6px">
@@ -1051,31 +1051,20 @@ input[type=file]{display:none}
     </div>
   </div>
   <div class="fg">
-    <label class="fl">IMAGE <span style="font-style:italic;color:var(--text-dim);font-size:calc(10px * var(--font-scale))">optional</span></label>
-    <div id="img-prev"></div>
-    <div style="display:flex;gap:7px">
-      <div class="fbtn" style="flex:1" onclick="document.getElementById('ii').click()">+ Choose image</div>
-      <button id="img-clr" onclick="clearImg()" style="display:none;background:transparent;border:1px solid var(--blood);color:var(--blood-bright);border-radius:2px;padding:0 10px;font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));cursor:pointer;letter-spacing:0">✕</button>
-    </div>
-    <input type="file" id="ii" accept="image/*" onchange="onImg(this)" style="display:none">
+    <label class="fl">VOLUME</label>
+    <input type="range" id="ev" min="0" max="100" value="80" oninput="liveVol()" style="width:100%;accent-color:var(--gold)">
   </div>
-  <details class="eff">
-    <summary>EFFECTS</summary>
-    <div class="eff-body">
-      <div class="fg">
-        <label class="fl">VOLUME</label>
-        <input type="range" id="ev" min="0" max="100" value="80" oninput="liveVol()" style="width:100%;accent-color:var(--gold)">
-      </div>
-      <div class="fg">
-        <label class="fl">FADE-IN — <span id="eft-lbl">Off</span></label>
-        <input type="range" id="eft" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('eft')" style="width:100%;accent-color:var(--gold)">
-      </div>
-      <div class="fg" style="margin-bottom:0">
-        <label class="fl">FADE-OUT — <span id="efo-lbl">Off</span></label>
-        <input type="range" id="efo" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('efo')" style="width:100%;accent-color:var(--gold)">
-      </div>
-    </div>
-  </details>
+  <div class="fg">
+    <label class="fl">FADE-IN — <span id="eft-lbl">Off</span></label>
+    <input type="range" id="eft" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('eft')" style="width:100%;accent-color:var(--gold)">
+  </div>
+  <div class="fg">
+    <label class="fl">FADE-OUT — <span id="efo-lbl">Off</span></label>
+    <input type="range" id="efo" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('efo')" style="width:100%;accent-color:var(--gold)">
+  </div>
+
+  <!-- ③ BEHAVIOR -->
+  <div class="ep-sep">BEHAVIOR</div>
   <div class="fg">
     <label class="fl">MODE</label>
     <div class="trow">
@@ -1108,6 +1097,18 @@ input[type=file]{display:none}
                accent-color:var(--gold)" oninput="onLoopCountInput(this)">
     </div>
   </div>
+
+  <!-- ④ VISUAL -->
+  <div class="ep-sep">VISUAL <span style="font-style:italic;color:var(--text-dim);font-size:calc(10px * var(--font-scale))">optional</span></div>
+  <div class="fg" style="margin-bottom:0">
+    <div id="img-prev"></div>
+    <div style="display:flex;gap:7px">
+      <div class="fbtn" style="flex:1" onclick="document.getElementById('ii').click()">+ Choose image</div>
+      <button id="img-clr" onclick="clearImg()" style="display:none;background:transparent;border:1px solid var(--blood);color:var(--blood-bright);border-radius:2px;padding:0 10px;font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));cursor:pointer;letter-spacing:0">✕</button>
+    </div>
+    <input type="file" id="ii" accept="image/*" onchange="onImg(this)" style="display:none">
+  </div>
+
   <div class="eact">
     <button class="btn-d" id="del-pad-btn" onclick="delPad()">DELETE</button>
     <button class="btn-s" style="flex:1" onclick="closeEP()">CANCEL</button>
