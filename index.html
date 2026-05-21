@@ -84,9 +84,14 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
   padding:9px 18px;border-radius:2px;cursor:pointer}
 
 /* SETUP */
+/* Centered content box — max 500px, auto margins, 20px h-padding.
+   Use on scrollable content areas inside non-pad screens. */
+.cx{max-width:500px;width:100%;margin:0 auto;padding:0 20px;box-sizing:border-box}
+/* Section body inside Einstellungen — vertical padding + .cx geometry */
+.sec-body{max-width:500px;width:100%;margin:0 auto;padding:10px 20px 16px;box-sizing:border-box}
 .s-hdr{display:flex;align-items:center;justify-content:space-between;
-  padding:11px 14px;border-bottom:1px solid var(--border);
-  background:var(--surface);flex-shrink:0}
+  padding:11px max(20px, calc((100% - 460px) / 2));
+  border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
 .s-hdr h2{font-family:var(--ff-label);color:var(--gold);font-size:calc(17px * var(--font-scale));letter-spacing:0}
 .pbtn.ed{border-color:var(--gold)!important;box-shadow:0 0 8px rgba(201,168,76,.25)}
 #crop-dlg{position:fixed;inset:0;background:rgba(10,10,20,0.97);z-index:300;
@@ -164,8 +169,10 @@ input[type=file]{display:none}
 /* PERFORMANCE */
 /* TIPS */
 .tips-hdr{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
-  color:var(--gold-dim);padding:14px 14px 6px;border-top:1px solid var(--border);margin-top:4px}
-.tip{display:flex;gap:12px;padding:10px 14px;border-bottom:1px solid rgba(42,42,74,.4)}
+  color:var(--gold-dim);padding:14px max(20px, calc((100% - 460px) / 2)) 6px;
+  border-top:1px solid var(--border);margin-top:4px}
+.tip{display:flex;gap:12px;padding:10px max(20px, calc((100% - 460px) / 2));
+  border-bottom:1px solid rgba(42,42,74,.4)}
 .tip-key{font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));color:var(--active);
   background:var(--surface);border:1px solid var(--border);border-radius:3px;
   padding:3px 7px;white-space:nowrap;align-self:flex-start;flex-shrink:0;margin-top:1px}
@@ -461,8 +468,8 @@ input[type=file]{display:none}
   <div class="s-hdr">
     <h2>MEINE BOARDS</h2>
   </div>
-  <div id="board-list" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px"></div>
-  <div style="padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0">
+  <div id="board-list" style="flex:1;overflow-y:auto;padding:14px max(20px, calc((100% - 460px) / 2));display:flex;flex-direction:column;gap:10px"></div>
+  <div style="padding:10px max(20px, calc((100% - 460px) / 2));border-top:1px solid var(--border);flex-shrink:0">
     <button class="btn-p" onclick="showCreateBoard()" style="width:100%">+ NEUES BOARD</button>
   </div>
 </div>
@@ -537,14 +544,14 @@ input[type=file]{display:none}
     <h2>EINSTELLUNGEN</h2>
   </div>
   <div style="flex:1;overflow-y:auto">
-    <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+    <div class="cx" style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px">
       <div class="mopt" onclick="show('sk')">
         <div class="mico">⌨</div>
         <div><div class="mlbl">TASTEN-TEST</div><div class="msub">Codes des Numpads erkennen</div></div>
       </div>
     </div>
     <div class="tips-hdr">STARTMODUS</div>
-    <div style="padding:10px 14px 16px">
+    <div class="sec-body">
       <div class="trow">
         <div class="topt" id="sm-unlocked" onclick="setStartMode('unlocked')">SETUP</div>
         <div class="topt" id="sm-locked" onclick="setStartMode('locked')">SPIEL</div>
@@ -557,13 +564,13 @@ input[type=file]{display:none}
       </p>
     </div>
     <div class="tips-hdr">HILFE-TASTE</div>
-    <div style="padding:10px 14px 16px;display:flex;flex-direction:column;gap:8px">
+    <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:0">Öffnet die Tastenbelegungs-Übersicht im Spielmodus. Diese Taste kann keinem Pad zugewiesen werden.</p>
       <input type="text" class="fi" id="help-key-input" placeholder="Taste drücken…" readonly onkeydown="captureHelpKey(event)">
       <div id="help-key-warn" style="display:none;color:var(--blood-bright);font-size:calc(11px * var(--font-scale))"></div>
     </div>
     <div class="tips-hdr">ÜBERSICHT — INFO-DICHTE</div>
-    <div style="padding:10px 14px 16px">
+    <div class="sec-body">
       <div class="trow">
         <div class="topt" id="hd-minimal" onclick="setHelpDensity('minimal')">MINIMAL</div>
         <div class="topt" id="hd-normal" onclick="setHelpDensity('normal')">NORMAL</div>
@@ -576,7 +583,7 @@ input[type=file]{display:none}
       </p>
     </div>
     <div class="tips-hdr">ÜBERSICHT — ANZEIGEDAUER</div>
-    <div style="padding:10px 14px 16px">
+    <div class="sec-body">
       <div class="trow">
         <div class="topt" id="hdur-toggle" onclick="setHelpDuration('toggle')">BIS TASTE</div>
         <div class="topt" id="hdur-5" onclick="setHelpDuration('5')">5 SEK</div>
@@ -585,7 +592,7 @@ input[type=file]{display:none}
       </div>
     </div>
     <div class="tips-hdr">DESIGN</div>
-    <div style="padding:10px 14px 16px">
+    <div class="sec-body">
       <div class="trow">
         <div class="topt" id="th-retro" onclick="setTheme('retro')">RETRO</div>
         <div class="topt" id="th-modern" onclick="setTheme('modern')">MODERN</div>
@@ -596,7 +603,7 @@ input[type=file]{display:none}
       </p>
     </div>
     <div class="tips-hdr">SCHRIFTGRÖSSE</div>
-    <div style="padding:10px 14px 16px;display:flex;flex-direction:column;gap:10px">
+    <div class="sec-body" style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);width:20px;text-align:center">A</span>
         <input type="range" id="font-scale-slider" min="0.8" max="1.8" step="0.1" value="1"
@@ -606,7 +613,7 @@ input[type=file]{display:none}
       <div style="text-align:center;font-size:calc(11px * var(--font-scale));color:var(--text-dim)" id="font-scale-label">100%</div>
     </div>
     <div class="tips-hdr">SYMBOLGRÖSSE</div>
-    <div style="padding:10px 14px 16px;display:flex;flex-direction:column;gap:10px">
+    <div class="sec-body" style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:calc(12px * var(--sym-scale));color:var(--text-dim);width:20px;text-align:center">✦</span>
         <input type="range" id="sym-scale-slider" min="0.6" max="2.0" step="0.1" value="1"
