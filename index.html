@@ -1897,8 +1897,10 @@ async function onLibUpload(inp){
     const {isDuplicate}=await addToLib(buf,f.name,f.type||'');
     if(isDuplicate) dupes++;
   }
-  if(dupes) showToast(`${dupes} duplicate${dupes===1?'':'s'} skipped — already in Library.`);
-  else showToast(`${files.length} file${files.length===1?'':'s'} added to Library.`);
+  const added=files.length-dupes;
+  if(added && dupes) showToast(`${added} file${added===1?'':'s'} added. ${dupes} duplicate${dupes===1?'':'s'} skipped.`);
+  else if(dupes) showToast(`${dupes} duplicate${dupes===1?'':'s'} skipped — already in Library.`);
+  else showToast(`${added} file${added===1?'':'s'} added to Library.`);
   initLibScreen();
 }
 async function libDeleteFile(hash){
