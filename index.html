@@ -2173,11 +2173,23 @@ function showKD(){
 }
 
 // ── GRID CONTROLS ──
-let padStyleOpen=false;
+let padStyleOpen=false,_padStyleClickOut=null;
+function closePadStyle(){
+  if(!padStyleOpen) return;
+  padStyleOpen=false;
+  document.getElementById('pad-style-panel').classList.remove('open');
+  document.getElementById('ps-arrow').textContent='▾';
+  if(_padStyleClickOut){ document.removeEventListener('click',_padStyleClickOut); _padStyleClickOut=null; }
+}
 function togglePadStyle(){
-  padStyleOpen=!padStyleOpen;
-  document.getElementById('pad-style-panel').classList.toggle('open',padStyleOpen);
-  document.getElementById('ps-arrow').textContent=padStyleOpen?'▴':'▾';
+  if(padStyleOpen){ closePadStyle(); return; }
+  padStyleOpen=true;
+  document.getElementById('pad-style-panel').classList.add('open');
+  document.getElementById('ps-arrow').textContent='▴';
+  setTimeout(()=>{
+    _padStyleClickOut=e=>{ if(!document.getElementById('pad-style-bar').contains(e.target)) closePadStyle(); };
+    document.addEventListener('click',_padStyleClickOut);
+  },0);
 }
 function setPadShape(radius,key){
   localStorage.setItem('pad-radius',radius);
@@ -3018,6 +3030,7 @@ function updateShuffleUI(){
 function savePad(){
   const keyEl=document.getElementById('ek');
   const key=keyEl.dataset.code||keyEl.value.trim();
+  if(!key){ doSave(); return; }
   const conflict=pads.findIndex((p,i)=>p&&p.key===key&&i!==eId);
   if(conflict!==-1){
     const cl=pads[conflict].keyLabel||pads[conflict].key;
