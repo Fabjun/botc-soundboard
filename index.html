@@ -469,6 +469,10 @@ input[type=file]{display:none}
   gap:5px;align-items:center;transition:background .1s}
 .combo-step-body.drag-over{background:rgba(201,168,76,.07);
   outline:1px dashed var(--gold-dim)}
+.combo-ins{display:flex;align-items:center;justify-content:center;height:22px;
+  color:var(--border);font-family:var(--ff-label);font-size:calc(19px * var(--font-scale));
+  cursor:pointer;user-select:none;transition:color .15s;letter-spacing:0}
+.combo-ins:hover{color:var(--gold-dim)}
 .combo-chip{background:var(--raised);border:1px solid var(--border);border-radius:2px;
   padding:3px 6px 3px 8px;font-size:calc(13px * var(--font-scale));font-family:var(--ff-label);letter-spacing:0;
   color:var(--text-dim);display:inline-flex;align-items:center;gap:3px;user-select:none}
@@ -576,7 +580,7 @@ input[type=file]{display:none}
       <div><div class="mlbl">SETTINGS</div><div class="msub">Theme, font size &amp; start mode</div></div>
     </div>
     <div class="mopt" onclick="show('st')">
-      <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/></svg></div>
+      <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M9 4h6v2H9zM7 6h2v2H7zm8 0h2v2h-2zm4-2h2v2h-2zm2-2h2v2h-2zM0 10h3v2H0zm21 0h3v2h-3zM3 4h2v2H3zM1 2h2v2H1zm6 12h2v2H7zm8 0h2v2h-2zM5 8h2v6H5zm12 0h2v6h-2zm-8 8h6v2H9zm0 4h6v2H9zm0-2h2v2H9zm4 0h2v2h-2zM11 0h2v3h-2z"/></svg></div>
       <div><div class="mlbl">TIPS &amp; TRICKS</div><div class="msub">Controls and key bindings</div></div>
     </div>
     <div class="mopt" onclick="show('sab')">
@@ -2442,6 +2446,7 @@ function captureComboKey(e){
 }
 
 function addComboStep(){ comboSteps.push({pads:[],dur:1,chipOpts:[]}); renderComboSteps(); }
+function insertComboStep(i){ comboSteps.splice(i,0,{pads:[],dur:1,chipOpts:[]}); renderComboSteps(); }
 
 function removeComboStep(i){
   comboSteps.splice(i,1);
@@ -2507,14 +2512,15 @@ function renderComboSteps(){
       <span class="combo-pause-unit">sec.</span>
       <span class="combo-pause-hint">— drag a pad here to activate</span>
     </div>`;
-    return `<div class="combo-step" data-step="${si}">
+    return `<div class="combo-ins" onclick="insertComboStep(${si})">+</div>`+
+           `<div class="combo-step" data-step="${si}">
       <div class="combo-step-hdr">
         <span class="combo-step-lbl">STEP ${si+1}</span>
         <button onclick="removeComboStep(${si})" style="background:none;border:none;color:var(--blood);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">×</button>
       </div>
       <div class="combo-step-body" data-step="${si}">${stepBody}</div>
     </div>`;
-  }).join('');
+  }).join('')+'<div class="combo-ins" onclick="insertComboStep('+comboSteps.length+')">+</div>';
   // attach drop listeners to step bodies
   document.querySelectorAll('.combo-step-body').forEach(zone=>{
     zone.addEventListener('dragover',e=>e.preventDefault());
@@ -3311,6 +3317,28 @@ function captureKey(e){
 
 // ── KEYBOARD ──
 // ── DRAG & DROP ──
+function reorderPad(fromIdx, toIdx){
+  if(fromIdx===toIdx) return;
+  for(let i=Math.min(fromIdx,toIdx);i<=Math.max(fromIdx,toIdx);i++) stopPad(i,true);
+  const movedPad=pads[fromIdx], movedBuf=bufs[fromIdx];
+  const remap={};
+  if(fromIdx<toIdx){
+    for(let i=fromIdx;i<toIdx;i++) remap[i+1]=i;
+    remap[fromIdx]=toIdx;
+    for(let i=fromIdx;i<toIdx;i++){ pads[i]=pads[i+1]?{...pads[i+1],id:i}:null; bufs[i]=bufs[i+1]; }
+  } else {
+    for(let i=toIdx;i<fromIdx;i++) remap[i]=i+1;
+    remap[fromIdx]=toIdx;
+    for(let i=fromIdx;i>toIdx;i--){ pads[i]=pads[i-1]?{...pads[i-1],id:i}:null; bufs[i]=bufs[i-1]; }
+  }
+  pads[toIdx]=movedPad?{...movedPad,id:toIdx}:null;
+  bufs[toIdx]=movedBuf;
+  pads.forEach(p=>{
+    if(!p||p.mode!=='combo'||!p.steps) return;
+    p.steps.forEach(step=>{ if(step.pads) step.pads=step.pads.map(pid=>remap.hasOwnProperty(pid)?remap[pid]:pid); });
+  });
+  save(); renderBoard();
+}
 function onPadPointerDown(e, id){
   e.preventDefault();
   spawnRipple(e.currentTarget, e);
@@ -3362,13 +3390,7 @@ function onDragEnd(e){
   const tgt=under?.closest('.pbtn[data-id]');
   const tgtId=tgt?+tgt.dataset.id:null;
   if(tgtId!==null && Number.isInteger(tgtId) && tgtId!==dragSrc){
-    stopPad(dragSrc,true); stopPad(tgtId,true);
-    const padA=pads[dragSrc]?{...pads[dragSrc],id:tgtId}:null;
-    const padB=pads[tgtId]?{...pads[tgtId],id:dragSrc}:null;
-    pads[dragSrc]=padB; pads[tgtId]=padA;
-    const tmpBuf=bufs[dragSrc]; bufs[dragSrc]=bufs[tgtId]; bufs[tgtId]=tmpBuf;
-    save();
-    renderBoard();
+    reorderPad(dragSrc, tgtId);
   }
   dragSrc=null;
 }
