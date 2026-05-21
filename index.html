@@ -54,10 +54,19 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 /* UNLOCK */
 #su{align-items:center;justify-content:center;text-align:center;gap:12px;padding:32px;
   background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
-.sigil{font-size:calc(60px * var(--sym-scale));animation:fire-flicker .9s ease-in-out infinite,fire-color 5s ease-in-out infinite;color:var(--gold);position:relative;display:inline-block;line-height:1}
+.sigil{font-size:calc(60px * var(--sym-scale));animation:fire-flicker 4s ease-in-out infinite,fire-color 5.5s ease-in-out infinite;color:var(--gold);position:relative;display:inline-block;line-height:1;transition:--fire-excite-mix 2s ease;cursor:pointer}
 .sigil::before,.sigil::after{content:'';position:absolute;width:.06em;height:.06em;border-radius:50%;background:currentColor;filter:blur(.4px);pointer-events:none}
 .sigil::before{top:.1em;left:.42em;animation:sigil-spark-a 1.9s ease-out infinite .5s}
 .sigil::after{top:.15em;right:.32em;animation:sigil-spark-b 2.3s ease-out infinite 1.3s}
+@property --fire-excite-mix{syntax:'<percentage>';inherits:true;initial-value:0%}
+.sigil[data-excite="1"]{--fire-excite-mix:15%;animation-duration:3.2s,4.8s}
+.sigil[data-excite="2"]{--fire-excite-mix:32%;animation-duration:2.2s,3.8s}
+.sigil[data-excite="3"]{--fire-excite-mix:52%;animation-duration:1.4s,2.8s}
+.sigil[data-excite="4"]{--fire-excite-mix:72%;animation-duration:.8s,2s}
+.sigil[data-excite="5"]{--fire-excite-mix:90%;animation-duration:.4s,1.4s}
+.sigil-smoke{position:absolute;width:.25em;height:.25em;border-radius:50%;top:-.05em;left:.38em;background:rgba(200,180,160,.1);filter:blur(.14em);pointer-events:none;animation:smoke-rise 4.5s ease-out infinite}
+.sigil[data-excite="3"] .sigil-smoke,.sigil[data-excite="4"] .sigil-smoke,.sigil[data-excite="5"] .sigil-smoke{background:rgba(100,160,240,.22);width:.45em;height:.45em}
+.sigil-spark{position:absolute;width:.05em;height:.05em;border-radius:50%;background:currentColor;filter:blur(.3px);pointer-events:none;animation:spark-fly 1.1s ease-out forwards}
 #su h1{font-family:var(--ff-hero);font-size:calc(26px * var(--font-scale));letter-spacing:.04em;
   color:var(--gold);line-height:1.3;text-shadow:0 0 28px rgba(201,168,76,.35)}
 #su .sub{font-family:var(--ff-subtitle);font-size:calc(15px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:4px 0 0}
@@ -291,19 +300,51 @@ input[type=file]{display:none}
 
 
 @keyframes fire-flicker{
-  0%,100%{transform:scaleX(1) scaleY(1) skewX(0deg);filter:brightness(1) drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .3em rgba(201,168,76,.3))}
-  8%{transform:scaleX(.97) scaleY(1.02) skewX(-1.5deg);filter:brightness(1.15) drop-shadow(0 0 .22em currentColor) drop-shadow(0 0 .45em rgba(255,140,0,.5))}
-  20%{transform:scaleX(1.02) scaleY(.98) skewX(1deg);filter:brightness(.86) drop-shadow(0 0 .07em currentColor) drop-shadow(0 0 .13em rgba(201,168,76,.2))}
-  35%{transform:scaleX(.98) scaleY(1.03) skewX(-.5deg);filter:brightness(1.22) drop-shadow(0 0 .32em currentColor) drop-shadow(0 0 .6em rgba(255,215,0,.55))}
-  51%{transform:scaleX(1.01) scaleY(.99) skewX(2deg);filter:brightness(.9) drop-shadow(0 0 .08em currentColor) drop-shadow(0 0 .17em rgba(201,168,76,.25))}
-  67%{transform:scaleX(.99) scaleY(1.02) skewX(-1deg);filter:brightness(1.1) drop-shadow(0 0 .19em currentColor) drop-shadow(0 0 .38em rgba(255,107,53,.4))}
-  82%{transform:scaleX(1.01) scaleY(1) skewX(.5deg);filter:brightness(.93) drop-shadow(0 0 .1em currentColor) drop-shadow(0 0 .22em rgba(201,168,76,.3))}}
+  /* calm */
+  0%   {transform:scaleX(1)     scaleY(1)     skewX(0deg);    filter:brightness(1)    drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .28em rgba(201,168,76,.25))}
+  5%   {transform:scaleX(.998)  scaleY(1.002) skewX(-.2deg);  filter:brightness(1.03) drop-shadow(0 0 .13em currentColor) drop-shadow(0 0 .29em rgba(201,168,76,.27))}
+  12%  {transform:scaleX(1.002) scaleY(.998)  skewX(.3deg);   filter:brightness(.97)  drop-shadow(0 0 .10em currentColor) drop-shadow(0 0 .23em rgba(201,168,76,.22))}
+  /* burst 1 */
+  16%  {transform:scaleX(.95)   scaleY(1.05)  skewX(-2.5deg); filter:brightness(1.32) drop-shadow(0 0 .30em currentColor) drop-shadow(0 0 .60em rgba(255,215,0,.62))}
+  19%  {transform:scaleX(1.05)  scaleY(.95)   skewX(3deg);    filter:brightness(.72)  drop-shadow(0 0 .04em currentColor) drop-shadow(0 0 .09em rgba(201,168,76,.12))}
+  23%  {transform:scaleX(.97)   scaleY(1.03)  skewX(-1.2deg); filter:brightness(1.24) drop-shadow(0 0 .24em currentColor) drop-shadow(0 0 .48em rgba(255,140,0,.52))}
+  26%  {transform:scaleX(1.02)  scaleY(.98)   skewX(1.5deg);  filter:brightness(.88)  drop-shadow(0 0 .08em currentColor) drop-shadow(0 0 .16em rgba(201,168,76,.20))}
+  29%  {transform:scaleX(1)     scaleY(1)     skewX(.4deg);   filter:brightness(1.06) drop-shadow(0 0 .15em currentColor) drop-shadow(0 0 .32em rgba(201,168,76,.30))}
+  /* long calm */
+  38%  {transform:scaleX(1.003) scaleY(.997)  skewX(-.1deg);  filter:brightness(1.01) drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .26em rgba(201,168,76,.24))}
+  46%  {transform:scaleX(.998)  scaleY(1.002) skewX(.2deg);   filter:brightness(.99)  drop-shadow(0 0 .11em currentColor) drop-shadow(0 0 .25em rgba(201,168,76,.23))}
+  /* quick stutter */
+  49%  {transform:scaleX(.975)  scaleY(1.025) skewX(-1.8deg); filter:brightness(1.20) drop-shadow(0 0 .21em currentColor) drop-shadow(0 0 .42em rgba(255,140,0,.48))}
+  52%  {transform:scaleX(1.03)  scaleY(.97)   skewX(2deg);    filter:brightness(.82)  drop-shadow(0 0 .06em currentColor) drop-shadow(0 0 .12em rgba(201,168,76,.16))}
+  55%  {transform:scaleX(.99)   scaleY(1.01)  skewX(-.4deg);  filter:brightness(1.10) drop-shadow(0 0 .16em currentColor) drop-shadow(0 0 .34em rgba(201,168,76,.30))}
+  /* very long calm */
+  64%  {transform:scaleX(1.001) scaleY(.999)  skewX(.1deg);   filter:brightness(1.01) drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .27em rgba(201,168,76,.25))}
+  76%  {transform:scaleX(.999)  scaleY(1.001) skewX(-.15deg); filter:brightness(.985) drop-shadow(0 0 .11em currentColor) drop-shadow(0 0 .24em rgba(201,168,76,.22))}
+  /* strong burst */
+  79%  {transform:scaleX(.93)   scaleY(1.06)  skewX(-3deg);   filter:brightness(1.38) drop-shadow(0 0 .38em currentColor) drop-shadow(0 0 .70em rgba(255,215,0,.68))}
+  81%  {transform:scaleX(1.06)  scaleY(.94)   skewX(3.5deg);  filter:brightness(.68)  drop-shadow(0 0 .03em currentColor) drop-shadow(0 0 .07em rgba(201,168,76,.10))}
+  84%  {transform:scaleX(.96)   scaleY(1.04)  skewX(-2deg);   filter:brightness(1.28) drop-shadow(0 0 .28em currentColor) drop-shadow(0 0 .55em rgba(255,107,53,.58))}
+  87%  {transform:scaleX(1.03)  scaleY(.97)   skewX(2deg);    filter:brightness(.81)  drop-shadow(0 0 .06em currentColor) drop-shadow(0 0 .13em rgba(201,168,76,.18))}
+  90%  {transform:scaleX(.99)   scaleY(1.01)  skewX(-.6deg);  filter:brightness(1.14) drop-shadow(0 0 .18em currentColor) drop-shadow(0 0 .37em rgba(201,168,76,.32))}
+  /* cool down */
+  100% {transform:scaleX(1)     scaleY(1)     skewX(0deg);    filter:brightness(1)    drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .28em rgba(201,168,76,.25))}}
 @keyframes fire-color{
-  0%{color:#c9a84c}15%{color:#ff8c35}32%{color:#ffd700}50%{color:#ff5a1e}65%{color:#ffb830}80%{color:#ff7c35}100%{color:#c9a84c}}
+  0%  {color:color-mix(in srgb,#c9a84c calc(100% - var(--fire-excite-mix)),#4fc3f7)}
+  15% {color:color-mix(in srgb,#ff8c35 calc(100% - var(--fire-excite-mix)),#2a9ff7)}
+  32% {color:color-mix(in srgb,#ffd700 calc(100% - var(--fire-excite-mix)),#7bd4ff)}
+  50% {color:color-mix(in srgb,#ff5a1e calc(100% - var(--fire-excite-mix)),#1a85e0)}
+  65% {color:color-mix(in srgb,#ffb830 calc(100% - var(--fire-excite-mix)),#5ab8ff)}
+  80% {color:color-mix(in srgb,#ff7c35 calc(100% - var(--fire-excite-mix)),#3498db)}
+  100%{color:color-mix(in srgb,#c9a84c calc(100% - var(--fire-excite-mix)),#4fc3f7)}}
 @keyframes sigil-spark-a{
   0%{transform:translate(0,0) scale(1.2);opacity:1}60%{opacity:.7}100%{transform:translate(-.23em,-.7em) scale(0);opacity:0}}
 @keyframes sigil-spark-b{
   0%{transform:translate(0,0) scale(1.2);opacity:1}60%{opacity:.7}100%{transform:translate(.27em,-.8em) scale(0);opacity:0}}
+@keyframes smoke-rise{
+  0%  {transform:translateY(0)      scale(1)   translateX(0);     opacity:.5}
+  30% {transform:translateY(-.25em) scale(1.4) translateX(.03em); opacity:.32}
+  65% {transform:translateY(-.55em) scale(1.9) translateX(-.04em);opacity:.16}
+  100%{transform:translateY(-.9em)  scale(2.6) translateX(.02em); opacity:0}}
 @keyframes breathe{
   0%,100%{box-shadow:0 0 8px rgba(79,195,247,.25),inset 0 0 10px rgba(79,195,247,.05)}
   50%    {box-shadow:0 0 22px rgba(79,195,247,.55),inset 0 0 18px rgba(79,195,247,.12)}}
@@ -3377,6 +3418,67 @@ scheduleAmbientSpark();
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
+
+// ── FIRE EXCITE ──
+(function(){
+  const MAX=5;
+  let level=0, decayTimer=null;
+
+  function sigils(){ return document.querySelectorAll('.sigil'); }
+
+  function setLevel(n){
+    level=Math.max(0,Math.min(MAX,n));
+    sigils().forEach(el=>{ el.dataset.excite=level; });
+  }
+
+  function decay(){
+    if(level>0){
+      setLevel(level-1);
+      if(level>0) decayTimer=setTimeout(decay,1800);
+    }
+  }
+
+  function injectSparks(el){
+    const count=1+Math.floor(level*0.7);
+    for(let i=0;i<count;i++){
+      setTimeout(()=>{
+        const s=document.createElement('span');
+        s.className='sigil-spark';
+        const angle=(Math.random()-.5)*Math.PI;
+        const dist=.25+Math.random()*.45*(1+level*.1);
+        s.style.setProperty('--sx',(Math.sin(angle)*dist*.35).toFixed(3)+'em');
+        s.style.setProperty('--sy',(-Math.abs(Math.cos(angle)*dist*.9)).toFixed(3)+'em');
+        s.style.left=(.2+Math.random()*.6)+'em';
+        s.style.top=(.04+Math.random()*.14)+'em';
+        el.appendChild(s);
+        setTimeout(()=>s.remove(),1150);
+      },i*70);
+    }
+  }
+
+  function onClick(e){
+    injectSparks(e.currentTarget);
+    setLevel(level+1);
+    clearTimeout(decayTimer);
+    decayTimer=setTimeout(decay,2200);
+  }
+
+  function init(){
+    sigils().forEach(el=>{
+      el.dataset.excite=0;
+      el.addEventListener('click',onClick);
+      // inject persistent smoke element
+      if(!el.querySelector('.sigil-smoke')){
+        const sm=document.createElement('span');
+        sm.className='sigil-smoke';
+        el.appendChild(sm);
+      }
+    });
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
 </script>
 
 <div id="keymap-ov" onclick="closeKeymap()">
