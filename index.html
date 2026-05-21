@@ -551,7 +551,7 @@ input[type=file]{display:none}
          color:var(--gold);font-family:var(--ff-label);
          font-size:calc(13px * var(--font-scale));letter-spacing:0;
          padding:5px 10px;border-radius:2px;cursor:pointer;
-         backdrop-filter:blur(4px)">← MENU</button>
+         backdrop-filter:blur(4px)">MENU</button>
 
 <!-- PLAY-MODE MENU CONFIRMATION OVERLAY -->
 <div id="menu-confirm-ov" onclick="if(event.target===this)hideMenuConfirm()"
@@ -1809,8 +1809,8 @@ function triggerModeFlash(){
   const el=document.getElementById('mode-flash');
   if(!el) return;
   el.style.background=locked
-    ?'radial-gradient(ellipse at center,rgba(79,195,247,.22) 0%,transparent 70%)'
-    :'radial-gradient(ellipse at center,rgba(201,168,76,.22) 0%,transparent 70%)';
+    ?'radial-gradient(ellipse at center,rgba(201,168,76,.22) 0%,transparent 70%)'
+    :'radial-gradient(ellipse at center,rgba(79,195,247,.22) 0%,transparent 70%)';
   el.classList.add('flash-visible');
   requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.remove('flash-visible')));
 }
