@@ -1010,7 +1010,7 @@ input[type=file]{display:none}
     <div class="trow">
       <div class="topt" data-m="once" onclick="setMode('once')">SOLO</div>
       <div class="topt" data-m="loop" onclick="setMode('loop')">LOOP</div>
-      <div class="topt" data-m="playlist" onclick="setMode('playlist')">LIST 🎲</div>
+      <div class="topt" data-m="playlist" onclick="setMode('playlist')">LIST <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/></svg></div>
     </div>
   </div>
   <div id="mode-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:calc(12px * var(--font-scale));color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
@@ -1023,8 +1023,8 @@ input[type=file]{display:none}
   <div id="shuffle-row" class="fg" style="display:none">
     <label class="fl">ORDER</label>
     <div class="trow">
-      <div class="topt" id="sh-seq" onclick="setShuffle(false)">▶ SEQUENTIAL</div>
-      <div class="topt" id="sh-rnd" onclick="setShuffle(true)">🎲 SHUFFLE</div>
+      <div class="topt" id="sh-seq" onclick="setShuffle(false)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/></svg> SEQUENTIAL</div>
+      <div class="topt" id="sh-rnd" onclick="setShuffle(true)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M10 19H2v-2h8v2Zm12 0h-8v-2h8v2Zm-10-2h-2v-6h2v6Zm6-10h2v2h2v2h-2v2h-2v2h-2v-4h-4V9h4V5h2v2ZM8 11H2V9h6v2Z"/></svg> SHUFFLE</div>
     </div>
   </div>
   <div id="loopcount-row" class="fg">
@@ -2956,7 +2956,7 @@ function updateShuffleUI(){
     rn.className='topt'+(eShuffle?' ap':'');
   }
   const plBtn=document.querySelector('.topt[data-m="playlist"]');
-  if(plBtn) plBtn.textContent='LIST '+(eMode==='playlist'?(eShuffle?'🎲':'▶▶'):'🎲');
+  if(plBtn) plBtn.innerHTML='LIST '+svgI(eMode==='playlist'&&!eShuffle?'<path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/>':'<path d="M10 19H2v-2h8v2Zm12 0h-8v-2h8v2Zm-10-2h-2v-6h2v6Zm6-10h2v2h2v2h-2v2h-2v2h-2v-4h-4V9h4V5h2v2ZM8 11H2V9h6v2Z"/>');
 }
 function savePad(){
   const keyEl=document.getElementById('ek');
