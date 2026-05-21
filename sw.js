@@ -1,5 +1,5 @@
 // Cache name — bump whenever any cached asset changes.
-const CACHE = 'storyteller-v31';
+const CACHE = 'storyteller-v32';
 
 // All assets required for offline-first operation.
 // Fonts are now separate files; add any new font here when added.
