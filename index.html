@@ -226,7 +226,7 @@ input[type=file]{display:none}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
-/* PORTAL BUTTON — Flamme */
+/* PORTAL BUTTON — flame animation */
 #portal-btn{background:none;border:none;cursor:pointer;padding:2px 10px 4px;
   display:flex;align-items:center;justify-content:center}
 #portal-btn:active .flame{transform:scale(.88)}
@@ -261,7 +261,7 @@ input[type=file]{display:none}
   opacity:0;transition:opacity .35s ease}
 #mode-flash.flash-visible{opacity:1;transition:none}
 
-/* BOARD MODUS-STIMMUNG */
+/* BOARD MODE ATMOSPHERE */
 #sp.mode-edit{background:var(--night)}
 #sp.mode-edit::before{
   background:radial-gradient(ellipse at 55% 25%,rgba(120,80,10,.18) 0%,transparent 60%) !important;
@@ -524,7 +524,7 @@ input[type=file]{display:none}
   <div class="fg">
     <label class="fl">AUDIODATEI(EN)</label>
     <div class="fbtn" id="fbd" onclick="document.getElementById('fi').click()">+ Datei(en) auswählen</div>
-    <input type="file" id="fi" accept="audio/*" multiple onchange="onFile(this)">
+    <input type="file" id="fi" accept="audio/mpeg,audio/wav,audio/mp4,audio/aac,audio/x-m4a,audio/flac,audio/ogg,audio/opus,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus" multiple onchange="onFile(this)">
     <div id="scrub-wrap" style="display:none;margin-top:7px">
       <canvas id="scrub" height="48"></canvas>
       <div id="scrub-time"></div>
@@ -788,7 +788,7 @@ function chkNP(){
   }
 }
 
-// ── VISUELLE EFFEKTE ──
+// ── VISUAL EFFECTS ──
 function spawnRipple(padEl, e){
   const r=padEl.getBoundingClientRect();
   const x=e.clientX-r.left, y=e.clientY-r.top;
@@ -911,7 +911,7 @@ function initGridCtrl(){
   });
 }
 
-// ── MODUS ──
+// ── MODE ──
 function applyModeVisuals(){
   const sp=document.getElementById('sp');
   const btn=document.getElementById('portal-btn');
