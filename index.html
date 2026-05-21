@@ -415,6 +415,14 @@ input[type=file]{display:none}
   color:var(--gold);white-space:nowrap;letter-spacing:0}
 #combo-bg-warn{display:none;background:rgba(10,10,30,.8);border:1px solid var(--gold-dim);
   border-radius:3px;padding:8px 10px;font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-bottom:8px}
+.combo-pause-ui{display:flex;align-items:center;gap:6px;padding:4px 2px;flex-wrap:wrap}
+.combo-pause-lbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;color:var(--mist)}
+.combo-pause-inp{width:52px;background:var(--surface);border:1px solid var(--border);border-radius:2px;
+  color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));padding:2px 5px;text-align:center;
+  -moz-appearance:textfield}
+.combo-pause-inp::-webkit-inner-spin-button,.combo-pause-inp::-webkit-outer-spin-button{-webkit-appearance:none}
+.combo-pause-unit{font-size:calc(12px * var(--font-scale));color:var(--text-dim)}
+.combo-pause-hint{font-size:calc(10px * var(--font-scale));color:var(--mist);font-style:italic}
 /* PAD TYPE PICKER */
 #pad-type-picker{position:fixed;inset:0;z-index:160;background:rgba(10,10,20,.82);
   display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
@@ -1451,11 +1459,19 @@ function playComboStep(id,state,steps,stepIdx){
       });
     }
   }
-  // Step with only background pads (or empty) advances immediately
-  if(fgRem===0) playComboStep(id,state,steps,stepIdx+1);
+  // Empty step (or bg-only): wait for dur, then advance
+  if(fgRem===0){
+    const ms=(steps[stepIdx].dur||0)*1000;
+    if(ms>0){
+      state.pauseTimer=setTimeout(()=>{ if(!state.stopped) playComboStep(id,state,steps,stepIdx+1); },ms);
+    } else {
+      playComboStep(id,state,steps,stepIdx+1);
+    }
+  }
 }
 
 function finishCombo(id,state){
+  clearTimeout(state.pauseTimer);
   state.bgInstances.forEach(i=>i.stop());
   delete comboState[id]; delete srcs[id];
   updBtn(id,false); chkNP();
@@ -1464,6 +1480,7 @@ function finishCombo(id,state){
 function stopCombo(id){
   const state=comboState[id]; if(!state) return;
   state.stopped=true;
+  clearTimeout(state.pauseTimer);
   state.bgInstances.forEach(i=>i.stop());
   state.currentFgInstances.forEach(i=>i.stop());
   delete comboState[id]; delete srcs[id];
@@ -1741,10 +1758,10 @@ function openComboEditor(editId=null){
     cn.value=p.name||'';
     ck.value=p.keyLabel||p.key||''; ck.dataset.code=p.key||'';
     comboKey=p.key||''; comboKeyLabel=p.keyLabel||p.key||'';
-    comboSteps=(p.steps||[]).map(s=>({pads:[...s.pads]}));
+    comboSteps=(p.steps||[]).map(s=>({pads:[...s.pads],dur:s.dur||0}));
   } else {
     cn.value=''; ck.value=''; ck.dataset.code='';
-    comboSteps=[{pads:[]}];
+    comboSteps=[{pads:[],dur:1}];
   }
   document.getElementById('combo-bg-warn').style.display='none';
   document.getElementById('combo-key-warn').style.display='none';
@@ -1775,7 +1792,7 @@ function captureComboKey(e){
   } else { cw.style.display='none'; }
 }
 
-function addComboStep(){ comboSteps.push({pads:[]}); renderComboSteps(); }
+function addComboStep(){ comboSteps.push({pads:[],dur:1}); renderComboSteps(); }
 
 function removeComboStep(i){
   comboSteps.splice(i,1);
@@ -1784,6 +1801,7 @@ function removeComboStep(i){
 }
 
 function removePadFromStep(si,pi){ comboSteps[si].pads.splice(pi,1); renderComboSteps(); }
+function setStepDur(si,val){ comboSteps[si].dur=isNaN(val)||val<0?0:val; }
 
 function renderComboSteps(){
   const el=document.getElementById('combo-steps-list'); if(!el) return;
@@ -1801,12 +1819,20 @@ function renderComboSteps(){
       return `<span class="combo-chip${isBg?' is-bg':''}">${isBg?'⬤ ':''}<span>${lbl}</span>`+
              `<button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button></span>`;
     }).join('');
+    const dur=comboSteps[si].dur||0;
+    const stepBody=chips||`<div class="combo-pause-ui">
+      <span class="combo-pause-lbl">⏱ PAUSE</span>
+      <input class="combo-pause-inp" type="number" min="0.5" max="60" step="0.5" value="${dur||1}"
+             oninput="setStepDur(${si},+this.value)" onclick="event.stopPropagation()">
+      <span class="combo-pause-unit">Sek.</span>
+      <span class="combo-pause-hint">— Pad ziehen zum Aktivieren</span>
+    </div>`;
     return `<div class="combo-step" data-step="${si}">
       <div class="combo-step-hdr">
         <span class="combo-step-lbl">SCHRITT ${si+1}</span>
         <button onclick="removeComboStep(${si})" style="background:none;border:none;color:var(--blood);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">×</button>
       </div>
-      <div class="combo-step-body" data-step="${si}">${chips||'<span style="color:var(--text-dim);font-size:calc(10px * var(--font-scale));font-style:italic">Pad hierher ziehen</span>'}</div>
+      <div class="combo-step-body" data-step="${si}">${stepBody}</div>
     </div>`;
   }).join('');
   // attach drop listeners to step bodies
@@ -1923,7 +1949,7 @@ function doSaveCombo(){
     const conflict=pads.findIndex((p,i)=>p&&p.key===key&&i!==comboEditId);
     if(conflict!==-1) pads[conflict]={...pads[conflict],key:'',keyLabel:''};
   }
-  const pad={id:0,name,key,keyLabel,mode:'combo',steps:comboSteps.map(s=>({pads:[...s.pads]})),volume:80};
+  const pad={id:0,name,key,keyLabel,mode:'combo',steps:comboSteps.map(s=>({pads:[...s.pads],...(s.dur>0?{dur:s.dur}:{})})),volume:80};
   if(comboEditId!==null){
     pad.id=comboEditId; pads[comboEditId]=pad;
   } else {
