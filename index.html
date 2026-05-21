@@ -16,7 +16,7 @@
   --active:#4fc3f7; --pad-sz:90px; --pad-gap:8px; --pad-radius:8px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{width:100%;height:100%;background:var(--night);color:var(--text);
+html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch-action:manipulation;
   font-family:'Crimson Pro',Georgia,serif;overflow:hidden;user-select:none}
 .screen{display:none;width:100%;height:100%;flex-direction:column}
 .screen.active{display:flex}
@@ -78,20 +78,12 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);
 .bo{background:#2a1a1a;color:#ef9a9a;border:1px solid #4a1a1a}
 
 /* EDIT PANEL */
-#ppbk{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:97}
-#ppbk.open{display:block}
-#pp{position:fixed;bottom:0;left:0;right:0;background:var(--raised);
-  border-top:1px solid var(--gold-dim);border-radius:12px 12px 0 0;
-  padding:16px 16px 28px;transform:translateY(100%);
-  transition:transform .3s ease;z-index:98}
-#pp.open{transform:translateY(0)}
-.pp-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
-#pp-name{font-family:'Cinzel',serif;font-size:15px;letter-spacing:2px;
-  color:var(--gold);margin:0;flex:1;line-height:1.3}
-.pp-close{background:none;border:none;color:var(--text-dim);
-  font-size:20px;cursor:pointer;padding:0 4px;line-height:1}
-.pp-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.pp-chip{font-family:'Cinzel',serif;font-size:11px;color:var(--text-dim);letter-spacing:.5px}
+.pad-edit-banner{position:absolute;bottom:0;left:0;right:0;height:33%;
+  background:rgba(10,10,20,.55);display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;
+  color:rgba(201,168,76,.7);cursor:pointer;z-index:1;
+  border-radius:0 0 var(--pad-radius) var(--pad-radius)}
+.pad-edit-banner:active{background:rgba(201,168,76,.18)}
 #ebk{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99}
 #ebk.open{display:block}
 #ep{position:fixed;bottom:0;left:0;right:0;background:var(--raised);
@@ -515,24 +507,6 @@ input[type=file]{display:none}
   </div>
 </div>
 
-<!-- PAD PREVIEW -->
-<div id="ppbk" onclick="closePP()"></div>
-<div id="pp">
-  <div class="pp-top">
-    <h3 id="pp-name">—</h3>
-    <button class="pp-close" onclick="closePP()">✕</button>
-  </div>
-  <div class="pp-meta">
-    <span id="pp-key" class="km-key" style="font-size:13px;padding:4px 10px"></span>
-    <span id="pp-mode-lbl" class="pp-chip"></span>
-    <span id="pp-files-lbl" class="pp-chip"></span>
-  </div>
-  <div style="display:flex;gap:8px">
-    <button id="pp-play-btn" class="btn-p" onclick="togglePPPlay()" style="flex:1">▶ ABSPIELEN</button>
-    <button class="btn-s" onclick="openEPFromPP()" style="flex:1">✎ BEARBEITEN</button>
-  </div>
-</div>
-
 <!-- EDIT -->
 <div id="ebk" onclick="closeEP()"></div>
 <div id="ep">
@@ -621,11 +595,11 @@ input[type=file]{display:none}
       <div id="pad-style-inner">
         <div class="gc-row">
           <span class="gc-ico">▦ GR.</span>
-          <input type="range" id="sz-slider" min="60" max="200" value="90">
+          <input type="range" id="sz-slider" min="60" max="320" value="90">
         </div>
         <div class="gc-row">
           <span class="gc-ico">↔ ABSt.</span>
-          <input type="range" id="gap-slider" min="2" max="24" value="8">
+          <input type="range" id="gap-slider" min="2" max="48" value="8">
         </div>
         <div class="trow">
           <div class="topt" id="sh-sq" onclick="setPadShape('0px','sq')">◼ ECKIG</div>
@@ -810,7 +784,6 @@ function updBtn(id,on,loop){
   if(on&&loop) b.classList.add('plooping');
   else if(on) b.classList.add('playing');
   updEdgeGlow();
-  if(id===ppId) updPPPlayBtn();
 }
 function chkNP(){
   if(!Object.keys(srcs).length){
@@ -993,7 +966,8 @@ function renderSetup(){
     if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
     b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
                 `<div class="pico">${ico(p)}</div>`+
-                `<div class="plbl">${p.name||''}</div>`;
+                `<div class="plbl">${p.name||''}</div>`+
+                `<div class="pad-edit-banner" onpointerdown="event.stopPropagation()" onclick="openEP(${i})">EDIT</div>`;
     b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
     g.appendChild(b);
   }
@@ -1006,7 +980,6 @@ function renderSetup(){
 
 // ── EDIT ──
 function openEP(id){
-  closePP();
   eId=id; const p=pads[id];
   document.getElementById('ep-t').textContent=`SOUND-PAD ${id+1} BELEGEN`;
   document.getElementById('en').value=p?.name||'';
@@ -1462,41 +1435,6 @@ function updFadeLabel(id){
   drawScrubber();
 }
 
-// ── PAD PREVIEW ──
-let ppId=null;
-function openPP(id){
-  const p=pads[id]; if(!p) return;
-  ppId=id;
-  document.getElementById('pp-name').textContent=p.name||'—';
-  document.getElementById('pp-key').textContent=p.keyLabel||p.key||'—';
-  const modeMap={once:'▶ Einmal',loop:'↺ Loop',playlist:'≡ Playlist'};
-  document.getElementById('pp-mode-lbl').textContent=modeMap[p.mode||'once']||'▶ Einmal';
-  const fc=(p.files||[]).length;
-  document.getElementById('pp-files-lbl').textContent=fc+(fc===1?' Datei':' Dateien');
-  updPPPlayBtn();
-  document.getElementById('ppbk').classList.add('open');
-  document.getElementById('pp').classList.add('open');
-}
-function closePP(){
-  document.getElementById('ppbk').classList.remove('open');
-  document.getElementById('pp').classList.remove('open');
-  ppId=null;
-}
-function togglePPPlay(){
-  if(ppId===null) return;
-  if(srcs[ppId]) stopPad(ppId,false); else play(ppId);
-  setTimeout(updPPPlayBtn,50);
-}
-function updPPPlayBtn(){
-  const btn=document.getElementById('pp-play-btn');
-  if(!btn||ppId===null) return;
-  const on=!!srcs[ppId];
-  btn.textContent=on?'■ STOPPEN':'▶ ABSPIELEN';
-  btn.className=on?'btn-d':'btn-p';
-  btn.style.flex='1';
-}
-function openEPFromPP(){ const id=ppId; closePP(); openEP(id); }
-
 // ── KEYMAP OVERLAY ──
 let keymapOpen=false, keymapTimer=null;
 function toggleKeymap(){ keymapOpen ? closeKeymap() : openKeymap(); }
@@ -1637,7 +1575,7 @@ function onDragEnd(e){
   document.removeEventListener('pointerup', onDragEnd);
   if(!dragMoved){
     const id=dragSrc; dragSrc=null;
-    if(pads[id]){ if(!locked) openPP(id); else play(id); }
+    if(pads[id]) play(id);
     return;
   }
   dragGhost.style.display='none';
@@ -1659,7 +1597,6 @@ function onDragEnd(e){
 }
 
 function toggleLock(){
-  closePP();
   locked=!locked;
   if(localStorage.getItem('start-mode')==='remember')
     localStorage.setItem('last-mode',locked?'locked':'unlocked');
@@ -1692,7 +1629,6 @@ document.addEventListener('keydown', e=>{
 
   if(code==='Escape'){
     e.preventDefault();
-    if(document.getElementById('pp').classList.contains('open')){ closePP(); return; }
     if(document.getElementById('ep').classList.contains('open')){ closeEP(); return; }
     if(cur!=='smm'&&cur!=='su') show('smm');
     return;
