@@ -831,7 +831,7 @@ let pads = [];
 let ctx = null, db = null, masterGain = null, analyser = null, analyserData = null;
 let bufs = {}, srcs = {}, gains = {};
 let eqRAF = null;
-let eId = null, eFiles = [], eMode = 'once', eImage = null, eShuffle = false, pendingMode = null, eLoopCount = 0;
+let eId = null, eFiles = [], eMode = 'once', eImage = null, eShuffle = false, pendingMode = null, eLoopCount = 0, appendFiles = false;
 const playPos = {};
 // Combo editor state
 let comboSteps = [], comboKey = '', comboKeyLabel = '', comboEditId = null, comboDragId = null;
@@ -1851,10 +1851,11 @@ function previewFile(i){
   updFB();
 }
 function onFile(inp){
-  stopPreview(); waveforms=[];
   const isPlaylist=eMode==='playlist';
   const files=Array.from(inp.files).slice(0, isPlaylist?Infinity:1);
-  eFiles=[]; let n=0;
+  if(!appendFiles){ stopPreview(); waveforms=[]; eFiles=[]; }
+  appendFiles=false;
+  let n=0;
   files.forEach(f=>{
     const r=new FileReader();
     r.onload=e=>{ eFiles.push({name:f.name,data:e.target.result}); decodeWaveform(eFiles.length-1); if(++n===files.length) updFB(); };
@@ -1946,6 +1947,17 @@ function updImgPreview(){
   if(eImage){ prev.style.backgroundImage=`url(${eImage})`; prev.style.display=''; clr&&(clr.style.display=''); }
   else { prev.style.backgroundImage=''; prev.style.display='none'; clr&&(clr.style.display='none'); }
 }
+function removeFile(i){
+  if(previewFileIdx===i) stopPreview();
+  eFiles.splice(i, 1);
+  waveforms.splice(i, 1);
+  if(previewFileIdx!==null){
+    if(previewFileIdx>i) previewFileIdx--;
+    else if(previewFileIdx===i) previewFileIdx=null;
+  }
+  updFB();
+  if(eFiles.length) drawScrubber();
+}
 function updFB(){
   const b=document.getElementById('fbd');
   const sw=document.getElementById('scrub-wrap');
@@ -1969,11 +1981,17 @@ function updFB(){
         <button class="pvbtn" onclick="pausePreview()" style="${active&&!paused?'':''+dim}">⏸</button>
         <button class="pvbtn" onclick="stopPreview()" style="${active?'':''+dim}">⏹</button>
         <span style="font-size:calc(12px * var(--font-scale));flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${f.name}</span>
+        <button class="pvbtn" onclick="removeFile(${i})" style="border-color:var(--blood);color:var(--blood-bright);flex-shrink:0">✕</button>
       </div>`;
     }).join('')+
-    `<div style="text-align:right;padding-top:6px">
-      <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ ÄNDERN</button>
-    </div>`;
+    (eMode==='playlist'
+      ? `<div style="display:flex;justify-content:flex-end;gap:8px;padding-top:6px">
+          <button onclick="appendFiles=true;document.getElementById('fi').click()" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px">+ HINZUFÜGEN</button>
+          <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ ERSETZEN</button>
+        </div>`
+      : `<div style="text-align:right;padding-top:6px">
+          <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ ÄNDERN</button>
+        </div>`);
     if(sw){ sw.style.display=''; initScrub(); drawScrubber(); }
   }
 }
