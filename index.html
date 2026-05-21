@@ -408,6 +408,7 @@ input[type=file]{display:none}
   padding:5px 9px;font-size:calc(13px * var(--font-scale));font-family:var(--ff-label);letter-spacing:0;
   cursor:grab;touch-action:none;color:var(--text-dim);user-select:none}
 .cpal-item.cpal-dragging{opacity:.3;pointer-events:none}
+.cpal-item.cpal-disabled{opacity:.38;cursor:not-allowed;border-style:dashed;color:var(--mist)}
 #combo-ghost{position:fixed;pointer-events:none;z-index:300;display:none;
   background:var(--raised);border:1px solid var(--gold-dim);border-radius:2px;
   padding:5px 10px;font-size:calc(13px * var(--font-scale));font-family:var(--ff-label);
@@ -887,6 +888,7 @@ input[type=file]{display:none}
       Pads innerhalb eines Schritts starten <em style="color:var(--text)">gleichzeitig</em>. Schritte laufen <em style="color:var(--text)">nacheinander</em> — der nächste Schritt beginnt erst, wenn alle Pads des vorherigen geendet haben. Ein Loop auf <em style="color:var(--text)">∞</em> läuft als <em style="color:var(--text)">Hintergrundsound</em> und blockiert den nächsten Schritt nicht — er stoppt automatisch wenn die Kombo endet.
     </p>
     <div id="combo-err" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:3px;padding:7px 10px;font-size:calc(13px * var(--font-scale));color:#ef9a9a;margin-bottom:8px"></div>
+    <div id="combo-hint" style="display:none;background:rgba(79,195,247,.07);border:1px solid rgba(79,195,247,.3);border-radius:3px;padding:7px 10px;font-size:calc(12px * var(--font-scale));font-family:var(--ff-body);color:var(--active);margin-bottom:8px"></div>
     <div id="combo-steps-list"></div>
     <label class="fl" style="margin-bottom:6px">PADS — ZIEHEN ZUM HINZUFÜGEN</label>
     <div id="combo-palette" class="combo-palette"></div>
@@ -1816,8 +1818,11 @@ function renderComboSteps(){
 function renderComboPalette(){
   const el=document.getElementById('combo-palette'); if(!el) return;
   const items=pads.map((p,i)=>{
-    if(!p||p.mode==='combo') return ''; // don't allow nesting combos in combos
+    if(!p) return '';
     const lbl=(p.name||`Pad ${i+1}`).replace(/</g,'&lt;');
+    if(p.mode==='combo'){
+      return `<div class="cpal-item cpal-disabled" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-combo="1">⚡ ${lbl}</div>`;
+    }
     const bg=isInfiniteBg(p)?' <span style="color:var(--mist);font-size:calc(11px * var(--font-scale))">BG</span>':'';
     return `<div class="cpal-item" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}">${ico(p)} ${lbl}${bg}</div>`;
   }).filter(Boolean).join('');
@@ -1825,10 +1830,22 @@ function renderComboPalette(){
   initComboPaletteDrag();
 }
 
+let _comboHintTimer=null;
+function showComboHint(msg){
+  const el=document.getElementById('combo-hint'); if(!el) return;
+  el.textContent=msg; el.style.display='block';
+  clearTimeout(_comboHintTimer);
+  _comboHintTimer=setTimeout(()=>{ el.style.display='none'; },3000);
+}
+
 function initComboPaletteDrag(){
   document.querySelectorAll('.cpal-item').forEach(item=>{
     item.addEventListener('pointerdown',e=>{
       e.preventDefault();
+      if(item.dataset.combo){
+        showComboHint('Kombinations-PADs können nicht in einen anderen Kombinations-PAD geladen werden.');
+        return;
+      }
       comboDragId=+item.dataset.padid;
       item.classList.add('cpal-dragging');
       item.setPointerCapture(e.pointerId);
