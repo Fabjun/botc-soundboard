@@ -1426,7 +1426,7 @@ function applyMode(m){
   }
   const sr=document.getElementById('shuffle-row');
   if(sr) sr.style.display=m==='playlist'?'':'none';
-  if(m==='playlist') updateShuffleUI();
+  updateShuffleUI();
 }
 function setShuffle(v){
   eShuffle=v;
@@ -1435,9 +1435,12 @@ function setShuffle(v){
 function updateShuffleUI(){
   const sq=document.getElementById('sh-seq');
   const rn=document.getElementById('sh-rnd');
-  if(!sq||!rn) return;
-  sq.className='topt'+(eShuffle?'':' ap');
-  rn.className='topt'+(eShuffle?' ap':'');
+  if(sq&&rn){
+    sq.className='topt'+(eShuffle?'':' ap');
+    rn.className='topt'+(eShuffle?' ap':'');
+  }
+  const plBtn=document.querySelector('.topt[data-m="playlist"]');
+  if(plBtn) plBtn.textContent='PLAYLIST '+(eMode==='playlist'?(eShuffle?'🎲':'▶▶'):'🎲');
 }
 function savePad(){
   const keyEl=document.getElementById('ek');
