@@ -1010,7 +1010,7 @@ input[type=file]{display:none}
       <div class="tip-key"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> C-PAD</div>
       <div class="tip-body">
         <div class="tip-ttl">COMBO-PAD: STEPS IN SEQUENCE</div>
-        <div class="tip-desc">A Combo-PAD plays a sequence of steps one after another. Each step can contain one or more pads that play simultaneously. Tap <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> in Setup mode to build one. Combos cannot be nested inside other Combos.</div>
+        <div class="tip-desc">A Combo-PAD plays a sequence of steps one after another. Each step can contain one or more pads that play simultaneously. Tap <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> in Setup mode to build one. Combo-PADs can be nested inside other Combos — but a Combo cannot reference itself or create a loop.</div>
       </div>
     </div>
     <div class="tip">
@@ -1259,7 +1259,7 @@ input[type=file]{display:none}
 </div>
 
 <script>
-const APP_VERSION = 42;
+const APP_VERSION = 43;
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
 //  grep for "// ── SECTION" to jump to any area
@@ -1890,14 +1890,13 @@ function createPadInstance(padId,volOverride,fadeOverride){
   return {start:doStart, stop:doStop};
 }
 
-function playCombo(id){
+function playCombo(id, onFinish=null){
   const p=pads[id]; if(!p||p.mode!=='combo') return;
   if(ctx?.state==='suspended') ctx.resume().catch(()=>{});
-  if(comboState[id]) stopCombo(id); // restart if already playing
-  const state={stopped:false, bgInstances:[], currentFgInstances:[]};
+  if(!onFinish && comboState[id]) stopCombo(id);
+  const state={stopped:false, bgInstances:[], currentFgInstances:[], onFinish};
   comboState[id]=state;
-  srcs[id]=[{}]; // mark as active so togglePad / stopPad work
-  updBtn(id,true,false); flash(id); setNP(p.name);
+  if(!onFinish){ srcs[id]=[{}]; updBtn(id,true,false); flash(id); setNP(p.name); }
   playComboStep(id,state,p.steps||[],0);
 }
 
@@ -1905,11 +1904,21 @@ function playComboStep(id,state,steps,stepIdx){
   if(state.stopped||stepIdx>=steps.length){ finishCombo(id,state); return; }
   const rawPads=steps[stepIdx].pads||[];
   const rawOpts=steps[stepIdx].chipOpts||[];
-  const validEntries=rawPads.map((pid,i)=>({pid,opt:rawOpts[i]||null})).filter(({pid})=>pads[pid]&&bufs[pid]);
+  const validEntries=rawPads.map((pid,i)=>({pid,opt:rawOpts[i]||null}))
+    .filter(({pid})=>pads[pid]&&(bufs[pid]||pads[pid].mode==='combo'));
   state.currentFgInstances=[];
   let fgRem=0;
 
   for(const {pid:padId,opt} of validEntries){
+    if(pads[padId].mode==='combo'){
+      fgRem++;
+      playCombo(padId,()=>{
+        if(state.stopped) return;
+        fgRem--;
+        if(fgRem===0) playComboStep(id,state,steps,stepIdx+1);
+      });
+      continue;
+    }
     const inst=createPadInstance(padId,opt?.vol,opt?.fade);
     if(!inst) continue;
     if(isInfiniteBg(pads[padId])){
@@ -1939,8 +1948,9 @@ function playComboStep(id,state,steps,stepIdx){
 function finishCombo(id,state){
   clearTimeout(state.pauseTimer);
   state.bgInstances.forEach(i=>i.stop());
-  delete comboState[id]; delete srcs[id];
-  updBtn(id,false); chkNP();
+  delete comboState[id];
+  if(!state.onFinish){ delete srcs[id]; updBtn(id,false); chkNP(); }
+  else state.onFinish();
 }
 
 function stopCombo(id){
@@ -1949,8 +1959,11 @@ function stopCombo(id){
   clearTimeout(state.pauseTimer);
   state.bgInstances.forEach(i=>i.stop());
   state.currentFgInstances.forEach(i=>i.stop());
-  delete comboState[id]; delete srcs[id];
-  updBtn(id,false); chkNP();
+  // propagate stop to any sub-combos running as part of this combo's steps
+  const p=pads[id];
+  if(p?.steps) p.steps.forEach(s=>(s.pads||[]).forEach(pid=>{ if(comboState[pid]) stopCombo(pid); }));
+  delete comboState[id];
+  if(!state.onFinish){ delete srcs[id]; updBtn(id,false); chkNP(); }
 }
 
 function pauseAllAudio(){
@@ -2538,11 +2551,12 @@ function renderComboSteps(){
                `⚠ Pad ${padId+1} (deleted)` +
                `<button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button></span>`;
       }
+      const isCombo=p.mode==='combo';
       const isBg=isInfiniteBg(p);
       const lbl=p.name.replace(/</g,'&lt;');
       const opt=step.chipOpts?.[pi]||null;
-      const hasOpt=!!(opt&&(opt.vol!=null||opt.fade!=null));
-      const expanded=comboChipExpanded.has(`${si}-${pi}`);
+      const hasOpt=!isCombo&&!!(opt&&(opt.vol!=null||opt.fade!=null));
+      const expanded=!isCombo&&comboChipExpanded.has(`${si}-${pi}`);
       const chipClass=`combo-chip${isBg?' is-bg':''}${hasOpt?' has-opt':''}${expanded?' expanded':''}`;
       const optRow=expanded?`<div class="chip-opt-row">
         <span class="chip-opt-lbl">VOL</span>
@@ -2553,8 +2567,9 @@ function renderComboSteps(){
           oninput="setChipOpt(${si},${pi},'fade',this.value)" onclick="event.stopPropagation()">
       </div>`:'';
       return `<span class="${chipClass}"><div class="combo-chip-top">
-        <button class="chip-exp-btn" onclick="toggleChipExpand(${si},${pi})">⚙</button>
-        ${isBg?'<span>⬤</span>':''}<span>${lbl}</span>
+        ${!isCombo?`<button class="chip-exp-btn" onclick="toggleChipExpand(${si},${pi})">⚙</button>`:''}
+        ${isBg?'<span>⬤</span>':''}${isCombo?`<span style="color:var(--gold);line-height:1">${ico(p)}</span>`:''}
+        <span>${lbl}</span>
         <button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button>
       </div>${optRow}</span>`;
     }).join('');
@@ -2581,13 +2596,30 @@ function renderComboSteps(){
   });
 }
 
+function comboCycles(candidateId, editingId){
+  const visited=new Set();
+  function check(id){
+    if(id===editingId) return true;
+    if(visited.has(id)) return false;
+    visited.add(id);
+    const p=pads[id];
+    if(!p||p.mode!=='combo') return false;
+    return (p.steps||[]).some(s=>(s.pads||[]).some(pid=>check(pid)));
+  }
+  return check(candidateId);
+}
+
 function renderComboPalette(){
   const el=document.getElementById('combo-palette'); if(!el) return;
   const items=pads.map((p,i)=>{
     if(!p) return '';
     const lbl=(p.name||`Pad ${i+1}`).replace(/</g,'&lt;');
     if(p.mode==='combo'){
-      return `<div class="cpal-item cpal-disabled" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-combo="1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> ${lbl}</div>`;
+      const isSelf=i===comboEditId;
+      const isCycle=!isSelf&&comboCycles(i,comboEditId);
+      const disabled=isSelf||isCycle;
+      const reason=isSelf?'self':isCycle?'cycle':'';
+      return `<div class="cpal-item${disabled?' cpal-disabled':''}" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-combo="1"${reason?` data-disabled-reason="${reason}"`:''}><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> ${lbl}</div>`;
     }
     const bg=isInfiniteBg(p)?' <span style="color:var(--mist);font-size:calc(11px * var(--font-scale))">BG</span>':'';
     return `<div class="cpal-item" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}">${ico(p)} ${lbl}${bg}</div>`;
@@ -2608,8 +2640,10 @@ function initComboPaletteDrag(){
   document.querySelectorAll('.cpal-item').forEach(item=>{
     item.addEventListener('pointerdown',e=>{
       e.preventDefault();
-      if(item.dataset.combo){
-        showComboHint('Combo-PADs cannot be nested inside another Combo-PAD.');
+      if(item.classList.contains('cpal-disabled')){
+        const r=item.dataset.disabledReason;
+        if(r==='self') showComboHint('A Combo cannot reference itself.');
+        else showComboHint('Adding this would create an infinite loop.');
         return;
       }
       comboDragId=+item.dataset.padid;
