@@ -274,6 +274,34 @@ input[type=file]{display:none}
 #sp.mode-edit #np{display:none}
 #sp.mode-edit #dbg{display:none !important}
 
+/* KEYMAP OVERLAY */
+#keymap-ov{position:fixed;inset:0;z-index:200;background:rgba(10,10,20,.85);
+  display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+#keymap-ov.open{display:flex}
+#keymap-box{background:var(--surface);border:1px solid var(--gold-dim);border-radius:4px;
+  width:min(380px,92vw);max-height:78vh;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 0 40px rgba(201,168,76,.12)}
+.keymap-hdr{font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--gold);
+  padding:10px 14px 9px;border-bottom:1px solid var(--border);flex-shrink:0}
+#keymap-body{overflow-y:auto;flex:1}
+.km-row{display:grid;padding:7px 14px;border-bottom:1px solid rgba(42,42,74,.4);
+  align-items:center;gap:10px}
+.km-row.minimal{grid-template-columns:46px 1fr}
+.km-row.normal{grid-template-columns:46px 1fr auto}
+.km-row.verbose{grid-template-columns:46px 1fr auto auto auto}
+.km-row.km-act{background:rgba(79,195,247,.06)}
+.km-key{font-family:'Cinzel',serif;font-size:11px;background:var(--raised);
+  border:1px solid var(--border);border-radius:3px;padding:3px 5px;text-align:center;
+  color:var(--gold-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.km-name{font-size:13px;color:var(--text);font-family:'Crimson Pro',serif;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.km-mode{font-size:12px;color:var(--text-dim);text-align:center}
+.km-files{font-size:10px;color:var(--text-dim);font-family:'Cinzel',serif;letter-spacing:.5px;text-align:center}
+.km-stat{font-size:10px;color:var(--active);font-family:'Cinzel',serif;white-space:nowrap}
+.keymap-footer{padding:8px 14px;font-size:10px;color:var(--text-dim);
+  font-family:'Cinzel',serif;letter-spacing:1px;text-align:center;
+  border-top:1px solid var(--border);flex-shrink:0}
+
 /* MAIN MENU */
 #smm{align-items:center;justify-content:center;gap:0;padding:32px 24px;
   background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
@@ -369,6 +397,34 @@ input[type=file]{display:none}
         <b style="color:var(--text)">LETZTER</b> — merkt sich den zuletzt genutzten Modus.
       </p>
     </div>
+    <div class="tips-hdr">HILFE-TASTE</div>
+    <div style="padding:10px 14px 16px;display:flex;flex-direction:column;gap:8px">
+      <p style="font-size:11px;color:var(--text-dim);line-height:1.6;margin:0">Öffnet die Tastenbelegungs-Übersicht im Spielmodus. Diese Taste kann keinem Pad zugewiesen werden.</p>
+      <input type="text" class="fi" id="help-key-input" placeholder="Taste drücken…" readonly onkeydown="captureHelpKey(event)">
+      <div id="help-key-warn" style="display:none;color:var(--blood-bright);font-size:11px"></div>
+    </div>
+    <div class="tips-hdr">ÜBERSICHT — INFO-DICHTE</div>
+    <div style="padding:10px 14px 16px">
+      <div class="trow">
+        <div class="topt" id="hd-minimal" onclick="setHelpDensity('minimal')">MINIMAL</div>
+        <div class="topt" id="hd-normal" onclick="setHelpDensity('normal')">NORMAL</div>
+        <div class="topt" id="hd-verbose" onclick="setHelpDensity('verbose')">DETAIL</div>
+      </div>
+      <p style="font-size:11px;color:var(--text-dim);margin-top:9px;line-height:1.7">
+        <b style="color:var(--text)">MINIMAL</b> — Taste + Name<br>
+        <b style="color:var(--text)">NORMAL</b> — + Wiedergabe-Modus<br>
+        <b style="color:var(--text)">DETAIL</b> — + Datei-Anzahl &amp; Aktivstatus
+      </p>
+    </div>
+    <div class="tips-hdr">ÜBERSICHT — ANZEIGEDAUER</div>
+    <div style="padding:10px 14px 16px">
+      <div class="trow">
+        <div class="topt" id="hdur-toggle" onclick="setHelpDuration('toggle')">BIS TASTE</div>
+        <div class="topt" id="hdur-5" onclick="setHelpDuration('5')">5 SEK</div>
+        <div class="topt" id="hdur-10" onclick="setHelpDuration('10')">10 SEK</div>
+        <div class="topt" id="hdur-30" onclick="setHelpDuration('30')">30 SEK</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -456,6 +512,7 @@ input[type=file]{display:none}
   <div class="fg">
     <label class="fl">TASTE — Feld anklicken, dann Taste drücken</label>
     <input type="text" class="fi" id="ek" placeholder="Taste drücken…" readonly onkeydown="captureKey(event)">
+    <div id="key-reserved-warn" style="display:none;font-size:11px;color:var(--blood-bright);margin-top:4px;padding:4px 8px;border-left:2px solid var(--blood)"></div>
   </div>
   <div id="key-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:12px;color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
     <span id="key-warn-txt"></span>
@@ -802,6 +859,7 @@ function show(id){
   document.getElementById(id).classList.add('active');
   cur=id;
   if(id==='sp'){ renderBoard(); if(locked) focusKB(); }
+  if(id==='sa') initHelpSettings();
 }
 document.getElementById('kfocus').addEventListener('blur', ()=>{
   if(cur==='sp' && !document.getElementById('ep').classList.contains('open')){
@@ -1370,10 +1428,99 @@ function updFadeLabel(id){
   drawScrubber();
 }
 
+// ── KEYMAP OVERLAY ──
+let keymapOpen=false, keymapTimer=null;
+function toggleKeymap(){ keymapOpen ? closeKeymap() : openKeymap(); }
+function openKeymap(){
+  keymapOpen=true;
+  document.getElementById('keymap-ov').classList.add('open');
+  renderKeymap();
+  const dur=localStorage.getItem('help-duration')||'toggle';
+  if(dur!=='toggle') keymapTimer=setTimeout(closeKeymap,+dur*1000);
+}
+function closeKeymap(){
+  keymapOpen=false;
+  document.getElementById('keymap-ov').classList.remove('open');
+  if(keymapTimer){ clearTimeout(keymapTimer); keymapTimer=null; }
+}
+function renderKeymap(){
+  const density=localStorage.getItem('help-info-density')||'normal';
+  const dur=localStorage.getItem('help-duration')||'toggle';
+  const modeIcon=m=>m==='loop'?'↺':m==='playlist'?'≡':'▶';
+  const rows=[];
+  for(let i=0;i<pads.length;i++){ const p=pads[i]; if(p&&p.key) rows.push({p,i}); }
+  rows.sort((a,b)=>(a.p.keyLabel||a.p.key||'').localeCompare(b.p.keyLabel||b.p.key||''));
+  let html='';
+  if(!rows.length){
+    html='<div style="padding:16px 14px;color:var(--text-dim);font-size:12px">Keine Tasten belegt.</div>';
+  } else {
+    for(const{p,i}of rows){
+      const label=p.keyLabel||p.key||'?';
+      const active=!!srcs[i];
+      html+=`<div class="km-row ${density}${active?' km-act':''}">`;
+      html+=`<span class="km-key">${label}</span>`;
+      html+=`<span class="km-name">${p.name||'—'}</span>`;
+      if(density==='normal'||density==='verbose')
+        html+=`<span class="km-mode" title="${p.mode||'once'}">${modeIcon(p.mode)}</span>`;
+      if(density==='verbose'){
+        const fc=(bufs[i]||[]).filter(Boolean).length;
+        html+=`<span class="km-files">${fc}✕</span>`;
+        html+=`<span class="km-stat">${active?'▶ AKTIV':''}</span>`;
+      }
+      html+='</div>';
+    }
+  }
+  document.getElementById('keymap-body').innerHTML=html;
+  const hLabel=localStorage.getItem('help-key-label')||'?';
+  document.getElementById('keymap-footer').textContent=
+    dur==='toggle'?`[${hLabel}] erneut drücken zum Schließen`:`Schließt automatisch nach ${dur}s`;
+}
+
+// ── HELP-KEY SETTINGS ──
+function captureHelpKey(e){
+  e.preventDefault(); e.stopPropagation();
+  const warn=document.getElementById('help-key-warn');
+  const conflict=pads.findIndex(p=>p&&p.key===e.code);
+  if(conflict!==-1){
+    warn.textContent=`Bereits belegt: Pad "${pads[conflict].name||'?'}"`;
+    warn.style.display='block'; return;
+  }
+  warn.style.display='none';
+  localStorage.setItem('help-key-code',e.code);
+  localStorage.setItem('help-key-label',e.key===' '?'Space':e.key);
+  e.target.value=e.key===' '?'Space':e.key;
+  e.target.dataset.code=e.code;
+}
+function setHelpDensity(d){
+  localStorage.setItem('help-info-density',d);
+  ['minimal','normal','verbose'].forEach(k=>
+    document.getElementById('hd-'+k)?.classList.toggle('sh-act',k===d));
+}
+function setHelpDuration(d){
+  localStorage.setItem('help-duration',d);
+  ['toggle','5','10','30'].forEach(k=>
+    document.getElementById('hdur-'+k)?.classList.toggle('sh-act',k===d));
+}
+function initHelpSettings(){
+  const label=localStorage.getItem('help-key-label');
+  const code=localStorage.getItem('help-key-code');
+  const inp=document.getElementById('help-key-input');
+  if(inp){ inp.value=label||''; if(code) inp.dataset.code=code; }
+  setHelpDensity(localStorage.getItem('help-info-density')||'normal');
+  setHelpDuration(localStorage.getItem('help-duration')||'toggle');
+}
+
 // ── KEY CAPTURE (setup field) ──
 function captureKey(e){
   e.preventDefault();
   e.stopPropagation();
+  const helpCode=localStorage.getItem('help-key-code');
+  const rw=document.getElementById('key-reserved-warn');
+  if(helpCode&&e.code===helpCode){
+    if(rw){ rw.textContent='Diese Taste ist als Hilfe-Taste reserviert.'; rw.style.display='block'; }
+    return;
+  }
+  if(rw) rw.style.display='none';
   e.target.value = e.key===' ' ? 'Space' : e.key;
   e.target.dataset.code = e.code;
   document.getElementById('key-warn').style.display='none';
@@ -1461,6 +1608,9 @@ document.addEventListener('keydown', e=>{
   if(code==='Space'){ e.preventDefault(); pauseAllAudio(); return; }
   if(code==='Enter'){ e.preventDefault(); stopAll(); return; }
 
+  const helpCode=localStorage.getItem('help-key-code');
+  if(helpCode&&code===helpCode){ e.preventDefault(); toggleKeymap(); return; }
+
   if(locked){
     e.preventDefault();
     if(cur==='sp'){
@@ -1507,6 +1657,14 @@ document.addEventListener('keydown', e=>{
 
 openDB().then(load).catch(()=>{});
 </script>
+
+<div id="keymap-ov" onclick="closeKeymap()">
+  <div id="keymap-box" onclick="event.stopPropagation()">
+    <div class="keymap-hdr">TASTENBELEGUNG</div>
+    <div id="keymap-body"></div>
+    <div id="keymap-footer" class="keymap-footer"></div>
+  </div>
+</div>
 
 <div id="mode-flash"></div>
 
