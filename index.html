@@ -519,27 +519,28 @@ input[type=file]{display:none}
 .combo-pause-inp::-webkit-inner-spin-button,.combo-pause-inp::-webkit-outer-spin-button{-webkit-appearance:none}
 .combo-pause-unit{font-size:calc(12px * var(--font-scale));color:var(--text-dim)}
 .combo-pause-hint{font-size:calc(10px * var(--font-scale));color:var(--mist);font-style:italic}
+/* FULLSCREEN OVERLAYS — shared header */
+.fs-hdr{display:flex;align-items:center;gap:10px;padding:11px 14px;
+  border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.fs-back{background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);
+  font-size:calc(20px * var(--font-scale));cursor:pointer;padding:0 6px 0 0;line-height:1}
+.fs-back:active{color:var(--gold)}
+.fs-title{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));
+  color:var(--gold);letter-spacing:0;flex:1;text-align:center}
 /* PAD TYPE PICKER */
-#pad-type-picker{position:fixed;inset:0;z-index:160;background:rgba(10,10,20,.82);
-  display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+#pad-type-picker{position:fixed;inset:0;z-index:160;background:var(--deep);
+  display:none;flex-direction:column}
 #pad-type-picker.open{display:flex}
-#lib-picker{position:fixed;inset:0;z-index:200;background:rgba(10,10,20,.85);
-  display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px)}
-.lp-box{background:var(--deep);border:1px solid var(--border);border-top:1px solid var(--gold-dim);
-  border-radius:4px 4px 0 0;width:100%;max-width:var(--cx-max);max-height:72vh;display:flex;flex-direction:column}
-.lp-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;
-  border-bottom:1px solid var(--border);flex-shrink:0}
-.lp-row{background:var(--surface);border:1px solid var(--border);border-radius:4px;
-  padding:9px 12px;display:flex;align-items:center;gap:10px}
-.ptp-box{background:var(--surface);border:1px solid var(--gold-dim);border-radius:4px;
-  width:min(320px,88vw);overflow:hidden;
-  box-shadow:0 0 40px rgba(201,168,76,.1)}
-.ptp-title{font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;
-  color:var(--text-dim);padding:11px 14px 9px;border-bottom:1px solid var(--border)}
-.ptp-opt{display:flex;align-items:center;gap:13px;padding:14px;cursor:pointer;
-  border-bottom:1px solid var(--border);transition:background .1s}
+.ptp-opt{display:flex;align-items:center;gap:13px;padding:16px 14px;cursor:pointer;
+  border-bottom:1px solid var(--border);transition:background .1s;
+  max-width:var(--cx-max);width:100%;margin:0 auto;box-sizing:border-box}
 .ptp-opt:last-child{border-bottom:none}
 .ptp-opt:active{background:var(--raised)}
+/* LIBRARY PICKER */
+#lib-picker{position:fixed;inset:0;z-index:200;background:var(--deep);
+  display:none;flex-direction:column}
+.lp-row{background:var(--surface);border:1px solid var(--border);border-radius:4px;
+  padding:9px 12px;display:flex;align-items:center;gap:10px}
 .ptp-ico{font-size:calc(20px * var(--font-scale));width:28px;text-align:center;flex-shrink:0;color:var(--gold)}
 .ptp-lbl{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;color:var(--text)}
 .ptp-sub{font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);
@@ -1177,36 +1178,39 @@ input[type=file]{display:none}
 </div>
 
 <!-- PAD TYPE PICKER -->
-<div id="pad-type-picker" onclick="if(event.target===this)closePadTypePicker()">
-  <div class="ptp-box">
-    <div class="ptp-title">NEW PAD</div>
-    <div class="ptp-opt" onclick="pickAudioPad()">
-      <div class="ptp-ico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M11 22H9v-2H7v-2h2V6H7V4h2V2h2v20Zm8 0h-6v-2h6v2Zm2-2h-2v-2h2v2ZM7 18H5v-2h2v2Zm10 0h-4v-2h4v2Zm6 0h-2V6h2v12ZM5 10H3v4h2v2H1V8h4v2Zm14 6h-2V8h2v8Zm-4-2h-2v-4h2v4ZM7 8H5V6h2v2Zm10 0h-4V6h4v2Zm4-2h-2V4h2v2Zm-2-2h-6V2h6v2Z"/></svg></div>
-      <div><div class="ptp-lbl">AUDIO-PAD</div>
-           <div class="ptp-sub">Solo, loop or list</div></div>
-    </div>
-    <div class="ptp-opt" onclick="pickKomboPad()">
-      <div class="ptp-ico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg></div>
-      <div><div class="ptp-lbl">COMBO-PAD</div>
-           <div class="ptp-sub">Combine multiple pads</div></div>
+<div id="pad-type-picker">
+  <div class="fs-hdr">
+    <button class="fs-back" onclick="closePadTypePicker()">←</button>
+    <span class="fs-title">NEW PAD</span>
+  </div>
+  <div style="flex:1;overflow-y:auto">
+    <div style="max-width:var(--cx-max);width:100%;margin:0 auto">
+      <div class="ptp-opt" onclick="pickAudioPad()">
+        <div class="ptp-ico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M11 22H9v-2H7v-2h2V6H7V4h2V2h2v20Zm8 0h-6v-2h6v2Zm2-2h-2v-2h2v2ZM7 18H5v-2h2v2Zm10 0h-4v-2h4v2Zm6 0h-2V6h2v12ZM5 10H3v4h2v2H1V8h4v2Zm14 6h-2V8h2v8Zm-4-2h-2v-4h2v4ZM7 8H5V6h2v2Zm10 0h-4V6h4v2Zm4-2h-2V4h2v2Zm-2-2h-6V2h6v2Z"/></svg></div>
+        <div><div class="ptp-lbl">AUDIO-PAD</div>
+             <div class="ptp-sub">Solo, loop or list</div></div>
+      </div>
+      <div class="ptp-opt" onclick="pickKomboPad()">
+        <div class="ptp-ico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg></div>
+        <div><div class="ptp-lbl">COMBO-PAD</div>
+             <div class="ptp-sub">Combine multiple pads</div></div>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- LIBRARY PICKER -->
-<div id="lib-picker" onclick="if(event.target===this)closeLibPicker()">
-  <div class="lp-box">
-    <div class="lp-hdr">
-      <span style="font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));color:var(--gold)">PICK FROM LIBRARY</span>
-      <button onclick="closeLibPicker()" style="background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);font-size:calc(18px * var(--font-scale));cursor:pointer;padding:0 4px;letter-spacing:0">✕</button>
-    </div>
-    <div style="padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0">
-      <input type="search" id="lp-search" class="fi" placeholder="Filter by name…"
-        oninput="_lpQuery=this.value;_lpRenderList()"
-        style="width:100%;box-sizing:border-box;font-size:calc(13px * var(--font-scale))">
-    </div>
-    <div id="lp-list" style="overflow-y:auto;flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:6px"></div>
+<div id="lib-picker">
+  <div class="fs-hdr">
+    <button class="fs-back" onclick="closeLibPicker()">←</button>
+    <span class="fs-title">PICK FROM LIBRARY</span>
   </div>
+  <div style="padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;max-width:var(--cx-max);width:100%;box-sizing:border-box;margin:0 auto">
+    <input type="search" id="lp-search" class="fi" placeholder="Filter by name…"
+      oninput="_lpQuery=this.value;_lpRenderList()"
+      style="width:100%;box-sizing:border-box;font-size:calc(13px * var(--font-scale))">
+  </div>
+  <div id="lp-list" style="overflow-y:auto;flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:6px;max-width:var(--cx-max);width:100%;box-sizing:border-box;margin:0 auto"></div>
 </div>
 
 <!-- COMBO EDITOR OVERLAY -->
@@ -2091,12 +2095,16 @@ function renderLibList(entries,usedHashes){
   if(stats) stats.textContent=entries.length?`${entries.length} file${entries.length===1?'':'s'} · ${fmtSize(totalSize)}`:'Library is empty.';
   if(!filtered.length){ list.innerHTML=`<p style="color:var(--text-dim);text-align:center;padding:20px 0">No files${libFilterMode!=='all'?' in this filter':''} yet.</p>`; return; }
   list.innerHTML=filtered.map(e=>{
-    const inUse=usedHashes.has(e.hash);
+    const h=e.hash;
+    const inUse=usedHashes.has(h);
     const date=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);word-break:break-all;flex:1">${escHtml(e.name)}</div>
-        <button onclick="libDeleteFile('${escHtml(e.hash)}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">✕</button>
+        <div id="lnm-${h}" style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);word-break:break-all;flex:1">${escHtml(e.name)}</div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button onclick="libRenameStart('${h}')" title="Rename" style="background:none;border:none;color:var(--text-dim);font-size:calc(16px * var(--font-scale));cursor:pointer;padding:0 3px;line-height:1">✎</button>
+          <button onclick="libDeleteFile('${h}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;padding:2px 8px;border-radius:2px;cursor:pointer">✕</button>
+        </div>
       </div>
       <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date} · ${inUse?'<span style="color:var(--active)">in use</span>':'<span style="color:var(--mist)">unused</span>'}</div>
     </div>`;
@@ -2121,6 +2129,28 @@ async function libDeleteFile(hash){
   await libDelete(hash);
   delete libBufs[hash];
   showToast('File deleted from Library.');
+  initLibScreen();
+}
+async function libRenameStart(hash){
+  const entry=await libGet(hash); if(!entry) return;
+  const el=document.getElementById('lnm-'+hash); if(!el) return;
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:5px;flex:1">
+    <input id="lnr-${hash}" value="${escHtml(entry.name)}"
+      style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));background:var(--raised);border:1px solid var(--active);color:var(--text);padding:3px 6px;border-radius:2px;box-sizing:border-box;width:100%"
+      onkeydown="if(event.key==='Enter')libRenameSave('${hash}');else if(event.key==='Escape')initLibScreen()">
+    <div style="display:flex;gap:6px">
+      <button onclick="libRenameSave('${hash}')" style="background:none;border:1px solid var(--emerald);color:var(--emerald);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 9px;border-radius:2px;cursor:pointer">✓</button>
+      <button onclick="initLibScreen()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer">✕</button>
+    </div>
+  </div>`;
+  const inp=document.getElementById('lnr-'+hash); if(inp){ inp.focus(); inp.select(); }
+}
+async function libRenameSave(hash){
+  const inp=document.getElementById('lnr-'+hash); if(!inp) return;
+  const newName=inp.value.trim(); if(!newName) return;
+  const entry=await libGet(hash); if(!entry) return;
+  await libPut({...entry,name:newName});
+  showToast('File renamed.');
   initLibScreen();
 }
 
