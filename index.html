@@ -186,7 +186,7 @@ input[type=file]{display:none}
 /* MODE SWITCH */
 #mode-switch{position:relative;display:flex;align-items:stretch;
   border:1px solid var(--gold-dim);border-radius:2px;cursor:pointer;overflow:hidden;
-  user-select:none;transition:border-color .3s ease,box-shadow .3s ease;
+  user-select:none;transition:border-color .3s ease;
   font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:1px}
 #mode-switch:active{transform:scale(.96)}
 #ms-slider{position:absolute;top:0;bottom:0;left:0;width:50%;
@@ -195,12 +195,12 @@ input[type=file]{display:none}
 .ms-sep{position:relative;z-index:1;display:flex;align-items:center;padding:0 1px;
   transition:color .3s ease}
 #sp.mode-edit #mode-switch{border-color:var(--gold-dim);
-  box-shadow:0 0 10px rgba(201,168,76,.22),0 0 22px rgba(201,168,76,.09)}
+  animation:switch-breathe-gold 3s ease-in-out infinite}
 #sp.mode-edit #ms-setup{color:var(--gold)}
 #sp.mode-edit #ms-play{color:var(--mist)}
 #sp.mode-edit .ms-sep{color:var(--gold-dim)}
 #sp.mode-play #mode-switch{border-color:rgba(79,195,247,.45);
-  box-shadow:0 0 10px rgba(79,195,247,.22),0 0 22px rgba(79,195,247,.09)}
+  animation:switch-breathe-blue 2.5s ease-in-out infinite}
 #sp.mode-play #ms-slider{left:50%;background:rgba(79,195,247,.13)}
 #sp.mode-play #ms-play{color:var(--active)}
 #sp.mode-play #ms-setup{color:var(--mist)}
@@ -211,6 +211,12 @@ input[type=file]{display:none}
 @keyframes spark-fly{
   0%{transform:translate(0,0) scale(1);opacity:1}
   100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0}}
+@keyframes switch-breathe-gold{
+  0%,100%{box-shadow:0 0 5px rgba(201,168,76,.12),0 0 12px rgba(201,168,76,.05)}
+  50%    {box-shadow:0 0 18px rgba(201,168,76,.42),0 0 34px rgba(201,168,76,.16)}}
+@keyframes switch-breathe-blue{
+  0%,100%{box-shadow:0 0 5px rgba(79,195,247,.12),0 0 12px rgba(79,195,247,.05)}
+  50%    {box-shadow:0 0 18px rgba(79,195,247,.42),0 0 34px rgba(79,195,247,.16)}}
 .pgrid{flex:1;overflow-y:auto;display:grid;
   grid-template-columns:repeat(auto-fill,var(--pad-sz));
   gap:var(--pad-gap);padding:8px;position:relative;z-index:2;align-content:start}
@@ -2576,6 +2582,41 @@ function onDragEnd(e){
   dragSrc=null;
 }
 
+function emitAmbientSpark(){
+  const sw=document.getElementById('mode-switch');
+  if(!sw||cur!=='sp') return;
+  const rect=sw.getBoundingClientRect();
+  const color=locked?'#4fc3f7':'#c9a84c';
+  const glow=locked?'rgba(79,195,247,.55)':'rgba(201,168,76,.55)';
+  const count=1+(Math.random()*2|0);
+  for(let i=0;i<count;i++){
+    const side=Math.random()*4|0, f=Math.random();
+    let px,py;
+    if(side===0){px=rect.left+f*rect.width;py=rect.top;}
+    else if(side===1){px=rect.right;py=rect.top+f*rect.height;}
+    else if(side===2){px=rect.left+f*rect.width;py=rect.bottom;}
+    else{px=rect.left;py=rect.top+f*rect.height;}
+    const angle=-Math.PI/2+(Math.random()-.5)*1.6;
+    const dist=8+Math.random()*20;
+    const w=Math.max(1,(1+Math.random()*1.5)|0);
+    const el=document.createElement('div');
+    el.className='spark';
+    el.style.cssText=`left:${px-w/2}px;top:${py-w/2}px;width:${w}px;height:${w}px;`+
+      `background:${color};box-shadow:0 0 3px ${glow};`+
+      `--sx:${Math.cos(angle)*dist}px;--sy:${Math.sin(angle)*dist}px;`+
+      `animation-duration:${.35+Math.random()*.25}s`;
+    document.body.appendChild(el);
+    el.addEventListener('animationend',()=>el.remove());
+  }
+}
+let _ambientSparkHandle=null;
+function scheduleAmbientSpark(){
+  _ambientSparkHandle=setTimeout(()=>{
+    emitAmbientSpark();
+    scheduleAmbientSpark();
+  },2200+Math.random()*3200);
+}
+
 function spawnSparks(rect,toPlay){
   const color=toPlay?'#4fc3f7':'#c9a84c';
   const glow=toPlay?'rgba(79,195,247,.7)':'rgba(201,168,76,.7)';
@@ -2668,6 +2709,8 @@ document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState==='visible' && ctx?.state==='suspended')
     ctx.resume().catch(()=>{});
 });
+
+scheduleAmbientSpark();
 
 // Register Service Worker for offline/PWA support
 if('serviceWorker' in navigator){
