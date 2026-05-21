@@ -19,7 +19,7 @@
   --night:#0a0a14; --deep:#0f0f1e; --surface:#16162a; --raised:#1e1e35;
   --border:#2a2a4a; --gold:#c9a84c; --gold-dim:#7a5f28; --blood:#8b1a1a;
   --blood-bright:#c0392b; --mist:#4a4a7a; --text:#e8e0d0; --text-dim:#8a8098;
-  --active:#4fc3f7; --pad-sz:90px; --pad-gap:8px; --pad-radius:8px;
+  --cx-max:900px; --active:#4fc3f7; --pad-sz:90px; --pad-gap:8px; --pad-radius:8px;
   --ff-title:'Press Start 2P',monospace;
   --ff-label:'VT323',monospace;
   --ff-body:'Share Tech Mono',monospace;
@@ -91,7 +91,7 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 /* SETUP */
 /* Responsive content column: grows with viewport, caps at 900px.
    Use as single wrapper inside every non-pad screen's scrollable area. */
-.cx{max-width:900px;width:100%;margin:0 auto;
+.cx{max-width:var(--cx-max);width:100%;margin:0 auto;
   padding:0 clamp(20px,5vw,56px);box-sizing:border-box}
 /* Section body inside .cx — only vertical spacing needed */
 .sec-body{padding:10px 0 16px}
@@ -448,7 +448,7 @@ input[type=file]{display:none}
 #lib-picker{position:fixed;inset:0;z-index:200;background:rgba(10,10,20,.85);
   display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px)}
 .lp-box{background:var(--deep);border:1px solid var(--border);border-top:1px solid var(--gold-dim);
-  border-radius:4px 4px 0 0;width:100%;max-width:900px;max-height:72vh;display:flex;flex-direction:column}
+  border-radius:4px 4px 0 0;width:100%;max-width:var(--cx-max);max-height:72vh;display:flex;flex-direction:column}
 .lp-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;
   border-bottom:1px solid var(--border);flex-shrink:0}
 .lp-row{background:var(--surface);border:1px solid var(--border);border-radius:4px;
@@ -546,7 +546,7 @@ input[type=file]{display:none}
 
 <!-- GLOBAL MENU BUTTON -->
 <button id="menu-btn" onclick="onMenuBtn()"
-  style="display:none;position:fixed;top:9px;right:calc(max(0px,(100vw - 900px)/2) + clamp(20px,5vw,56px));z-index:120;
+  style="display:none;position:fixed;top:9px;right:calc(max(0px,(100vw - var(--cx-max))/2) + clamp(20px,5vw,56px));z-index:120;
          background:rgba(18,12,4,.88);border:1px solid var(--gold-dim);
          color:var(--gold);font-family:var(--ff-label);
          font-size:calc(13px * var(--font-scale));letter-spacing:0;
@@ -655,6 +655,21 @@ input[type=file]{display:none}
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
         <b style="color:var(--text)">RETRO</b> — pixel aesthetic with monospace font<br>
         <b style="color:var(--text)">MODERN</b> — elegant dark UI with system font
+      </p>
+    </div>
+    <div class="tips-hdr">CONTENT WIDTH</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="cw-compact" onclick="setContentWidth('compact')">COMPACT</div>
+        <div class="topt" id="cw-medium" onclick="setContentWidth('medium')">MEDIUM</div>
+        <div class="topt" id="cw-wide" onclick="setContentWidth('wide')">WIDE</div>
+        <div class="topt" id="cw-auto" onclick="setContentWidth('auto')">AUTO</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        <b style="color:var(--text)">COMPACT</b> — 900px (default)<br>
+        <b style="color:var(--text)">MEDIUM</b> — 1100px<br>
+        <b style="color:var(--text)">WIDE</b> — 1400px<br>
+        <b style="color:var(--text)">AUTO</b> — scales with the viewport
       </p>
     </div>
     <div class="tips-hdr">FONT SIZE</div>
@@ -1444,6 +1459,7 @@ function initTheme(){
   document.body.classList.toggle('theme-modern',t==='modern');
   document.documentElement.style.setProperty('--font-scale',parseFloat(localStorage.getItem('font-scale')||'1'));
   document.documentElement.style.setProperty('--sym-scale',parseFloat(localStorage.getItem('sym-scale')||'1'));
+  applyContentWidth();
 }
 function setTheme(t){
   localStorage.setItem('theme',t);
@@ -1467,6 +1483,19 @@ function setSymScale(v){
   const lbl=document.getElementById('sym-scale-label');
   if(lbl) lbl.textContent=Math.round(v*100)+'%';
 }
+function setContentWidth(val){
+  localStorage.setItem('cx-width',val);
+  applyContentWidth();
+}
+function applyContentWidth(){
+  const val=localStorage.getItem('cx-width')||'compact';
+  const vals={compact:'900px',medium:'1100px',wide:'1400px',auto:'clamp(900px,68vw,1400px)'};
+  document.documentElement.style.setProperty('--cx-max',vals[val]||'900px');
+  ['compact','medium','wide','auto'].forEach(k=>{
+    const el=document.getElementById('cw-'+k);
+    if(el) el.className='topt'+(k===val?' al':'');
+  });
+}
 function initThemeSettings(){
   const t=localStorage.getItem('theme')||'retro';
   ['retro','modern'].forEach(k=>{
@@ -1483,6 +1512,7 @@ function initThemeSettings(){
   if(ssl) ssl.value=ss;
   if(fll) fll.textContent=Math.round(fs*100)+'%';
   if(sll) sll.textContent=Math.round(ss*100)+'%';
+  applyContentWidth();
 }
 
 // ── AUDIO ──
