@@ -190,21 +190,21 @@ input[type=file]{display:none}
   font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:1px}
 #mode-switch:active{transform:scale(.96)}
 #ms-slider{position:absolute;top:0;bottom:0;left:0;width:50%;
-  background:rgba(201,168,76,.15);transition:left .3s ease,background .3s ease;pointer-events:none}
+  background:rgba(79,195,247,.13);transition:left .3s ease,background .3s ease;pointer-events:none}
 #ms-setup,#ms-play{position:relative;z-index:1;padding:6px 14px;transition:color .3s ease}
 .ms-sep{position:relative;z-index:1;display:flex;align-items:center;padding:0 1px;
   transition:color .3s ease}
-#sp.mode-edit #mode-switch{border-color:var(--gold-dim);
-  animation:switch-breathe-gold 3s ease-in-out infinite}
-#sp.mode-edit #ms-setup{color:var(--gold)}
+#sp.mode-edit #mode-switch{border-color:rgba(79,195,247,.45);
+  animation:switch-breathe-blue 3s ease-in-out infinite}
+#sp.mode-edit #ms-setup{color:var(--active)}
 #sp.mode-edit #ms-play{color:var(--mist)}
-#sp.mode-edit .ms-sep{color:var(--gold-dim)}
-#sp.mode-play #mode-switch{border-color:rgba(79,195,247,.45);
-  animation:switch-breathe-blue 2.5s ease-in-out infinite}
-#sp.mode-play #ms-slider{left:50%;background:rgba(79,195,247,.13)}
-#sp.mode-play #ms-play{color:var(--active)}
+#sp.mode-edit .ms-sep{color:rgba(79,195,247,.35)}
+#sp.mode-play #mode-switch{border-color:var(--gold-dim);
+  animation:switch-breathe-gold 2.5s ease-in-out infinite}
+#sp.mode-play #ms-slider{left:50%;background:rgba(201,168,76,.15)}
+#sp.mode-play #ms-play{color:var(--gold)}
 #sp.mode-play #ms-setup{color:var(--mist)}
-#sp.mode-play .ms-sep{color:rgba(79,195,247,.35)}
+#sp.mode-play .ms-sep{color:var(--gold-dim)}
 /* SPARKS */
 .spark{position:fixed;border-radius:50%;pointer-events:none;z-index:500;
   animation:spark-fly .45s ease-out forwards}
@@ -305,11 +305,11 @@ input[type=file]{display:none}
 #sp.mode-edit::before{
   background:radial-gradient(ellipse at 55% 25%,rgba(120,80,10,.18) 0%,transparent 60%) !important;
   animation:fog-drift 14s ease-in-out infinite}
-#sp.mode-edit .p-hdr{border-bottom-color:rgba(201,168,76,.25)}
+#sp.mode-edit .p-hdr{border-bottom-color:rgba(79,195,247,.25)}
 #sp.mode-play::before{
   background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.1) 0%,transparent 50%) !important;
   animation:fog-drift 10s ease-in-out infinite}
-#sp.mode-play .p-hdr{border-bottom-color:rgba(42,42,74,.6)}
+#sp.mode-play .p-hdr{border-bottom-color:rgba(201,168,76,.25)}
 #sp.mode-edit #np{display:none}
 #sp.mode-edit #dbg{display:none !important}
 
@@ -2586,8 +2586,8 @@ function emitAmbientSpark(){
   const sw=document.getElementById('mode-switch');
   if(!sw||cur!=='sp') return;
   const rect=sw.getBoundingClientRect();
-  const color=locked?'#4fc3f7':'#c9a84c';
-  const glow=locked?'rgba(79,195,247,.55)':'rgba(201,168,76,.55)';
+  const color=locked?'#c9a84c':'#4fc3f7';
+  const glow=locked?'rgba(201,168,76,.55)':'rgba(79,195,247,.55)';
   // Constrain to the active half: left (SETUP) or right (SPIEL)
   const halfW=rect.width/2;
   const xMin=locked?rect.left+halfW:rect.left;
@@ -2633,9 +2633,9 @@ function scheduleAmbientSpark(){
 }
 
 function spawnSparks(rect,toPlay){
-  const color=toPlay?'#4fc3f7':'#c9a84c';
-  const bright=toPlay?'#a8e6ff':'#ffe09a';
-  const glow=toPlay?'rgba(79,195,247,.85)':'rgba(201,168,76,.85)';
+  const color=toPlay?'#c9a84c':'#4fc3f7';
+  const bright=toPlay?'#ffe09a':'#a8e6ff';
+  const glow=toPlay?'rgba(201,168,76,.85)':'rgba(79,195,247,.85)';
   const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
   const count=26;
   for(let i=0;i<count;i++){
