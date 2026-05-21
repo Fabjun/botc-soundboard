@@ -442,7 +442,11 @@ input[type=file]{display:none}
   <div class="mopts">
     <div class="mopt mp" onclick="show('sp')">
       <div class="mico">◈</div>
-      <div><div class="mlbl">BOARD</div><div class="msub">Setup &amp; Spielmodus — durch Portal umschalten</div></div>
+      <div><div class="mlbl">BOARD</div><div class="msub" id="board-subtitle">Lade…</div></div>
+    </div>
+    <div class="mopt" onclick="show('smb')">
+      <div class="mico">⊞</div>
+      <div><div class="mlbl">MEINE BOARDS</div><div class="msub">Boards verwalten &amp; wechseln</div></div>
     </div>
     <div class="mopt" onclick="show('sa')">
       <div class="mico">⚙</div>
@@ -454,6 +458,32 @@ input[type=file]{display:none}
     </div>
   </div>
 </div>
+
+<!-- MEINE BOARDS -->
+<div id="smb" class="screen">
+  <div class="s-hdr">
+    <h2>MEINE BOARDS</h2>
+    <button class="btn-s" onclick="show('smm')" style="font-size:calc(13px * var(--font-scale));padding:5px 9px">← MENÜ</button>
+  </div>
+  <div id="board-list" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px"></div>
+  <div style="padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0">
+    <button class="btn-p" onclick="showCreateBoard()" style="width:100%">+ NEUES BOARD</button>
+  </div>
+</div>
+
+<!-- BOARD NAME DIALOG -->
+<div id="board-name-dlg" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.75);align-items:center;justify-content:center">
+  <div style="background:var(--raised);border:1px solid var(--gold-dim);border-radius:8px;padding:20px;width:88%;max-width:320px;display:flex;flex-direction:column;gap:12px">
+    <div id="bnd-title" style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));color:var(--gold);letter-spacing:0">NEUES BOARD</div>
+    <input id="bnd-input" class="fi" placeholder="Board-Name…" style="font-size:calc(15px * var(--font-scale))"
+      onkeydown="if(event.key==='Enter')confirmBoardName();else if(event.key==='Escape')closeBoardNameDlg()">
+    <div style="display:flex;gap:8px">
+      <button class="btn-s" onclick="closeBoardNameDlg()" style="flex:1">ABBRECHEN</button>
+      <button class="btn-p" onclick="confirmBoardName()" style="flex:2" id="bnd-confirm-lbl">ERSTELLEN</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- KEY DETECT -->
 <div id="sk" class="screen">
@@ -828,6 +858,7 @@ input[type=file]{display:none}
 
 <script>
 let pads = [];
+let currentBoardId = null, currentBoardName = '', renamingBoardId = null;
 let ctx = null, db = null, masterGain = null, analyser = null, analyserData = null;
 let bufs = {}, srcs = {}, gains = {};
 let eqRAF = null;
@@ -850,28 +881,203 @@ let dragStartX=0, dragStartY=0, dragGhostW=0, dragGhostH=0;
 // ── DB ──
 function openDB(){
   return new Promise((res,rej)=>{
-    const r = indexedDB.open('botc3',1);
-    r.onupgradeneeded = e => e.target.result.createObjectStore('p',{keyPath:'id'});
+    const r = indexedDB.open('botc3',2);
+    r.onupgradeneeded = e => {
+      const dbv=e.target.result, tx=e.target.transaction;
+      if(e.oldVersion===0){
+        dbv.createObjectStore('p',{keyPath:'id'});
+      } else if(e.oldVersion===1){
+        // Migrate v1 (individual pad records with integer id)
+        // to v2 (board records with string id starting with "board_")
+        const store=tx.objectStore('p');
+        store.getAll().onsuccess=ev=>{
+          const old=ev.target.result||[];
+          const intPads=old.filter(p=>p&&typeof p.id==='number');
+          const newPads=[];
+          intPads.forEach(p=>{ newPads[p.id]=p; });
+          intPads.forEach(p=>store.delete(p.id));
+          store.put({id:'board_default',name:'Board 1',createdAt:Date.now(),pads:newPads});
+        };
+      }
+    };
     r.onsuccess = e => { db=e.target.result; res(); };
     r.onerror = ()=>res();
   });
 }
 function save(){
-  if(!db) return;
-  const tx=db.transaction('p','readwrite'), s=tx.objectStore('p');
-  s.clear();
-  pads.forEach(p=>{ if(p) s.put(p); });
+  if(!db||!currentBoardId) return Promise.resolve();
+  return new Promise(res=>{
+    const tx=db.transaction('p','readwrite'), s=tx.objectStore('p');
+    tx.oncomplete=()=>res(); tx.onerror=()=>res();
+    s.get(currentBoardId).onsuccess=ev=>{
+      const rec=ev.target.result||{id:currentBoardId,name:currentBoardName,createdAt:Date.now()};
+      rec.pads=[...pads];
+      s.put(rec);
+    };
+  });
 }
 function load(){
   return new Promise(res=>{
     if(!db) return res();
-    const r=db.transaction('p','readonly').objectStore('p').getAll();
-    r.onsuccess=e=>{
-      (e.target.result||[]).forEach(p=>{ if(p.id>=0) pads[p.id]=p; });
+    db.transaction('p','readonly').objectStore('p').getAll().onsuccess=ev=>{
+      const all=ev.target.result||[];
+      const boards=all.filter(b=>typeof b.id==='string'&&b.id.startsWith('board_'));
+      if(!boards.length){
+        // Fresh install — create default board
+        currentBoardId='board_default';
+        currentBoardName='Board 1';
+        pads=[];
+        db.transaction('p','readwrite').objectStore('p')
+          .put({id:'board_default',name:'Board 1',createdAt:Date.now(),pads:[]});
+        return res();
+      }
+      const lastId=localStorage.getItem('last-board');
+      const found=boards.find(b=>b.id===lastId)||boards[0];
+      currentBoardId=found.id;
+      currentBoardName=found.name;
+      pads=found.pads||[];
+      localStorage.setItem('last-board',currentBoardId);
       res();
     };
-    r.onerror=()=>res();
   });
+}
+
+// ── BOARDS ──
+function loadBoardsMeta(){
+  return new Promise(res=>{
+    if(!db) return res([]);
+    db.transaction('p','readonly').objectStore('p').getAll().onsuccess=ev=>{
+      const all=ev.target.result||[];
+      res(all.filter(b=>typeof b.id==='string'&&b.id.startsWith('board_'))
+            .map(b=>({id:b.id,name:b.name,createdAt:b.createdAt,
+                      padCount:(b.pads||[]).filter(p=>p).length}))
+            .sort((a,b)=>a.createdAt-b.createdAt));
+    };
+  });
+}
+async function switchBoard(id){
+  await save();
+  stopAll();
+  currentBoardId=id;
+  currentBoardName='';
+  localStorage.setItem('last-board',id);
+  pads=[]; bufs={}; srcs={}; gains={};
+  locked=false; applyModeVisuals();
+  await load();
+  decodeAll();
+  show('sp');
+}
+function createBoard(name){
+  return new Promise(res=>{
+    if(!db) return res(null);
+    const id='board_'+Date.now();
+    db.transaction('p','readwrite').objectStore('p')
+      .put({id,name,createdAt:Date.now(),pads:[]}).onsuccess=()=>res(id);
+  });
+}
+function renameBoard(id,name){
+  if(!db) return;
+  const tx=db.transaction('p','readwrite'), s=tx.objectStore('p');
+  s.get(id).onsuccess=ev=>{
+    const rec=ev.target.result; if(!rec) return;
+    rec.name=name; s.put(rec);
+    if(id===currentBoardId){ currentBoardName=name; updBoardSubtitle(); }
+  };
+}
+function updBoardSubtitle(){
+  const el=document.getElementById('board-subtitle');
+  if(el) el.textContent=currentBoardName;
+}
+function deleteBoard(id){
+  return new Promise(res=>{
+    if(!db) return res();
+    db.transaction('p','readwrite').objectStore('p').delete(id).onsuccess=()=>res();
+  });
+}
+async function duplicateBoard(id){
+  return new Promise(res=>{
+    if(!db) return res(null);
+    const tx=db.transaction('p','readwrite'), s=tx.objectStore('p');
+    s.get(id).onsuccess=ev=>{
+      const orig=ev.target.result; if(!orig) return res(null);
+      const newId='board_'+Date.now();
+      const clone=structuredClone(orig);
+      clone.id=newId; clone.name=orig.name+' (Kopie)'; clone.createdAt=Date.now();
+      s.put(clone).onsuccess=()=>res(newId);
+    };
+  });
+}
+async function initBoardScreen(){
+  const boards=await loadBoardsMeta();
+  renderBoardList(boards);
+}
+function renderBoardList(boards){
+  const el=document.getElementById('board-list'); if(!el) return;
+  if(!boards.length){ el.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:20px">Keine Boards vorhanden.</p>'; return; }
+  el.innerHTML=boards.map(b=>{
+    const active=b.id===currentBoardId;
+    const isRenaming=renamingBoardId===b.id;
+    const nameHtml=isRenaming
+      ? `<input id="rn-${b.id}" class="fi" value="${b.name.replace(/"/g,'&quot;')}" style="font-size:calc(15px * var(--font-scale));padding:4px 8px" onkeydown="handleRenameKey(event,'${b.id}')" onblur="commitRename('${b.id}')">`
+      : `<div style="font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));color:${active?'var(--gold)':'var(--text)'};letter-spacing:0">${b.name}${active?' ◈':''}</div>`;
+    const dateStr=new Date(b.createdAt).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    return `<div style="background:var(--surface);border:1px solid ${active?'var(--gold-dim)':'var(--border)'};border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:6px">
+      ${nameHtml}
+      <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${b.padCount} Pad${b.padCount===1?'':'s'} · ${dateStr}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button onclick="switchBoard('${b.id}')" style="background:${active?'rgba(201,168,76,.15)':'var(--raised)'};border:1px solid ${active?'var(--gold-dim)':'var(--border)'};color:${active?'var(--gold)':'var(--text)'};font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">${active?'◈ OFFEN':'→ ÖFFNEN'}</button>
+        <button onclick="startRename('${b.id}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">✎ UMBENENNEN</button>
+        <button onclick="triggerDuplicate('${b.id}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">⧉ DUPLIZIEREN</button>
+        ${boards.length>1?`<button onclick="triggerDelete('${b.id}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">✕ LÖSCHEN</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function startRename(id){
+  renamingBoardId=id;
+  loadBoardsMeta().then(renderBoardList);
+  setTimeout(()=>{ const inp=document.getElementById('rn-'+id); if(inp){ inp.focus(); inp.select(); } },50);
+}
+function handleRenameKey(e,id){
+  if(e.key==='Enter') commitRename(id);
+  else if(e.key==='Escape'){ renamingBoardId=null; loadBoardsMeta().then(renderBoardList); }
+}
+function commitRename(id){
+  const inp=document.getElementById('rn-'+id); if(!inp) return;
+  const name=inp.value.trim()||'Board';
+  renamingBoardId=null;
+  renameBoard(id,name);
+  loadBoardsMeta().then(renderBoardList);
+}
+async function triggerDuplicate(id){
+  const newId=await duplicateBoard(id);
+  if(newId) loadBoardsMeta().then(renderBoardList);
+}
+async function triggerDelete(id){
+  const boards=await loadBoardsMeta();
+  if(boards.length<=1){ alert('Das letzte Board kann nicht gelöscht werden.'); return; }
+  const b=boards.find(x=>x.id===id);
+  if(!confirm(`Board "${b?.name||id}" wirklich löschen?`)) return;
+  if(id===currentBoardId){
+    const other=boards.find(x=>x.id!==id);
+    if(other) await switchBoard(other.id);
+  }
+  await deleteBoard(id);
+  loadBoardsMeta().then(renderBoardList);
+}
+function showCreateBoard(){
+  document.getElementById('bnd-input').value='Neues Board';
+  document.getElementById('board-name-dlg').style.display='flex';
+  setTimeout(()=>{ const i=document.getElementById('bnd-input'); i.focus(); i.select(); },50);
+}
+function closeBoardNameDlg(){
+  document.getElementById('board-name-dlg').style.display='none';
+}
+async function confirmBoardName(){
+  const name=document.getElementById('bnd-input').value.trim()||'Board';
+  closeBoardNameDlg();
+  const newId=await createBoard(name);
+  if(newId) await switchBoard(newId);
 }
 
 // ── THEME ──
@@ -948,7 +1154,8 @@ function unlock(){
     decodeAll();
     applyStartMode();
     initStartModeUI();
-    show('smm');
+    updBoardSubtitle();
+    show(locked?'sp':'smm');
   });
 }
 function decodeAll(){ pads.forEach((p,i)=>{ if(p&&p.files&&p.files.length) decodePad(i); }); }
@@ -1281,6 +1488,7 @@ function show(id){
   cur=id;
   if(id==='sp'){ renderBoard(); if(locked) focusKB(); }
   if(id==='sa'){ initHelpSettings(); initThemeSettings(); }
+  if(id==='smb') initBoardScreen();
 }
 document.getElementById('kfocus').addEventListener('blur', ()=>{
   if(cur==='sp' && !document.getElementById('ep').classList.contains('open')){
