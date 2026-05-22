@@ -316,6 +316,9 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
   color:var(--mode-accent-dim);font-family:monospace;opacity:.6}
 .pbtn.playing .pnum{color:var(--gold-dim)}
 .pbtn.has-img{background-size:cover;background-position:center;background-repeat:no-repeat}
+.pbtn::before{content:'';position:absolute;inset:0;transform:scaleY(var(--plevel,0));transform-origin:bottom;border-radius:inherit;pointer-events:none;z-index:0}
+body.mode-play .pbtn::before{background:linear-gradient(to top,rgba(201,168,76,.38) 0%,rgba(201,168,76,.1) 55%,transparent 100%)}
+body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.3) 0%,rgba(79,195,247,.07) 55%,transparent 100%)}
 .pbtn.has-img::after{content:'';position:absolute;inset:0;background:rgba(10,10,20,0.52);border-radius:inherit;pointer-events:none}
 .pbtn.has-img .pico{display:none}
 .pbtn.has-img .plbl,.pbtn.has-img .pnum{position:relative;z-index:1}
@@ -970,6 +973,17 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
       <div style="text-align:center;font-size:calc(11px * var(--font-scale));color:var(--text-dim)" id="sym-scale-label">100%</div>
     </div>
 
+    <div class="sg-sub">PAD LEVEL</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="pl-on" onclick="setPadLevel(true)">ON</div>
+        <div class="topt" id="pl-off" onclick="setPadLevel(false)">OFF</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        Live amplitude meter in the background of each playing PAD — individual per sound, not the master mix.
+      </p>
+    </div>
+
     <!-- DATA -->
     <div class="sg-hdr">DATA</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
@@ -1562,8 +1576,9 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 80;
+const APP_VERSION = 81;
 const CHANGELOG=[
+  {v:81,date:'2026-05-22',items:["Live PAD level meters: each playing PAD shows its own amplitude as a gradient fill rising from the bottom","Per-PAD AnalyserNode inserted between pad gain and master gain — individual levels, not the master mix","Toggle in Settings → GRAPHICS → PAD LEVEL (default: ON)","Fix: playSwitchSound was referencing an undefined variable"]},
   {v:80,date:'2026-05-22',items:["All screens are now fully scrollable — content centers when it fits, scrolls when it doesn't","Fixes title screen and main menu clipping content on small screens or with large font scale"]},
   {v:79,date:'2026-05-22',items:["Library entries now remember their original filename","After renaming, the original name is shown dimmed (← original.mp3) below the current name in the Library and Library Picker","origName stored on first upload; preserved across renames, exports, and imports"]},
   {v:78,date:'2026-05-22',items:["PAD editor SOUND section redesigned: file metadata, waveform, and controls are now a single unified block","File rows show filename + duration + file size together","Waveform canvas is taller (64 px); playback controls (▶ ⏹) and action buttons (CHANGE / FROM LIB) sit directly under the waveform","Upload/FROM LIB buttons shown only when no file is loaded; action buttons inside the block when a file is loaded"]},
@@ -1607,7 +1622,7 @@ const CHANGELOG=[
   {v:38,date:'2026-05-22',items:['Edit mode accent: blue icons/borders; Play mode accent: gold','Looping pad border pulses gold (breathe-gold animation)']},
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis'];
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
 //  grep for "// ── SECTION" to jump to any area
@@ -1641,7 +1656,8 @@ const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-g
 let pads = [];
 let currentBoardId = null, currentBoardName = '', renamingBoardId = null;
 let ctx = null, db = null, masterGain = null, analyser = null, analyserData = null;
-let bufs = {}, srcs = {}, gains = {};
+let bufs = {}, srcs = {}, gains = {}, padAnalysers = {};
+let _padLevelRAF = null;
 let libBufs = {};
 let eqRAF = null;
 let eId = null, eFiles = [], eMode = 'once', eImage = null, eIcons = [null,null,null,null], eIconSlot = 0, eShuffle = false, pendingMode = null, eLoopCount = 0, appendFiles = false, fadeSub = false;
@@ -2218,16 +2234,16 @@ function play(id){
     stopPad(id,true);
     const s=ctx.createBufferSource(), g=ctx.createGain();
     fadeInGain(g,vol,fi);
-    s.buffer=b; s.connect(g); g.connect(masterGain); s.start(0);
+    s.buffer=b; s.connect(g); _connectGainToMaster(id,g); s.start(0);
     srcs[id]=[s]; gains[id]=g;
-    s.onended=()=>{ delete srcs[id]; updBtn(id,false); chkNP(); };
+    s.onended=()=>{ delete srcs[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); };
     updBtn(id,true,false); setNP(p.name);
   } else if(p.mode==='loop'){
     if(srcs[id]){ stopPad(id); return; }
     const b=bufs[id][0]; if(!b) return;
     const lc=p.loopCount||0;
     const g=ctx.createGain();
-    fadeInGain(g,vol,fi); g.connect(masterGain);
+    fadeInGain(g,vol,fi); _connectGainToMaster(id,g);
     gains[id]=g;
     if(lc===0){
       const s=ctx.createBufferSource();
@@ -2242,7 +2258,7 @@ function play(id){
         s.buffer=b; s.connect(g); s.start(0);
         srcs[id]=[s]; rem--;
         if(rem<=0){
-          s.onended=()=>{ if(srcs[id]){ delete srcs[id]; delete gains[id]; updBtn(id,false); chkNP(); } };
+          s.onended=()=>{ if(srcs[id]){ delete srcs[id]; delete gains[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); } };
         } else {
           s.onended=()=>{ if(srcs[id]) loopOne(); };
         }
@@ -2267,7 +2283,7 @@ function playNext(id,all){
   }
   const s=ctx.createBufferSource(), g=ctx.createGain();
   fadeInGain(g,(p.volume||80)/100,p.fadeIn||0);
-  s.buffer=all[i]; s.connect(g); g.connect(masterGain); s.start(0);
+  s.buffer=all[i]; s.connect(g); _connectGainToMaster(id,g); s.start(0);
   srcs[id]=[s]; gains[id]=g;
   updBtn(id,true,true);
   const fn=(p.files[i]||{}).name||'';
@@ -2285,12 +2301,13 @@ function stopPad(id, immediate=false){
     g.gain.linearRampToValueAtTime(0, ctx.currentTime+fo);
     srcs[id].forEach(s=>{ try{ s.onended=null; s.stop(ctx.currentTime+fo); }catch(e){} });
     const cid=id;
-    setTimeout(()=>{ delete srcs[cid]; delete gains[cid]; delete playPos[cid]; updBtn(cid,false); chkNP(); }, fo*1000+100);
+    setTimeout(()=>{ delete srcs[cid]; delete gains[cid]; delete playPos[cid]; _detachPadAnalyser(cid); updBtn(cid,false); chkNP(); }, fo*1000+100);
   } else {
     srcs[id].forEach(s=>{ try{ s.onended=null; s.stop(); }catch(e){} });
     delete srcs[id];
     delete gains[id];
     delete playPos[id];
+    _detachPadAnalyser(id);
     updBtn(id,false);
   }
 }
@@ -3388,7 +3405,7 @@ function show(id){
   if(menuConfirmTimer) hideMenuConfirm();
   cur=id;
   if(id==='sp'){ renderBoard(); if(locked) focusKB(); }
-  if(id==='sa'){ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); }
+  if(id==='sa'){ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); _initPadLevelUI(); }
   if(id==='smb') initBoardScreen();
   if(id==='sli') initLibScreen();
   if(id==='smm') updateMenuBackupBtns();
@@ -4689,6 +4706,58 @@ function scheduleAmbientSpark(){
   },2200+Math.random()*3200);
 }
 
+// ── PAD LEVEL METERS ──
+function _padLevelEnabled(){ return localStorage.getItem('pad-level-vis')!=='0'; }
+function _connectGainToMaster(id,g){
+  if(id!=null&&_padLevelEnabled()){
+    if(padAnalysers[id]){ try{padAnalysers[id].analyser.disconnect();}catch(e){} delete padAnalysers[id]; }
+    const a=ctx.createAnalyser(); a.fftSize=64;
+    g.connect(a); a.connect(masterGain);
+    padAnalysers[id]={analyser:a,data:new Uint8Array(a.frequencyBinCount)};
+    _ensurePadLevelRAF();
+  } else { g.connect(masterGain); }
+}
+function _detachPadAnalyser(id){
+  const pa=padAnalysers[id]; if(!pa) return;
+  try{pa.analyser.disconnect();}catch(e){}
+  delete padAnalysers[id];
+  const el=document.querySelector(`#pgrid .pbtn[data-id="${id}"]`);
+  if(el) el.style.setProperty('--plevel','0');
+}
+function _ensurePadLevelRAF(){
+  if(!_padLevelRAF) _padLevelRAF=requestAnimationFrame(_padLevelTick);
+}
+function _padLevelTick(){
+  const ids=Object.keys(padAnalysers);
+  if(!ids.length||!_padLevelEnabled()){
+    _padLevelRAF=null;
+    document.querySelectorAll('#pgrid .pbtn[data-id]').forEach(el=>el.style.setProperty('--plevel','0'));
+    return;
+  }
+  for(const id of ids){
+    if(!srcs[+id]){ _detachPadAnalyser(+id); continue; }
+    const pa=padAnalysers[id];
+    pa.analyser.getByteTimeDomainData(pa.data);
+    let sum=0;
+    for(let i=0;i<pa.data.length;i++){ const v=(pa.data[i]-128)/128; sum+=v*v; }
+    const level=Math.min(1,Math.sqrt(sum/pa.data.length)*4.5);
+    const el=document.querySelector(`#pgrid .pbtn[data-id="${id}"]`);
+    if(el) el.style.setProperty('--plevel',level.toFixed(3));
+  }
+  _padLevelRAF=requestAnimationFrame(_padLevelTick);
+}
+function setPadLevel(v){
+  localStorage.setItem('pad-level-vis',v?'1':'0');
+  _initPadLevelUI();
+  if(!v) document.querySelectorAll('#pgrid .pbtn[data-id]').forEach(el=>el.style.setProperty('--plevel','0'));
+  else if(Object.keys(padAnalysers).length) _ensurePadLevelRAF();
+}
+function _initPadLevelUI(){
+  const on=_padLevelEnabled();
+  const a=document.getElementById('pl-on'); if(a) a.className='topt'+(on?' al':'');
+  const b=document.getElementById('pl-off'); if(b) b.className='topt'+(!on?' al':'');
+}
+
 // ── SWITCH SOUND ──
 let _switchSoundBuf=null;
 async function _loadSwitchSound(){
@@ -4705,9 +4774,9 @@ async function _loadSwitchSound(){
 function playSwitchSound(){
   if(!_switchSoundBuf||!ctx) return;
   try{
-    const src=actx.createBufferSource();
+    const src=ctx.createBufferSource();
     src.buffer=_switchSoundBuf;
-    src.connect(actx.destination);
+    src.connect(ctx.destination);
     src.start(0);
   }catch(e){}
 }
