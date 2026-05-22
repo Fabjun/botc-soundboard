@@ -1,5 +1,5 @@
 // Cache name — bump whenever any cached asset changes.
-const VERSION = 56;
+const VERSION = 57;
 const CACHE = `storyteller-v${VERSION}`;
 
 // All assets required for offline-first operation.

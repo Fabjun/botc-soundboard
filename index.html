@@ -2294,8 +2294,9 @@ const BUILTIN_ICONS=[
   {id:"window-frame-sharp",label:"Window Frame Sharp",cat:"Design & Development",d:"M2 2h20v2H2zm2 6h16v2H4zM2 20h20v2H2zM2 4h2v16H2zm18 0h2v16h-2zM5 5h2v2H5zm3 0h2v2H8z"},
 ];
 
-const APP_VERSION = 56;
+const APP_VERSION = 57;
 const CHANGELOG=[
+  {v:57,date:'2026-05-22',items:['Update notification replaced by a full modal with backup and safe reload','⬇ BACKUP NOW exports your library before reloading','RELOAD requires a second tap ("TAP AGAIN TO CONFIRM") to prevent accidental data loss','Honest warning: IndexedDB is normally preserved, but backup is recommended as a precaution']},
   {v:56,date:'2026-05-22',items:['PAD editor redesigned as a full-screen overlay with four card sections (Identity / Sound / Behavior / Visual)','SAVE button in header, ← to cancel; DELETE at the bottom of the scroll area','Volume shows live percentage value; FADE is a collapsible sub-section, auto-expands when non-zero','FADE hint shows current values (e.g. "in 2s · out 1s") even when collapsed']},
   {v:55,date:'2026-05-22',items:['Library picker: files already used by another pad on this board show "↳ Pad Name" hint below the filename','Used rows get a blue left border so duplicates are immediately visible','Current pad being edited is excluded from the in-use check']},
   {v:54,date:'2026-05-22',items:['PADs now support up to 4 icons — tap each slot in the VISUAL section to pick','Multi-icon layout: 1→centred, 2→side by side, 3→2+1, 4→2×2 grid','Icons scale with PAD size; hidden automatically on very small pads (text only)','Backward-compatible: pads with a single icon still display correctly']},
@@ -5359,17 +5360,62 @@ scheduleAmbientSpark();
 // Set version label
 (()=>{ const el=document.getElementById('ver-num'); if(el) el.textContent=APP_VERSION; })();
 
+// ── SW UPDATE MODAL ──
+let _swuConfirming=false;
+function showSwUpdate(v){
+  document.getElementById('sw-update-modal')?.remove();
+  const ov=document.createElement('div');
+  ov.id='sw-update-modal';
+  ov.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center';
+  ov.innerHTML=`
+    <div style="background:var(--raised);border:1px solid var(--gold-dim);border-radius:12px 12px 0 0;width:100%;max-width:var(--cx-max);padding:20px 18px 36px;box-sizing:border-box">
+      <div style="font-family:var(--ff-label);font-size:calc(16px*var(--font-scale));color:var(--gold);margin-bottom:10px">UPDATE AVAILABLE${v?` (v${v})`:''}</div>
+      <div style="font-family:var(--ff-body);font-size:calc(12px*var(--font-scale));color:var(--text-dim);line-height:1.65;margin-bottom:18px">A new version is ready to load. Your data lives in IndexedDB and is normally preserved across updates — but as a precaution, we recommend creating a backup before reloading.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button id="swu-backup-btn" onclick="swuBackup()" style="background:var(--surface);border:1px solid var(--gold-dim);color:var(--gold);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:11px;border-radius:3px;cursor:pointer;letter-spacing:0">⬇ BACKUP NOW</button>
+        <div style="display:flex;gap:8px">
+          <button onclick="document.getElementById('sw-update-modal').remove()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:11px;border-radius:3px;cursor:pointer;letter-spacing:0">LATER</button>
+          <button id="swu-reload-btn" onclick="swuConfirmReload()" style="flex:2;background:var(--gold);color:#000;border:none;font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:11px;border-radius:3px;cursor:pointer;letter-spacing:0">RELOAD</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  _swuConfirming=false;
+}
+async function swuBackup(){
+  const btn=document.getElementById('swu-backup-btn'); if(!btn) return;
+  btn.textContent='⏳ EXPORTING…'; btn.disabled=true;
+  try{
+    await doExportLibrary();
+    btn.textContent='✓ BACKUP SAVED';
+    btn.style.color='var(--emerald)'; btn.style.borderColor='var(--emerald)';
+  }catch(e){
+    btn.textContent='✗ EXPORT FAILED'; btn.disabled=false;
+  }
+}
+function swuConfirmReload(){
+  const btn=document.getElementById('swu-reload-btn'); if(!btn) return;
+  if(!_swuConfirming){
+    _swuConfirming=true;
+    btn.textContent='TAP AGAIN TO CONFIRM';
+    btn.style.background='var(--blood)'; btn.style.color='var(--blood-bright)';
+    setTimeout(()=>{
+      if(_swuConfirming){
+        _swuConfirming=false;
+        btn.textContent='RELOAD';
+        btn.style.background='var(--gold)'; btn.style.color='#000';
+      }
+    },3000);
+  } else {
+    window.location.reload();
+  }
+}
+
 // Register Service Worker; listen for update messages from new SW
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
   navigator.serviceWorker.addEventListener('message', e=>{
-    if(e.data?.type==='SW_UPDATED'){
-      const v=e.data.version;
-      const t=document.createElement('div');
-      t.style.cssText='position:fixed;bottom:72px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--raised);border:1px solid var(--gold-dim);border-radius:4px;padding:10px 14px;display:flex;align-items:center;gap:12px;font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--text);white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.5)';
-      t.innerHTML=`<span>Update available${v?` (v${v})`:''}</span><button onclick="window.location.reload()" style="background:var(--gold);color:#000;border:none;border-radius:2px;font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:3px 10px;cursor:pointer">RELOAD</button><button onclick="this.parentNode.remove()" style="background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));cursor:pointer;padding:0 2px">✕</button>`;
-      document.body.appendChild(t);
-    }
+    if(e.data?.type==='SW_UPDATED') showSwUpdate(e.data.version);
   });
 }
 
