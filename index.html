@@ -27,6 +27,8 @@
   --ff-hero:'DotGothic16',sans-serif;
   --ff-subtitle:'VT323',monospace;
   --font-scale:1; --sym-scale:1;
+  /* Mode accent — updated by body.mode-edit / body.mode-play */
+  --mode-accent:var(--active); --mode-accent-dim:rgba(79,195,247,.35); --mode-accent-glow:rgba(79,195,247,.2);
 }
 body.theme-modern {
   --ff-title:system-ui,-apple-system,'Inter',sans-serif;
@@ -221,7 +223,7 @@ input[type=file]{display:none}
 
 #sp{background:var(--night);position:relative;overflow:hidden}
 .pbtn.dragging{opacity:0.25}
-.pbtn.drag-over{border-color:var(--gold)!important;background:var(--raised)}
+.pbtn.drag-over{border-color:var(--mode-accent)!important;background:var(--raised)}
 #sp::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.08) 0%,transparent 50%)}
 .p-hdr{display:flex;justify-content:center;align-items:center;
@@ -250,10 +252,11 @@ input[type=file]{display:none}
 #sp.mode-play #ms-play{color:var(--gold)}
 #sp.mode-play #ms-setup{color:var(--mist)}
 #sp.mode-play .ms-sep{color:var(--gold-dim)}
-/* Pad icon + header accent follow the active mode */
-#sp.mode-edit .pbtn .pico{color:var(--active)}
+/* Global mode accent variables — cascade to all elements including those outside #sp */
+body.mode-edit{--mode-accent:var(--active);--mode-accent-dim:rgba(79,195,247,.35);--mode-accent-glow:rgba(79,195,247,.2)}
+body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mode-accent-glow:rgba(201,168,76,.2)}
+/* Pad header accent follows mode */
 #sp.mode-edit .p-hdr{border-bottom-color:rgba(79,195,247,.25)}
-#sp.mode-play .pbtn .pico{color:var(--gold)}
 #sp.mode-play .p-hdr{border-bottom-color:rgba(201,168,76,.25)}
 /* SPARKS */
 .spark{position:fixed;border-radius:50%;pointer-events:none;z-index:500;
@@ -274,26 +277,26 @@ input[type=file]{display:none}
   padding:4px;cursor:pointer;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:2px;aspect-ratio:1/1;
   transition:all .1s;position:relative;overflow:hidden}
-.pbtn.empty{cursor:pointer;border:1.5px dashed var(--gold-dim);
+.pbtn.empty{cursor:pointer;border:1.5px dashed var(--mode-accent-dim);
   opacity:1;flex-direction:column;gap:5px;transition:background .15s,border-color .15s}
-.pbtn.empty:active,.pbtn.empty:hover{background:rgba(122,95,40,.07);border-color:var(--gold)}
-.pbtn.empty:active .e-plus,.pbtn.empty:hover .e-plus{color:var(--gold)}
-.pbtn.empty:active .e-lbl,.pbtn.empty:hover .e-lbl{color:var(--gold)}
-.e-plus{font-size:calc(38px * var(--sym-scale));line-height:1;color:var(--gold-dim);font-weight:300;
+.pbtn.empty:active,.pbtn.empty:hover{background:rgba(79,195,247,.05);border-color:var(--mode-accent)}
+.pbtn.empty:active .e-plus,.pbtn.empty:hover .e-plus{color:var(--mode-accent)}
+.pbtn.empty:active .e-lbl,.pbtn.empty:hover .e-lbl{color:var(--mode-accent)}
+.e-plus{font-size:calc(38px * var(--sym-scale));line-height:1;color:var(--mode-accent-dim);font-weight:300;
   transition:color .15s}
 .e-lbl{font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;
-  color:var(--gold-dim);transition:color .15s}
+  color:var(--mode-accent-dim);transition:color .15s}
 .pbtn.playing{border-color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,.2);
   animation:breathe-gold 1.8s ease-in-out infinite}
 .pbtn.plooping{border-color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,.2);
   animation:breathe-gold 2.2s ease-in-out infinite}
 .pbtn.flash{background:var(--raised)}
-.pbtn .pico{font-size:calc(20px * var(--sym-scale));line-height:1;color:var(--gold)}
+.pbtn .pico{font-size:calc(20px * var(--sym-scale));line-height:1;color:var(--mode-accent)}
 .pbtn .plbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;
   color:var(--text-dim);text-align:center;line-height:1.3}
 .pbtn.playing .plbl,.pbtn.plooping .plbl{color:var(--text)}
 .pbtn .pnum{position:absolute;top:3px;right:5px;font-size:calc(10px * var(--font-scale));
-  color:rgba(201,168,76,.4);font-family:monospace}
+  color:var(--mode-accent-dim);font-family:monospace;opacity:.6}
 .pbtn.playing .pnum{color:var(--gold-dim)}
 .pbtn.has-img{background-size:cover;background-position:center;background-repeat:no-repeat}
 .pbtn.has-img::after{content:'';position:absolute;inset:0;background:rgba(10,10,20,0.52);border-radius:inherit;pointer-events:none}
@@ -751,8 +754,8 @@ input[type=file]{display:none}
 <!-- GLOBAL MENU BUTTON -->
 <button id="menu-btn" onclick="onMenuBtn()"
   style="display:none;position:fixed;top:9px;left:calc(max(0px,(100vw - var(--cx-max))/2) + clamp(20px,5vw,56px));z-index:120;
-         background:rgba(18,12,4,.88);border:1px solid var(--gold-dim);
-         color:var(--gold);font-family:var(--ff-label);
+         background:rgba(18,12,4,.88);border:1px solid var(--mode-accent-dim);
+         color:var(--mode-accent);font-family:var(--ff-label);
          font-size:calc(13px * var(--font-scale));letter-spacing:0;
          padding:5px 10px;border-radius:2px;cursor:pointer;
          backdrop-filter:blur(4px)">MENU</button>
@@ -3770,7 +3773,7 @@ const BUILTIN_ICONS=[
   {id:"px-weather-windy-air-element",label:"Windy Air",cat:"Nature",d:"M5 0h3v1H5zM10 0h4v1H10zM5 1h1v1H5zM7 1h4v1H7zM13 1h2v1H13zM2 2h5v1H2zM8 2h2v1H8zM11 2h2v1H11zM14 2h1v1H14zM2 3h1v1H2zM7 3h6v1H7zM14 3h1v1H14zM2 4h10v1H2zM13 4h2v1H13zM3 5h1v1H3zM12 5h2v1H12zM2 6h12v1H2zM2 7h1v1H2zM13 7h2v1H13zM1 8h12v1H1zM14 8h1v1H14zM1 9h1v1H1zM8 9h2v1H8zM11 9h2v1H11zM14 9h1v1H14zM1 10h7v1H1zM9 10h2v1H9zM13 10h2v1H13zM2 11h1v1H2zM7 11h7v1H7zM2 12h5v1H2zM8 12h1v1H8zM3 13h1v1H3zM5 13h2v1H5zM8 13h1v1H8zM3 14h2v1H3zM7 14h2v1H7zM4 15h4v1H4z",v:"0 0 16 16"}
 ];
 
-const APP_VERSION = 64;
+const APP_VERSION = 65;
 const CHANGELOG=[
   {v:59,date:'2026-05-22',items:['Database renamed from botc3 to "botc" — clean permanent name, no suffix','Legacy migration code removed (test data was expendable)','Schema simplified to v1 with p and lib stores; future changes via version bumps only']},
   {v:57,date:'2026-05-22',items:['Update notification replaced by a full modal with backup and safe reload','⬇ BACKUP NOW exports your library before reloading','RELOAD requires a second tap ("TAP AGAIN TO CONFIRM") to prevent accidental data loss','Honest warning: IndexedDB is normally preserved, but backup is recommended as a precaution']},
@@ -5517,6 +5520,8 @@ function applyModeVisuals(){
   const sp=document.getElementById('sp');
   sp.classList.toggle('mode-edit',!locked);
   sp.classList.toggle('mode-play',locked);
+  document.body.classList.toggle('mode-edit',!locked);
+  document.body.classList.toggle('mode-play',locked);
 }
 function applyStartMode(){
   const sm=localStorage.getItem('start-mode')||'unlocked';
