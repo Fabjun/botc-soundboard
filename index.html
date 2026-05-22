@@ -461,7 +461,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
   border-top:1px solid var(--border);flex-shrink:0}
 
 /* MAIN MENU */
-#smm{align-items:center;justify-content:center;gap:0;padding:32px 24px;
+#smm{align-items:center;justify-content:center;gap:0;padding:32px 24px 20px;
   background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
 .m-title{text-align:center;margin-bottom:28px}
 .m-title h1{font-family:var(--ff-hero);font-size:calc(20px * var(--font-scale));letter-spacing:.04em;
@@ -486,6 +486,17 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 .mopt.mp .mlbl{color:var(--gold)}
 .mopt .msub{font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);
   font-style:italic;margin-top:2px}
+/* BACKUP ROW */
+.m-bkp-row{display:flex;gap:8px;width:100%;max-width:min(680px,92vw);margin-top:14px}
+.m-bkp-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:9px 12px;border-radius:4px;cursor:pointer;font-family:var(--ff-label);
+  font-size:calc(13px * var(--font-scale));letter-spacing:0;background:var(--surface);
+  border:1px solid var(--border);color:var(--text-dim);transition:border-color .2s,color .2s}
+.m-bkp-btn:active{background:var(--raised)}
+.m-bkp-btn.age-ok{border-color:var(--emerald-dim);color:var(--emerald)}
+.m-bkp-btn.age-warn{border-color:var(--gold-dim);color:var(--gold)}
+.m-bkp-btn.age-stale{border-color:var(--blood);color:var(--blood-bright)}
+#m-bkp-age{font-size:calc(10px * var(--font-scale));color:inherit;font-family:var(--ff-body);opacity:.8}
 
 /* LOOP REPEAT COUNT */
 #loopcount-row{display:none}
@@ -716,6 +727,17 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
       <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M4 2h16v2H4zm0 18h16v2H4zM2 4h2v16H2zm18 0h2v16h-2zm-9 5h2V7h-2zm0 8h2v-6h-2z"/></svg></div>
       <div><div class="mlbl">ABOUT</div><div class="msub">What this is and how it works</div></div>
     </div>
+  </div>
+  <div class="m-bkp-row">
+    <button id="m-bkp-btn" class="m-bkp-btn age-stale" onclick="doExportLibrary()">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="flex-shrink:0"><path d="M5 3h10v2H5zm14 4h-2V5h-2V3h2v2h2v2zm0 14H5V5h8v2H7v12h10V9h2v12zM9 9h6v2H9zm0 4h6v2H9zm0 4h4v2H9z"/></svg>
+      <span>BACKUP</span>
+      <span id="m-bkp-age"></span>
+    </button>
+    <button class="m-bkp-btn" onclick="triggerImportFile()" style="flex:0 0 auto;padding:9px 16px">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="flex-shrink:0"><path d="M11 3h2v10h-2zm-2 6h6v2H9zm-4 8h14v2H5zm2 2h2v2H7zm8 0h2v2h-2z"/></svg>
+      IMPORT
+    </button>
   </div>
 </div>
 
@@ -1509,8 +1531,9 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 74;
+const APP_VERSION = 75;
 const CHANGELOG=[
+  {v:75,date:'2026-05-22',items:["Backup and Import buttons added at the bottom of the main menu","BACKUP button color-codes backup age: green (<1h), amber (1-3h), red (>3h or never)","Shows time since last export next to the label"]},
   {v:74,date:'2026-05-22',items:["Left sidebar replaces PAD-Style bar and filter bar — grid gains more vertical space","Sidebar contains: FILTER (ALL / S-PAD / C-PAD) and PAD STYLE (size, gap, shape)","PAD STYLE section hidden in GAME mode","Mode switch header now includes ☰ sidebar toggle (left) and MENU button (right)"]},
   {v:73,date:'2026-05-22',items:["BUILTIN_ICONS extracted to icons.js — index.html shrinks from 1.2 MB to 263 KB; faster loads and cache updates"]},
   {v:72,date:'2026-05-22',items:['Library audio list scroll position is remembered — returning to the Library after navigating away restores your position']},
@@ -3277,6 +3300,28 @@ function showToast(msg,dur=3000){
   _toastTimer=setTimeout(()=>el.classList.remove('visible'),dur);
 }
 
+function updateMenuBackupBtns(){
+  const btn=document.getElementById('m-bkp-btn');
+  const age=document.getElementById('m-bkp-age');
+  if(!btn||!age) return;
+  const ts=parseInt(localStorage.getItem('last-export-ts')||'0',10);
+  if(!ts){
+    btn.className='m-bkp-btn age-stale';
+    age.textContent='· never';
+    return;
+  }
+  const h=Math.floor((Date.now()-ts)/3600000);
+  if(h<1){
+    btn.className='m-bkp-btn age-ok';
+    age.textContent='· <1h ago';
+  } else if(h<3){
+    btn.className='m-bkp-btn age-warn';
+    age.textContent=`· ${h}h ago`;
+  } else {
+    btn.className='m-bkp-btn age-stale';
+    age.textContent=`· ${h}h ago`;
+  }
+}
 function show(id){
   if(locked && id!=='sp') return;
   closeSidebar();
@@ -3289,6 +3334,7 @@ function show(id){
   if(id==='sa'){ initHelpSettings(); initThemeSettings(); }
   if(id==='smb') initBoardScreen();
   if(id==='sli') initLibScreen();
+  if(id==='smm') updateMenuBackupBtns();
   updMenuBtn(id);
 }
 document.getElementById('kfocus').addEventListener('blur', ()=>{
