@@ -1307,8 +1307,10 @@ input[type=file]{display:none}
 </div>
 
 <script>
-const APP_VERSION = 48;
+const APP_VERSION = 49;
 const CHANGELOG=[
+  {v:49,date:'2026-05-22',items:['Export now opens a native "Save As" dialog on desktop (Chrome/Brave) so you can choose the save location']},
+  {v:48,date:'2026-05-22',items:['In-app Changelog: tap the version number on the title screen to see all release notes']},
   {v:47,date:'2026-05-22',items:['Export compressed as .json.gz (~50–70% smaller)','iPhone: EXPORT opens iOS share sheet directly','Export age shown in Settings (color-coded green/amber/red)','Red hint banner on devices without auto-backup when last export >3h','Nudge toast after adding audio or creating a board without recent backup','Import now accepts .json.gz files']},
   {v:46,date:'2026-05-22',items:['Backup reminder banner shown at app start until auto-backup is configured','ACTIVATE BACKUP button in banner opens folder picker directly']},
   {v:45,date:'2026-05-22',items:['Screen headers truly centered (flex:1 fix)','Auto-backup folder name shown in Settings after selection','Auto-backup directory handle persisted in IndexedDB, restored silently on start']},
@@ -2323,13 +2325,28 @@ async function doExportLibrary(){
   const canCompress=typeof CompressionStream!=='undefined';
   const blob=canCompress ? await compressData(json) : new Blob([json],{type:'application/json'});
   const filename=`botc-library-${date}.json${canCompress?'.gz':''}`;
-  const file=new File([blob],filename,{type:blob.type||'application/octet-stream'});
+  const mimeType=blob.type||'application/octet-stream';
+  const file=new File([blob],filename,{type:mimeType});
+  // iPhone / mobile: share sheet
   if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
     try{
       await navigator.share({files:[file],title:'BotC Library Backup'});
       _markExported(); return;
     } catch(e){ if(e.name==='AbortError') return; console.warn(e); }
   }
+  // Desktop Chrome/Brave: native Save As dialog
+  if(window.showSaveFilePicker){
+    try{
+      const ext=canCompress?'.json.gz':'.json';
+      const fh=await window.showSaveFilePicker({
+        suggestedName:filename,
+        types:[{description:'BotC Library Backup',accept:{[mimeType]:[ext]}}]
+      });
+      const w=await fh.createWritable(); await w.write(blob); await w.close();
+      _markExported(); showToast('Library saved.'); return;
+    } catch(e){ if(e.name==='AbortError') return; console.warn(e); }
+  }
+  // Fallback: auto-download to Downloads folder
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url; a.download=filename;
