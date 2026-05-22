@@ -2294,7 +2294,7 @@ const BUILTIN_ICONS=[
   {id:"window-frame-sharp",label:"Window Frame Sharp",cat:"Design & Development",d:"M2 2h20v2H2zm2 6h16v2H4zM2 20h20v2H2zM2 4h2v16H2zm18 0h2v16h-2zM5 5h2v2H5zm3 0h2v2H8z"},
 ];
 
-const APP_VERSION = 59;
+const APP_VERSION = 60;
 const CHANGELOG=[
   {v:59,date:'2026-05-22',items:['Database renamed from botc3 to "botc" — clean permanent name, no suffix','Legacy migration code removed (test data was expendable)','Schema simplified to v1 with p and lib stores; future changes via version bumps only']},
   {v:57,date:'2026-05-22',items:['Update notification replaced by a full modal with backup and safe reload','⬇ BACKUP NOW exports your library before reloading','RELOAD requires a second tap ("TAP AGAIN TO CONFIRM") to prevent accidental data loss','Honest warning: IndexedDB is normally preserved, but backup is recommended as a precaution']},
@@ -2386,7 +2386,7 @@ function openDB(){
       if(!d.objectStoreNames.contains('p'))   d.createObjectStore('p',{keyPath:'id'});
     };
     r.onsuccess = e => { db=e.target.result; res(); };
-    r.onerror = ()=>res();
+    r.onerror = e => rej(e.target.error||new Error('IndexedDB failed to open'));
   });
 }
 
@@ -2404,17 +2404,23 @@ function libPut(e){
 }
 function libGet(hash){
   return new Promise(r=>{
-    db.transaction('lib','readonly').objectStore('lib').get(hash).onsuccess=e=>r(e.target.result||null);
+    const req=db.transaction('lib','readonly').objectStore('lib').get(hash);
+    req.onerror=()=>r(null);
+    req.onsuccess=e=>r(e.target.result||null);
   });
 }
 function libGetAll(){
   return new Promise(r=>{
-    db.transaction('lib','readonly').objectStore('lib').getAll().onsuccess=e=>r(e.target.result||[]);
+    const req=db.transaction('lib','readonly').objectStore('lib').getAll();
+    req.onerror=()=>r([]);
+    req.onsuccess=e=>r(e.target.result||[]);
   });
 }
 function libDelete(hash){
   return new Promise(r=>{
-    db.transaction('lib','readwrite').objectStore('lib').delete(hash).onsuccess=()=>r();
+    const tx=db.transaction('lib','readwrite');
+    tx.onerror=()=>r();
+    tx.objectStore('lib').delete(hash).onsuccess=()=>r();
   });
 }
 async function addToLib(buf,name,type=''){
@@ -2427,7 +2433,9 @@ async function addToLib(buf,name,type=''){
 async function migrateToLibrary(){
   if(!db) return;
   const all=await new Promise(r=>{
-    db.transaction('p','readonly').objectStore('p').getAll().onsuccess=e=>r(e.target.result||[]);
+    const req=db.transaction('p','readonly').objectStore('p').getAll();
+    req.onerror=()=>r([]);
+    req.onsuccess=e=>r(e.target.result||[]);
   });
   for(const board of all.filter(b=>b.id?.startsWith('board_'))){
     if(!board.pads) continue;
@@ -2437,9 +2445,14 @@ async function migrateToLibrary(){
       const hashes=[];
       for(const f of pad.files){
         if(typeof f==='string'){ hashes.push(f); }
-        else if(f?.data){ const {hash}=await addToLib(f.data,f.name||'audio',f.type||''); hashes.push(hash); changed=true; }
+        else if(f?.data){
+          try{
+            const {hash}=await addToLib(f.data,f.name||'audio',f.type||'');
+            hashes.push(hash); changed=true;
+          } catch(e){ console.error('migrateToLibrary: addToLib failed', e); hashes.push(null); }
+        }
       }
-      pad.files=hashes;
+      pad.files=hashes.filter(Boolean);
     }
     if(changed){
       await new Promise(r=>{
@@ -2455,7 +2468,8 @@ function save(){
   if(!db||!currentBoardId) return Promise.resolve();
   return new Promise(res=>{
     const tx=db.transaction('p','readwrite'), s=tx.objectStore('p');
-    tx.oncomplete=()=>res(); tx.onerror=()=>res();
+    tx.oncomplete=()=>res();
+    tx.onerror=()=>{ showToast('Save failed — storage may be full.'); res(); };
     s.get(currentBoardId).onsuccess=ev=>{
       const rec=ev.target.result||{id:currentBoardId,name:currentBoardName,createdAt:Date.now()};
       rec.pads=[...pads];
@@ -2466,7 +2480,9 @@ function save(){
 function load(){
   return new Promise(res=>{
     if(!db) return res();
-    db.transaction('p','readonly').objectStore('p').getAll().onsuccess=ev=>{
+    const req=db.transaction('p','readonly').objectStore('p').getAll();
+    req.onerror=()=>{ showToast('Failed to load boards — database error.'); res(); };
+    req.onsuccess=ev=>{
       const all=ev.target.result||[];
       const boards=all.filter(b=>typeof b.id==='string'&&b.id.startsWith('board_'));
       if(!boards.length){
@@ -2538,7 +2554,9 @@ function updMenuBtn(id){
 function loadBoardsMeta(){
   return new Promise(res=>{
     if(!db) return res([]);
-    db.transaction('p','readonly').objectStore('p').getAll().onsuccess=ev=>{
+    const req=db.transaction('p','readonly').objectStore('p').getAll();
+    req.onerror=()=>res([]);
+    req.onsuccess=ev=>{
       const all=ev.target.result||[];
       res(all.filter(b=>typeof b.id==='string'&&b.id.startsWith('board_'))
             .map(b=>({id:b.id,name:b.name,createdAt:b.createdAt,
@@ -2564,8 +2582,9 @@ function createBoard(name){
   return new Promise(res=>{
     if(!db) return res(null);
     const id='board_'+Date.now();
-    db.transaction('p','readwrite').objectStore('p')
-      .put({id,name,createdAt:Date.now(),pads:[]}).onsuccess=()=>res(id);
+    const tx=db.transaction('p','readwrite');
+    tx.onerror=()=>res(null);
+    tx.objectStore('p').put({id,name,createdAt:Date.now(),pads:[]}).onsuccess=()=>res(id);
   });
 }
 function renameBoard(id,name){
@@ -2591,6 +2610,7 @@ async function duplicateBoard(id){
   return new Promise(res=>{
     if(!db) return res(null);
     const tx=db.transaction('p','readwrite'), s=tx.objectStore('p');
+    tx.onerror=()=>res(null);
     s.get(id).onsuccess=ev=>{
       const orig=ev.target.result; if(!orig) return res(null);
       const newId='board_'+Date.now();
@@ -2771,6 +2791,9 @@ function unlock(){
     if(hint&&!window.showSaveFilePicker) hint.style.display='block';
     show(locked?'sp':'smm');
     if(!localStorage.getItem('onboarded')) showOnboard();
+  }).catch(e=>{
+    console.error('App init failed:', e);
+    showToast('Database error — please reload the app. If the problem persists, use Settings → Reset.');
   });
 }
 function decodeAll(){ pads.forEach((p,i)=>{ if(p&&p.files&&p.files.length) decodePad(i); }); }
@@ -3515,14 +3538,16 @@ function base64ToBuf(b64){
 function getAllBoardsFull(){
   return new Promise(res=>{
     if(!db) return res([]);
-    db.transaction('p','readonly').objectStore('p').getAll().onsuccess=ev=>{
+    const req=db.transaction('p','readonly').objectStore('p').getAll();
+    req.onerror=()=>res([]);
+    req.onsuccess=ev=>{
       const all=ev.target.result||[];
       res(all.filter(b=>typeof b.id==='string'&&b.id.startsWith('board_')));
     };
   });
 }
 function putBoard(b){
-  return new Promise(r=>{ const tx=db.transaction('p','readwrite'); tx.objectStore('p').put(b).onsuccess=r; });
+  return new Promise((r,j)=>{ const tx=db.transaction('p','readwrite'); tx.onerror=()=>j(tx.error); tx.objectStore('p').put(b).onsuccess=r; });
 }
 async function buildExportJson(){
   const libEntries=await libGetAll();
@@ -3724,11 +3749,11 @@ let _autoBackupDirHandle=null, _autoBackupIdx=0, _autoBackupTimer=null;
 function hasFileSystemAccess(){ return 'showDirectoryPicker' in window; }
 async function _persistAutoBackupHandle(handle){
   if(!db) return;
-  return new Promise(r=>{ const tx=db.transaction('p','readwrite'); tx.objectStore('p').put({id:'_settings_autobackup',dirHandle:handle}).onsuccess=r; });
+  return new Promise(r=>{ const tx=db.transaction('p','readwrite'); tx.onerror=r; tx.objectStore('p').put({id:'_settings_autobackup',dirHandle:handle}).onsuccess=r; });
 }
 async function _clearAutoBackupHandle(){
   if(!db) return;
-  return new Promise(r=>{ const tx=db.transaction('p','readwrite'); tx.objectStore('p').delete('_settings_autobackup').onsuccess=r; });
+  return new Promise(r=>{ const tx=db.transaction('p','readwrite'); tx.onerror=r; tx.objectStore('p').delete('_settings_autobackup').onsuccess=r; });
 }
 async function tryRestoreAutoBackup(){
   if(!hasFileSystemAccess()||!db) return;
