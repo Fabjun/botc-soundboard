@@ -780,7 +780,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
               border-radius:8px;padding:20px;width:88%;max-width:310px;
               display:flex;flex-direction:column;gap:12px">
     <div style="font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));
-                color:var(--gold);letter-spacing:0">LEAVE PLAY MODE?</div>
+                color:var(--gold);letter-spacing:0">LEAVE GAME MODE?</div>
     <p style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));
               color:var(--text-dim);line-height:1.6;margin:0">
       All running sounds will be stopped.<br>
@@ -829,12 +829,12 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="sm-unlocked" onclick="setStartMode('unlocked')">SETUP</div>
-        <div class="topt" id="sm-locked" onclick="setStartMode('locked')">PLAY</div>
+        <div class="topt" id="sm-locked" onclick="setStartMode('locked')">GAME</div>
         <div class="topt" id="sm-remember" onclick="setStartMode('remember')">LAST</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        Start mode — <b style="color:var(--text)">SETUP</b> always opens in edit mode ·
-        <b style="color:var(--text)">PLAY</b> opens directly in play mode ·
+        Start mode — <b style="color:var(--text)">SETUP</b> always opens in SETUP mode ·
+        <b style="color:var(--text)">GAME</b> opens directly in GAME mode ·
         <b style="color:var(--text)">LAST</b> remembers the last used mode.
       </p>
     </div>
@@ -842,7 +842,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
     <!-- KEYBINDING -->
     <div class="sg-hdr">KEYBINDING</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
-      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:0">Help key — opens the key map overlay in play mode. Cannot be assigned to any pad.</p>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:0">Help key — opens the key map overlay in GAME mode. Cannot be assigned to any pad.</p>
       <input type="text" class="fi" id="help-key-input" placeholder="Press a key…" readonly onkeydown="captureHelpKey(event)">
       <div id="help-key-warn" style="display:none;color:var(--blood-bright);font-size:calc(11px * var(--font-scale))"></div>
     </div>
@@ -1070,9 +1070,9 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
       <div>
         <div class="tips-hdr" style="margin-top:0">TWO MODES</div>
         <p style="font-family:var(--ff-body);font-size:calc(13px * var(--font-scale));color:var(--text-dim);line-height:1.8;margin:0">
-          The app has two modes switchable via the <em style="color:var(--text)">SETUP | PLAY</em> toggle at the top of the board.
+          The app has two modes switchable via the <em style="color:var(--text)">SETUP | GAME</em> toggle at the top of the board.
           In <em style="color:var(--active)">SETUP</em> mode you design and configure your pads.
-          In <em style="color:var(--gold)">PLAY</em> mode every key press or tap triggers a sound — nothing can be accidentally edited.
+          In <em style="color:var(--gold)">GAME</em> mode every key press or tap triggers a sound — nothing can be accidentally edited.
         </p>
       </div>
 
@@ -1095,17 +1095,17 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
   <div style="flex:1;overflow-y:auto">
    <div class="cx">
     <div class="tip">
-      <div class="tip-key">SETUP|PLAY</div>
+      <div class="tip-key">SETUP|GAME</div>
       <div class="tip-body">
-        <div class="tip-ttl">SETUP ↔ PLAY MODE</div>
-        <div class="tip-desc">The SETUP|PLAY switch at the top of the board toggles between modes. In Setup mode (blue) you can edit pads. In Play mode (gold) keys and taps trigger sounds.</div>
+        <div class="tip-ttl">SETUP ↔ GAME MODE</div>
+        <div class="tip-desc">The SETUP|GAME switch at the top of the board toggles between modes. In SETUP mode (blue) you can edit pads. In GAME mode (gold) keys and taps trigger sounds.</div>
       </div>
     </div>
     <div class="tip">
       <div class="tip-key">↕ Drag</div>
       <div class="tip-body">
         <div class="tip-ttl">MOVING PADS</div>
-        <div class="tip-desc">In Setup mode, hold a pad and drag it to another position — the two pads swap places. A short tap opens the edit panel. Drag &amp; drop is disabled in Play mode.</div>
+        <div class="tip-desc">In SETUP mode, hold a pad and drag it to another position — the two pads swap places. A short tap opens the edit panel. Drag &amp; drop is disabled in GAME mode.</div>
       </div>
     </div>
     <div class="tip">
@@ -1119,28 +1119,28 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
       <div class="tip-key">Space</div>
       <div class="tip-body">
         <div class="tip-ttl">PAUSE / RESUME</div>
-        <div class="tip-desc">Pauses all running sounds and resumes them on the next press. Works on every screen and in Play mode. Exception: when a text input field is active.</div>
+        <div class="tip-desc">Pauses all running sounds and resumes them on the next press. Works on every screen and in GAME mode. Exception: when a text input field is active.</div>
       </div>
     </div>
     <div class="tip">
       <div class="tip-key">Enter</div>
       <div class="tip-body">
         <div class="tip-ttl">STOP ALL</div>
-        <div class="tip-desc">Immediately stops all running sounds and resets their position to the beginning. Works on every screen and in Play mode.</div>
+        <div class="tip-desc">Immediately stops all running sounds and resets their position to the beginning. Works on every screen and in GAME mode.</div>
       </div>
     </div>
     <div class="tip">
       <div class="tip-key">Escape</div>
       <div class="tip-body">
         <div class="tip-ttl">BACK / CANCEL</div>
-        <div class="tip-desc">Navigates back to the main menu. If the edit panel is open, Escape closes it (= Cancel). Has no effect in Play mode.</div>
+        <div class="tip-desc">Navigates back to the main menu. If the edit panel is open, Escape closes it (= Cancel). Has no effect in GAME mode.</div>
       </div>
     </div>
     <div class="tip">
       <div class="tip-key">Tap</div>
       <div class="tip-body">
         <div class="tip-ttl">ASSIGN SOUND-PAD</div>
-        <div class="tip-desc">In Setup mode, tap a pad to open the edit panel. Click the key field and press the desired key — the code is detected automatically.</div>
+        <div class="tip-desc">In SETUP mode, tap a pad to open the edit panel. Click the key field and press the desired key — the code is detected automatically.</div>
       </div>
     </div>
     <div class="tip">
@@ -1175,7 +1175,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
       <div class="tip-key"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> C-PAD</div>
       <div class="tip-body">
         <div class="tip-ttl">COMBO-PAD: STEPS IN SEQUENCE</div>
-        <div class="tip-desc">A Combo-PAD plays a sequence of steps one after another. Each step can contain one or more pads that play simultaneously. Tap <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> in Setup mode to build one. Combo-PADs can be nested inside other Combos — but a Combo cannot reference itself or create a loop.</div>
+        <div class="tip-desc">A Combo-PAD plays a sequence of steps one after another. Each step can contain one or more pads that play simultaneously. Tap <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> in SETUP mode to build one. Combo-PADs can be nested inside other Combos — but a Combo cannot reference itself or create a loop.</div>
       </div>
     </div>
     <div class="tip">
@@ -1359,7 +1359,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
         <div id="ms-slider"></div>
         <span id="ms-setup">SETUP</span>
         <span class="ms-sep">|</span>
-        <span id="ms-play">PLAY</span>
+        <span id="ms-play">GAME</span>
       </div>
     </div>
   </div>
@@ -3785,7 +3785,7 @@ const BUILTIN_ICONS=[
   {id:"px-weather-windy-air-element",label:"Windy Air",cat:"Nature",d:"M5 0h3v1H5zM10 0h4v1H10zM5 1h1v1H5zM7 1h4v1H7zM13 1h2v1H13zM2 2h5v1H2zM8 2h2v1H8zM11 2h2v1H11zM14 2h1v1H14zM2 3h1v1H2zM7 3h6v1H7zM14 3h1v1H14zM2 4h10v1H2zM13 4h2v1H13zM3 5h1v1H3zM12 5h2v1H12zM2 6h12v1H2zM2 7h1v1H2zM13 7h2v1H13zM1 8h12v1H1zM14 8h1v1H14zM1 9h1v1H1zM8 9h2v1H8zM11 9h2v1H11zM14 9h1v1H14zM1 10h7v1H1zM9 10h2v1H9zM13 10h2v1H13zM2 11h1v1H2zM7 11h7v1H7zM2 12h5v1H2zM8 12h1v1H8zM3 13h1v1H3zM5 13h2v1H5zM8 13h1v1H8zM3 14h2v1H3zM7 14h2v1H7zM4 15h4v1H4z",v:"0 0 16 16"}
 ];
 
-const APP_VERSION = 68;
+const APP_VERSION = 69;
 const CHANGELOG=[
   {v:66,date:'2026-05-22',items:['PAD filter tabs (ALL / S-PAD / C-PAD) and settings selectors now follow the active mode color (blue in SETUP, gold in GAME)']},
   {v:65,date:'2026-05-22',items:['Global mode color system: --mode-accent CSS variable switches all UI elements between blue (SETUP) and gold (GAME)','Menu button, empty PAD slot, PAD icons, key labels and drag-over border all follow the active mode','Playing PAD glow stays gold regardless of mode — it indicates active audio, not the current mode']},
@@ -7090,7 +7090,7 @@ if('serviceWorker' in navigator){
         </div>
         <div class="ob-row">
           <div class="ob-row-ico" style="color:var(--gold)">▶</div>
-          <div class="ob-row-text"><span class="ob-row-lbl">PLAY MODE</span>Tap pads to trigger sounds live, one-handed.</div>
+          <div class="ob-row-text"><span class="ob-row-lbl">GAME MODE</span>Tap pads to trigger sounds live, one-handed.</div>
         </div>
         <div class="ob-row">
           <div class="ob-row-ico">📚</div>
@@ -7108,11 +7108,11 @@ if('serviceWorker' in navigator){
         </div>
         <div class="ob-row">
           <div class="ob-row-ico" style="color:var(--gold);font-family:var(--ff-label);font-size:16px">2</div>
-          <div class="ob-row-text"><span class="ob-row-lbl">ADD A PAD</span>Tap ＋ in Setup mode and pick an audio file.</div>
+          <div class="ob-row-text"><span class="ob-row-lbl">ADD A PAD</span>Tap ＋ in SETUP mode and pick an audio file.</div>
         </div>
         <div class="ob-row">
           <div class="ob-row-ico" style="color:var(--gold);font-family:var(--ff-label);font-size:16px">3</div>
-          <div class="ob-row-text"><span class="ob-row-lbl">PLAY</span>Switch to Play mode and tap your pad to hear it.</div>
+          <div class="ob-row-text"><span class="ob-row-lbl">GAME</span>Switch to GAME mode and tap your pad to hear it.</div>
         </div>
       </div>
     </div>
