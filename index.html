@@ -1633,9 +1633,10 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 93;
+const APP_VERSION = 94;
 const CHANGELOG=[
-  {v:93,date:'2026-05-23',items:["Library audio preview — each audio file in the Library now has a ▶/⏸ button for in-place listening","Preview also available for PAD entries (board pads + templates) in the PADS tab — plays the first file of the pad","Only one preview plays at a time; switching tabs or navigating away stops the preview","Combo-PADs (no direct audio files) show no preview button"]},
+  {v:94,date:'2026-05-23',items:["Library preview: Combo-PADs now also have a ▶ button — plays the first audio file found in the combo's steps","Template combos resolve their step pad-references against the current board (best-effort)"]},
+  {v:93,date:'2026-05-23',items:["Library audio preview — each audio file in the Library now has a ▶/⏸ button for in-place listening","Preview also available for PAD entries (board pads + templates) in the PADS tab — plays the first file of the pad","Only one preview plays at a time; switching tabs or navigating away stops the preview"]},
   {v:92,date:'2026-05-23',items:["Unified top bar — single shared .p-hdr used by all sub-menus; no more per-screen headers","Layout: [☰] [MENU] [TITLE or MODE-SWITCH] [?] [⛶] — MENU always left, mode-switch replaces title on the Board screen","Color system: each screen sets --screen-accent independently; Board screen is blue (SETUP) or gold (GAME), all others default to gold","Sidebar toggle visible only on screens that have a sidebar (currently Board/SETUP)","Removed floating #menu-btn — navigation now exclusively through the unified top bar","Per-screen hints wired into single #phdr-hint button"]},
   {v:91,date:'2026-05-22',items:["Hover states for all interactive elements — mouse and trackpad users now get visual feedback when moving over buttons, menu items, pads, tabs and key-map rows","Uses @media(hover:hover) so touch devices are unaffected"]},
   {v:90,date:'2026-05-22',items:["Title glow — each letter of \"Soundboard of Storytelling\" pulses independently with a warm amber glow","Timing is deterministic per character position: durations 3–8 s, delays staggered across 0–7 s so the effect looks organic from first paint","Applies on both the start screen and the main menu title"]},
@@ -2650,6 +2651,17 @@ function stopLibPreview(){
   document.querySelectorAll('.lib-prev-btn').forEach(b=>{ b.textContent='▶'; b.style.color='var(--text-dim)'; });
 }
 
+function getComboFirstFileHash(steps){
+  if(!steps) return null;
+  for(const step of steps){
+    for(const padIdx of (step.pads||[])){
+      const refPad=pads[padIdx];
+      if(refPad?.files?.length) return refPad.files[0];
+    }
+  }
+  return null;
+}
+
 async function toggleLibPreview(hash, btnEl){
   if(_libPreviewHash===hash){ stopLibPreview(); return; }
   stopLibPreview();
@@ -2822,7 +2834,7 @@ async function renderLibPads(){
           const ml=modeLabel(p.mode); const mc=modeColor(p.mode);
           const keyTxt=p.key?` [${escHtml(p.keyLabel||String(p.key))}]`:'';
           const boardTxt=_libPadFilter==='all'?`<span style="color:var(--text-dim);font-size:calc(10px * var(--font-scale))"> · ${escHtml(item.boardName)}</span>`:'';
-          const fh=p.mode!=='combo'&&p.files?.length?p.files[0]:null;
+          const fh=p.mode==='combo'?getComboFirstFileHash(p.steps):(p.files?.length?p.files[0]:null);
           const prevBtnP=fh?`<button class="lib-prev-btn" onclick="toggleLibPreview('${fh}',this)" title="Preview" style="background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">▶</button>`:'';
           return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:8px">
             <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
@@ -2845,7 +2857,7 @@ async function renderLibPads(){
           const pd=e.padData||{};
           const ml=modeLabel(pd.mode); const mc=modeColor(pd.mode);
           const dateStr=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
-          const fhT=pd.mode!=='combo'&&pd.files?.length?pd.files[0]:null;
+          const fhT=pd.mode==='combo'?getComboFirstFileHash(pd.steps):(pd.files?.length?pd.files[0]:null);
           const prevBtnT=fhT?`<button class="lib-prev-btn" onclick="toggleLibPreview('${fhT}',this)" title="Preview" style="background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">▶</button>`:'';
           return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:8px">
             <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
