@@ -682,7 +682,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 /* Library main tabs */
 .lib-main-tabs{display:flex;border-bottom:2px solid var(--border);flex-shrink:0}
 .lib-main-tab{flex:1;text-align:center;padding:10px 4px;font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;letter-spacing:.5px}
-.lib-main-tab.active{color:var(--mode-accent);border-bottom-color:var(--mode-accent)}
+.lib-main-tab.active{color:var(--screen-accent);border-bottom-color:var(--screen-accent)}
 /* Icon preview in PAD editor */
 .icon-prev-box{width:48px;height:48px;background:var(--raised);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold)}
 .icon-prev-box svg{width:28px;height:28px;display:block}
@@ -1064,9 +1064,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <div id="sli" class="screen">
   <div class="lib-main-tabs">
     <div class="lib-main-tab active" id="lmt-audio" onclick="setLibMainTab('audio')">AUDIO</div>
-    <div class="lib-main-tab" id="lmt-icons" onclick="setLibMainTab('icons')">ICONS</div>
-    <div class="lib-main-tab" id="lmt-boards" onclick="setLibMainTab('boards')">BOARDS</div>
     <div class="lib-main-tab" id="lmt-pads" onclick="setLibMainTab('pads')">PADS</div>
+    <div class="lib-main-tab" id="lmt-boards" onclick="setLibMainTab('boards')">BOARDS</div>
+    <div class="lib-main-tab" id="lmt-icons" onclick="setLibMainTab('icons')">ICONS</div>
   </div>
   <div id="lib-audio-section" style="flex:1;overflow-y:auto">
    <div class="cx" style="padding-top:14px;padding-bottom:14px">
@@ -1633,8 +1633,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 94;
+const APP_VERSION = 95;
 const CHANGELOG=[
+  {v:95,date:'2026-05-23',items:["Library tab order changed: AUDIO · PADS · BOARDS · ICONS","Audio entries: original filename shown as 'upload-name: …' (was '← …')","Audio 'in use' is now a clickable button — expands inline to list all PADs that use this file, with mode badge (S-PAD/LOOP/LIST/C-PAD) and board name","Board PADs in the PADS tab: non-combo pads that are referenced by combo steps show a 'used in N combo(s)' button — expands to list those combos","Library tab active color now follows --screen-accent (always gold for Library)"]},
   {v:94,date:'2026-05-23',items:["Library preview: Combo-PADs now also have a ▶ button — plays the first audio file found in the combo's steps","Template combos resolve their step pad-references against the current board (best-effort)"]},
   {v:93,date:'2026-05-23',items:["Library audio preview — each audio file in the Library now has a ▶/⏸ button for in-place listening","Preview also available for PAD entries (board pads + templates) in the PADS tab — plays the first file of the pad","Only one preview plays at a time; switching tabs or navigating away stops the preview"]},
   {v:92,date:'2026-05-23',items:["Unified top bar — single shared .p-hdr used by all sub-menus; no more per-screen headers","Layout: [☰] [MENU] [TITLE or MODE-SWITCH] [?] [⛶] — MENU always left, mode-switch replaces title on the Board screen","Color system: each screen sets --screen-accent independently; Board screen is blue (SETUP) or gold (GAME), all others default to gold","Sidebar toggle visible only on screens that have a sidebar (currently Board/SETUP)","Removed floating #menu-btn — navigation now exclusively through the unified top bar","Per-screen hints wired into single #phdr-hint button"]},
@@ -2644,6 +2645,12 @@ function focusKB(){
 // ── LIBRARY SCREEN ──
 let libFilterMode='all', _libAudioScroll=0;
 let _libPreviewHash=null, _libPreviewNode=null;
+let _libUsedByPads=new Map(); // audio-hash → [{boardName, padName, padMode}]
+
+function toggleLibUsedBy(key){
+  const el=document.getElementById('lub-'+key); if(!el) return;
+  el.style.display=el.style.display==='none'?'':'none';
+}
 
 function stopLibPreview(){
   if(_libPreviewNode){ try{ _libPreviewNode.stop(); }catch(e){} _libPreviewNode=null; }
@@ -2682,12 +2689,19 @@ async function toggleLibPreview(hash, btnEl){
 async function initLibScreen(){
   const all=await libGetAll();
   const usedHashes=new Set();
+  _libUsedByPads=new Map();
   await new Promise(r=>{
     db.transaction('p','readonly').objectStore('p').getAll().onsuccess=ev=>{
-      for(const board of ev.target.result||[])
-        for(const pad of board.pads||[])
-          for(const h of pad.files||[])
-            if(typeof h==='string') usedHashes.add(h);
+      for(const board of ev.target.result||[]){
+        for(const pad of board.pads||[]){
+          for(const h of pad.files||[]){
+            if(typeof h!=='string') continue;
+            usedHashes.add(h);
+            if(!_libUsedByPads.has(h)) _libUsedByPads.set(h,[]);
+            _libUsedByPads.get(h).push({boardName:board.name,padName:pad.name,padMode:pad.mode});
+          }
+        }
+      }
       r();
     };
   });
@@ -2713,10 +2727,21 @@ function renderLibList(entries,usedHashes){
   const totalSize=entries.reduce((s,e)=>s+(e.size||0),0);
   if(stats) stats.textContent=entries.length?`${entries.length} file${entries.length===1?'':'s'} · ${fmtSize(totalSize)}`:'Library is empty.';
   if(!filtered.length){ list.innerHTML=`<p style="color:var(--text-dim);text-align:center;padding:20px 0">No files${libFilterMode!=='all'?' in this filter':''} yet.</p>`; return; }
+  const _ml=m=>m==='combo'?'C-PAD':m==='loop'?'LOOP':m==='playlist'?'LIST':'S-PAD';
+  const _mc=m=>m==='combo'?'var(--gold)':'var(--emerald)';
   list.innerHTML=filtered.map(e=>{
     const h=e.hash;
     const inUse=usedHashes.has(h);
+    const usedBy=_libUsedByPads.get(h)||[];
     const date=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    const inUseEl=inUse
+      ?`<button onclick="toggleLibUsedBy('${h}')" style="background:none;border:none;color:var(--active);font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));cursor:pointer;padding:0;line-height:1;text-decoration:underline dotted">in use (${usedBy.length})</button>`
+      :`<span style="color:var(--mist)">unused</span>`;
+    const usedByRows=usedBy.map(u=>`<div style="display:flex;align-items:center;gap:6px;padding:2px 0">
+        <span style="font-family:var(--ff-label);font-size:calc(9px * var(--font-scale));color:${_mc(u.padMode)};border:1px solid ${_mc(u.padMode)};padding:0 3px;border-radius:2px;flex-shrink:0">${_ml(u.padMode)}</span>
+        <span style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text)">${escHtml(u.padName)}</span>
+        <span style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim)">· ${escHtml(u.boardName)}</span>
+      </div>`).join('');
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div id="lnm-${h}" style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);word-break:break-all;flex:1">${escHtml(e.name)}</div>
@@ -2726,8 +2751,9 @@ function renderLibList(entries,usedHashes){
           <button onclick="libDeleteFile('${h}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;padding:2px 8px;border-radius:2px;cursor:pointer">✕</button>
         </div>
       </div>
-      ${e.origName&&e.origName!==e.name?`<div style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim);opacity:.55;word-break:break-all">← ${escHtml(e.origName)}</div>`:''}
-      <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date} · ${inUse?'<span style="color:var(--active)">in use</span>':'<span style="color:var(--mist)">unused</span>'}</div>
+      ${e.origName&&e.origName!==e.name?`<div style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim);opacity:.6;word-break:break-all">upload-name: ${escHtml(e.origName)}</div>`:''}
+      <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date} · ${inUseEl}</div>
+      ${inUse?`<div id="lub-${h}" style="display:none;border-left:2px solid var(--active);padding-left:8px;margin-top:2px">${usedByRows}</div>`:''}
     </div>`;
   }).join('');
   requestAnimationFrame(()=>{ const s=document.getElementById('lib-audio-section'); if(s) s.scrollTop=_libAudioScroll; });
@@ -2817,7 +2843,7 @@ async function renderLibPads(){
   // Build board pads list
   _libPadItems=[];
   if(_libPadFilter==='current'){
-    _libPadItems=pads.filter(Boolean).map(p=>({pad:p,boardName:currentBoardName}));
+    _libPadItems=pads.map((p,idx)=>p?{pad:p,boardName:currentBoardName,padIdx:idx}:null).filter(Boolean);
   } else {
     const allBoards=await getAllBoardsFull();
     for(const b of allBoards){
@@ -2836,11 +2862,21 @@ async function renderLibPads(){
           const boardTxt=_libPadFilter==='all'?`<span style="color:var(--text-dim);font-size:calc(10px * var(--font-scale))"> · ${escHtml(item.boardName)}</span>`:'';
           const fh=p.mode==='combo'?getComboFirstFileHash(p.steps):(p.files?.length?p.files[0]:null);
           const prevBtnP=fh?`<button class="lib-prev-btn" onclick="toggleLibPreview('${fh}',this)" title="Preview" style="background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">▶</button>`:'';
-          return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:8px">
-            <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
-            <div style="flex:1;min-width:0;font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.name)}${keyTxt}${boardTxt}</div>
-            ${prevBtnP}
-            <button onclick="savePadTemplate(${i})" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">SAVE</button>
+          const usedByCombos=p.mode!=='combo'&&item.padIdx!=null
+            ?pads.filter(Boolean).filter(cp=>cp.mode==='combo'&&(cp.steps||[]).some(s=>(s.pads||[]).includes(item.padIdx)))
+            :[];
+          const comboRows=usedByCombos.map(cp=>`<div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text);padding:2px 0">${escHtml(cp.name)}</div>`).join('');
+          const usedByComboEl=usedByCombos.length
+            ?`<button onclick="toggleLibUsedBy('pad-${i}')" style="background:none;border:none;color:var(--gold);font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));cursor:pointer;padding:0;line-height:1;text-decoration:underline dotted">used in ${usedByCombos.length} combo${usedByCombos.length===1?'':'s'}</button>
+             <div id="lub-pad-${i}" style="display:none;border-left:2px solid var(--gold);padding-left:8px;margin-top:2px">${comboRows}</div>`:'';
+          return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:5px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
+              <div style="flex:1;min-width:0;font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.name)}${keyTxt}${boardTxt}</div>
+              ${prevBtnP}
+              <button onclick="savePadTemplate(${i})" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">SAVE</button>
+            </div>
+            ${usedByComboEl}
           </div>`;
         }).join('')
       : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">No pads${_libPadFilter==='current'?' in this board':' in any board'} yet.</p>`;
