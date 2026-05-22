@@ -1559,8 +1559,9 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 78;
+const APP_VERSION = 79;
 const CHANGELOG=[
+  {v:79,date:'2026-05-22',items:["Library entries now remember their original filename","After renaming, the original name is shown dimmed (← original.mp3) below the current name in the Library and Library Picker","origName stored on first upload; preserved across renames, exports, and imports"]},
   {v:78,date:'2026-05-22',items:["PAD editor SOUND section redesigned: file metadata, waveform, and controls are now a single unified block","File rows show filename + duration + file size together","Waveform canvas is taller (64 px); playback controls (▶ ⏹) and action buttons (CHANGE / FROM LIB) sit directly under the waveform","Upload/FROM LIB buttons shown only when no file is loaded; action buttons inside the block when a file is loaded"]},
   {v:77,date:'2026-05-22',items:["Mode-switch sound: upload a custom sound in Settings → CONTROLS → SWITCH SOUND; plays on every mode toggle","More sparks on mode switch: 52 particles (was 26), slower animation (0.55–1.0 s), burst from the newly activated half's edge instead of center","Ambient sparks slightly slower and farther reaching"]},
   {v:76,date:'2026-05-22',items:["Fullscreen button in the header (top-right, next to MENU)","Toggles browser fullscreen mode; hidden on browsers without Fullscreen API support (e.g. iOS Safari)","Icon switches between expand and collapse based on fullscreen state"]},
@@ -1710,7 +1711,7 @@ async function addToLib(buf,name,type=''){
   const hash=await computeHash(buf);
   const existing=await libGet(hash);
   if(existing) return {hash,isDuplicate:true};
-  await libPut({hash,name,buf,size:buf.byteLength,type,added:Date.now()});
+  await libPut({hash,name,origName:name,buf,size:buf.byteLength,type,added:Date.now()});
   return {hash,isDuplicate:false};
 }
 async function migrateToLibrary(){
@@ -2595,6 +2596,7 @@ function renderLibList(entries,usedHashes){
           <button onclick="libDeleteFile('${h}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;padding:2px 8px;border-radius:2px;cursor:pointer">✕</button>
         </div>
       </div>
+      ${e.origName&&e.origName!==e.name?`<div style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim);opacity:.55;word-break:break-all">← ${escHtml(e.origName)}</div>`:''}
       <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date} · ${inUse?'<span style="color:var(--active)">in use</span>':'<span style="color:var(--mist)">unused</span>'}</div>
     </div>`;
   }).join('');
@@ -2954,7 +2956,7 @@ async function buildExportJson(){
   const boards=await getAllBoardsFull();
   const settings={};
   SETTINGS_KEYS.forEach(k=>{ const v=localStorage.getItem(k); if(v!==null) settings[k]=v; });
-  const library=libEntries.map(e=>({hash:e.hash,name:e.name,type:e.type||'',size:e.size||0,added:e.added||0,data:bufToBase64(e.buf)}));
+  const library=libEntries.map(e=>({hash:e.hash,name:e.name,origName:e.origName||'',type:e.type||'',size:e.size||0,added:e.added||0,data:bufToBase64(e.buf)}));
   return JSON.stringify({version:APP_VERSION,exported:new Date().toISOString(),settings,boards,library});
 }
 function _markExported(){
@@ -3116,15 +3118,15 @@ async function executeImport(){
       const all=await libGetAll();
       const ex=all.find(x=>x.name===e.name&&x.hash!==e.hash);
       if(ex) await libDelete(ex.hash);
-      await libPut({hash:e.hash,name:e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
+      await libPut({hash:e.hash,name:e.name,origName:e.origName||e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
       audioReplaced++;
     } else if(choice==='keep-both'){
       const ext=e.name.includes('.')?'.'+e.name.split('.').pop():'';
       const base=e.name.includes('.')?e.name.slice(0,e.name.lastIndexOf('.')):e.name;
-      await libPut({hash:e.hash,name:base+'_imported'+ext,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
+      await libPut({hash:e.hash,name:base+'_imported'+ext,origName:e.origName||e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
       audioAdded++;
     } else {
-      await libPut({hash:e.hash,name:e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
+      await libPut({hash:e.hash,name:e.name,origName:e.origName||e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
       audioAdded++;
     }
   }
@@ -3276,7 +3278,7 @@ function _lpRenderList(){
         style="background:none;border:1px solid ${playing?'var(--active)':'var(--border)'};color:${playing?'var(--active)':'var(--text-dim)'};font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));width:32px;height:32px;border-radius:2px;cursor:pointer;flex-shrink:0;padding:0;letter-spacing:0;line-height:1">${playing?'■':'▶'}</button>
       <div style="flex:1;min-width:0">
         <div style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(e.name)}</div>
-        <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date}</div>
+        <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date}${e.origName&&e.origName!==e.name?` · <span style="opacity:.55">← ${escHtml(e.origName)}</span>`:''}</div>
         ${usedHtml}
       </div>
       <button onclick="pickFromLib('${e.hash}')" style="background:var(--raised);border:1px solid var(--gold-dim);color:var(--gold);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));padding:5px 12px;border-radius:2px;cursor:pointer;white-space:nowrap;letter-spacing:0">SELECT</button>
