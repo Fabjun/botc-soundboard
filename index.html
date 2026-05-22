@@ -906,6 +906,17 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <button id="sw-snd-clear" onclick="clearSwitchSound()" style="display:none;background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:4px 9px;border-radius:2px;cursor:pointer;flex-shrink:0">✕</button>
     </div>
 
+    <div id="wl-row">
+      <div class="sg-sub">SCREEN WAKE LOCK</div>
+      <div class="sec-body">
+        <div class="trow">
+          <div class="topt" id="wl-on" onclick="setWakeLock(true)">ON</div>
+          <div class="topt" id="wl-off" onclick="setWakeLock(false)">OFF</div>
+        </div>
+        <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">Prevents the screen from auto-locking in GAME mode — keeps the display on so a Bluetooth numpad keeps working. Does not override a manual screen-off (side button).</p>
+      </div>
+    </div>
+
     <!-- KEYBINDING -->
     <div class="sg-hdr">KEYBINDING</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
@@ -1594,8 +1605,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 83;
+const APP_VERSION = 84;
 const CHANGELOG=[
+  {v:84,date:'2026-05-22',items:["Wake Lock: prevents screen auto-lock in GAME mode so a Bluetooth numpad keeps working","Toggle in Settings → CONTROLS → SCREEN WAKE LOCK (default: ON)","Wake lock is acquired on switch to GAME mode, released on switch to SETUP; re-acquired when tab becomes visible again","Setting hidden automatically on browsers that don't support the Wake Lock API"]},
   {v:83,date:'2026-05-22',items:["Drag-and-drop PAD reorder now shows an insert-line indicator instead of a swap highlight","A vertical line on the pad edge shows exactly where the dragged PAD will land; pads in between shift by one slot","Combo step references are remapped correctly after every reorder"]},
   {v:82,date:'2026-05-22',items:["Hints overlay: context-aware tips accessible via the ? button in every screen header","Tips are filtered by the current context (board, PAD editor, combo editor, library, settings, boards)","Close with ← button, backdrop tap, or Escape key"]},
   {v:81,date:'2026-05-22',items:["Live PAD level meters: each playing PAD shows its own amplitude as a gradient fill rising from the bottom","Per-PAD AnalyserNode inserted between pad gain and master gain — individual levels, not the master mix","Toggle in Settings → GRAPHICS → PAD LEVEL (default: ON)","Fix: playSwitchSound was referencing an undefined variable"]},
@@ -1642,7 +1654,7 @@ const CHANGELOG=[
   {v:38,date:'2026-05-22',items:['Edit mode accent: blue icons/borders; Play mode accent: gold','Looping pad border pulses gold (breathe-gold animation)']},
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled'];
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
 //  grep for "// ── SECTION" to jump to any area
@@ -3426,7 +3438,7 @@ function show(id){
   if(menuConfirmTimer) hideMenuConfirm();
   cur=id;
   if(id==='sp'){ renderBoard(); if(locked) focusKB(); }
-  if(id==='sa'){ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); _initPadLevelUI(); }
+  if(id==='sa'){ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); _initPadLevelUI(); _initWakeLockUI(); }
   if(id==='smb') initBoardScreen();
   if(id==='sli') initLibScreen();
   if(id==='smm') updateMenuBackupBtns();
@@ -4786,6 +4798,38 @@ function _initPadLevelUI(){
   const b=document.getElementById('pl-off'); if(b) b.className='topt'+(!on?' al':'');
 }
 
+// ── WAKE LOCK ──
+let _wakeLock=null;
+async function _acquireWakeLock(){
+  if(!('wakeLock' in navigator)) return;
+  if(localStorage.getItem('wake-lock-enabled')==='0') return;
+  if(_wakeLock) return;
+  try{
+    _wakeLock=await navigator.wakeLock.request('screen');
+    _wakeLock.addEventListener('release',()=>{ _wakeLock=null; });
+  }catch(e){}
+}
+function _releaseWakeLock(){
+  if(_wakeLock){ _wakeLock.release(); _wakeLock=null; }
+}
+function setWakeLock(v){
+  localStorage.setItem('wake-lock-enabled',v?'1':'0');
+  _initWakeLockUI();
+  if(!v) _releaseWakeLock();
+  else if(locked) _acquireWakeLock();
+}
+function _initWakeLockUI(){
+  const row=document.getElementById('wl-row');
+  if(!row) return;
+  if(!('wakeLock' in navigator)){ row.style.display='none'; return; }
+  const on=localStorage.getItem('wake-lock-enabled')!=='0';
+  const a=document.getElementById('wl-on'); if(a) a.className='topt'+(on?' al':'');
+  const b=document.getElementById('wl-off'); if(b) b.className='topt'+(!on?' al':'');
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&locked) _acquireWakeLock();
+});
+
 // ── HINTS OVERLAY ──
 function openHints(screens){
   const body=document.getElementById('hint-body');
@@ -4906,6 +4950,7 @@ function _doToggleLock(){
   triggerModeFlash();
   renderBoard();
   if(locked) focusKB();
+  if(locked) _acquireWakeLock(); else _releaseWakeLock();
   const sw=document.getElementById('mode-switch');
   if(sw) spawnSparks(sw.getBoundingClientRect(),locked);
   playSwitchSound();
