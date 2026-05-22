@@ -545,6 +545,11 @@ input[type=file]{display:none}
   align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
 #backup-hint span{font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text-dim);flex:1;min-width:160px}
 #backup-hint.visible{display:flex}
+#export-hint{position:fixed;bottom:0;left:0;right:0;z-index:90;display:none;
+  background:var(--surface);border-top:1px solid var(--blood);padding:10px 14px;
+  align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
+#export-hint span{font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text-dim);flex:1;min-width:160px}
+#export-hint.visible{display:flex}
 #import-ov{position:fixed;inset:0;z-index:210;background:var(--deep);display:none;flex-direction:column}
 #import-ov.open{display:flex}
 .imp-section-title{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--gold);margin:0 0 8px}
@@ -803,11 +808,12 @@ input[type=file]{display:none}
     <div class="sg-hdr">DATA</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
       <button onclick="doExportLibrary()" style="background:var(--raised);border:1px solid var(--gold-dim);color:var(--gold);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">⬇ EXPORT LIBRARY</button>
+      <p id="export-age" style="font-size:calc(10px * var(--font-scale));margin:0;line-height:1.6"></p>
       <button onclick="triggerImportFile()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">⬆ IMPORT LIBRARY</button>
-      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Export saves all boards, audio files and settings as one file. Import merges into existing data — you choose per file and per board.</p>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Export saves all boards, audio files and settings as one file. On iPhone it opens the share sheet. Import merges into existing data — you choose per file and per board.</p>
       <button id="auto-backup-btn" onclick="toggleAutoBackup()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">AUTO-BACKUP: OFF</button>
       <p id="auto-backup-path" style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6;display:none"></p>
-      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Writes 3 rotating backup files to a folder you choose, every 10 minutes. Brave &amp; Chrome only.</p>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Writes 3 rotating backup files to a folder you choose, every 10 minutes. Brave &amp; Chrome only. On iPhone: use Export regularly.</p>
       <button onclick="doRemigrateAudio()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%;margin-top:4px">RE-MIGRATE AUDIO TO LIBRARY</button>
       <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Run if pads lost their sounds after an update.</p>
       <button onclick="doResetAllData()" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%;margin-top:4px">RESET ALL DATA</button>
@@ -1238,7 +1244,7 @@ input[type=file]{display:none}
 </div>
 
 <!-- IMPORT OVERLAY -->
-<input type="file" id="import-file-input" accept=".json" style="display:none" onchange="parseAndShowImport(this)">
+<input type="file" id="import-file-input" accept=".json,.json.gz" style="display:none" onchange="parseAndShowImport(this)">
 <div id="import-ov">
   <div class="fs-hdr">
     <button class="fs-back" onclick="closeImportOverlay()">←</button>
@@ -1293,7 +1299,7 @@ input[type=file]{display:none}
 </div>
 
 <script>
-const APP_VERSION = 46;
+const APP_VERSION = 47;
 const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration'];
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
@@ -1656,7 +1662,7 @@ async function confirmBoardName(){
   const name=document.getElementById('bnd-input').value.trim()||'Board';
   closeBoardNameDlg();
   const newId=await createBoard(name);
-  if(newId) await switchBoard(newId);
+  if(newId){ await switchBoard(newId); _nudgeExport(); }
 }
 
 // ── THEME ──
@@ -1751,6 +1757,7 @@ function unlock(){
     initStartModeUI();
     updBoardSubtitle();
     tryRestoreAutoBackup().then(checkBackupHint);
+    updateExportAge();
     show(locked?'sp':'smm');
   });
 }
@@ -2173,6 +2180,7 @@ async function onLibUpload(inp){
   if(added && dupes) showToast(`${added} file${added===1?'':'s'} added. ${dupes} duplicate${dupes===1?'':'s'} skipped.`);
   else if(dupes) showToast(`${dupes} duplicate${dupes===1?'':'s'} skipped — already in Library.`);
   else showToast(`${added} file${added===1?'':'s'} added to Library.`);
+  if(added) _nudgeExport();
   initLibScreen();
 }
 async function libDeleteFile(hash){
@@ -2203,6 +2211,20 @@ async function libRenameSave(hash){
   await libPut({...entry,name:newName});
   showToast('File renamed.');
   initLibScreen();
+}
+
+// ── COMPRESSION ──
+async function compressData(str){
+  const stream=new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
+  const chunks=[]; const reader=stream.getReader();
+  for(;;){ const {done,value}=await reader.read(); if(done) break; chunks.push(value); }
+  return new Blob(chunks,{type:'application/gzip'});
+}
+async function decompressData(buf){
+  const stream=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+  const chunks=[]; const reader=stream.getReader();
+  for(;;){ const {done,value}=await reader.read(); if(done) break; chunks.push(value); }
+  return new Blob(chunks).text();
 }
 
 // ── EXPORT / IMPORT / AUTO-BACKUP ──
@@ -2239,16 +2261,48 @@ async function buildExportJson(){
   const library=libEntries.map(e=>({hash:e.hash,name:e.name,type:e.type||'',size:e.size||0,added:e.added||0,data:bufToBase64(e.buf)}));
   return JSON.stringify({version:APP_VERSION,exported:new Date().toISOString(),settings,boards,library});
 }
+function _markExported(){
+  localStorage.setItem('last-export-ts',Date.now());
+  updateExportAge();
+  checkExportHint();
+}
+function updateExportAge(){
+  const el=document.getElementById('export-age'); if(!el) return;
+  const ts=parseInt(localStorage.getItem('last-export-ts')||'0',10);
+  if(!ts){ el.textContent='Last export: never'; el.style.color='var(--blood-bright)'; return; }
+  const h=Math.floor((Date.now()-ts)/3600000);
+  if(h<1){ el.textContent='Last export: <1h ago'; el.style.color='var(--emerald)'; }
+  else if(h<3){ el.textContent=`Last export: ${h}h ago`; el.style.color='var(--gold)'; }
+  else { el.textContent=`Last export: ${h}h ago`; el.style.color='var(--blood-bright)'; }
+}
+function checkExportHint(){
+  const el=document.getElementById('export-hint'); if(!el) return;
+  // Only show on devices without File System Access (e.g. iPhone)
+  if(hasFileSystemAccess()){ el.classList.remove('visible'); return; }
+  const ts=parseInt(localStorage.getItem('last-export-ts')||'0',10);
+  el.classList.toggle('visible',Date.now()-ts>3*60*60*1000);
+}
 async function doExportLibrary(){
   showToast('Preparing export…');
   await new Promise(r=>setTimeout(r,60));
   const json=await buildExportJson();
-  const blob=new Blob([json],{type:'application/json'});
+  const date=new Date().toISOString().slice(0,10);
+  const canCompress=typeof CompressionStream!=='undefined';
+  const blob=canCompress ? await compressData(json) : new Blob([json],{type:'application/json'});
+  const filename=`botc-library-${date}.json${canCompress?'.gz':''}`;
+  const file=new File([blob],filename,{type:blob.type||'application/octet-stream'});
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({files:[file],title:'BotC Library Backup'});
+      _markExported(); return;
+    } catch(e){ if(e.name==='AbortError') return; console.warn(e); }
+  }
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download=`botc-library-${new Date().toISOString().slice(0,10)}.json`;
+  a.href=url; a.download=filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  _markExported();
   showToast('Library exported.');
 }
 
@@ -2263,7 +2317,15 @@ async function parseAndShowImport(inp){
   const file=inp.files[0]; inp.value=''; if(!file) return;
   showToast('Parsing file…');
   let data;
-  try{ data=JSON.parse(await file.text()); }
+  try{
+    let jsonStr;
+    if(file.name.endsWith('.gz')&&typeof DecompressionStream!=='undefined'){
+      jsonStr=await decompressData(await file.arrayBuffer());
+    } else {
+      jsonStr=await file.text();
+    }
+    data=JSON.parse(jsonStr);
+  }
   catch(e){ showToast('Invalid file — could not parse.'); return; }
   if(!Array.isArray(data.library)||!Array.isArray(data.boards)){ showToast('Invalid backup file.'); return; }
   _importParsed=data; _importAudioChoices={}; _importBoardChoices={};
@@ -2435,8 +2497,18 @@ function updateAutoBackupBtn(){
 }
 function checkBackupHint(){
   const el=document.getElementById('backup-hint'); if(!el) return;
-  // Only show if File System Access API is available and backup not configured
   el.classList.toggle('visible', hasFileSystemAccess()&&!_autoBackupDirHandle);
+  checkExportHint();
+}
+
+let _nudgeDone=false;
+function _nudgeExport(){
+  if(_nudgeDone) return;
+  if(hasFileSystemAccess()&&_autoBackupDirHandle) return;
+  const ts=parseInt(localStorage.getItem('last-export-ts')||'0',10);
+  if(Date.now()-ts<3*60*60*1000) return;
+  _nudgeDone=true;
+  setTimeout(()=>showToast('⚠ No recent backup — use EXPORT in Settings to save your data.',6000),4000);
 }
 
 // ── DATA MANAGEMENT ──
@@ -4007,6 +4079,10 @@ if('serviceWorker' in navigator){
 <div id="backup-hint">
   <span>⚠ No auto-backup configured — data could be lost if the browser clears its storage.</span>
   <button onclick="toggleAutoBackup()" style="background:var(--gold);color:#000;border:none;border-radius:2px;font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));padding:5px 14px;cursor:pointer;white-space:nowrap;flex-shrink:0">ACTIVATE BACKUP</button>
+</div>
+<div id="export-hint">
+  <span>⚠ No recent export — tap below to back up your data now.</span>
+  <button onclick="doExportLibrary()" style="background:var(--blood-bright);color:#fff;border:none;border-radius:2px;font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));padding:5px 14px;cursor:pointer;white-space:nowrap;flex-shrink:0">EXPORT NOW</button>
 </div>
 </body>
 </html>
