@@ -35,7 +35,7 @@ body.theme-modern {
   --surface:#18182e; --raised:#22223c; --border:#2e2e4a; --pad-radius:14px;
 }
 body.theme-modern .pbtn{box-shadow:0 2px 8px rgba(0,0,0,.4)}
-body.theme-modern #ep{border-radius:18px 18px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.5)}
+body.theme-modern #ep{border-radius:0;box-shadow:none}
 body.theme-modern .btn-s,body.theme-modern .btn-p,body.theme-modern .btn-d,body.theme-modern .btn-g,
 body.theme-modern .unlock-btn,body.theme-modern .fbtn{border-radius:8px;letter-spacing:0}
 body.theme-modern .topt{border-radius:8px}
@@ -140,13 +140,31 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 .pad-edit-banner:active{background:rgba(79,195,247,.22)}
 #ebk{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99}
 #ebk.open{display:block}
-#ep{position:fixed;bottom:0;left:0;right:0;background:var(--raised);
-  border-top:1px solid var(--gold-dim);border-radius:12px 12px 0 0;
-  padding:16px 16px 30px;transform:translateY(100%);
-  transition:transform .3s ease;z-index:100;overflow-y:auto;max-height:90vh}
+#ep{position:fixed;inset:0;background:var(--raised);
+  transform:translateY(100%);transition:transform .3s ease;z-index:100;
+  display:flex;flex-direction:column}
 #ep.open{transform:translateY(0)}
-#ep h3{font-family:var(--ff-label);color:var(--gold);font-size:calc(17px * var(--font-scale));
-  letter-spacing:0;margin-bottom:12px;text-align:center}
+.ep-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--gold-dim);flex-shrink:0;background:var(--surface)}
+.ep-back{background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);
+  font-size:calc(20px * var(--font-scale));cursor:pointer;padding:0 4px 0 0;line-height:1;flex-shrink:0}
+.ep-title{font-family:var(--ff-label);color:var(--gold);font-size:calc(15px * var(--font-scale));
+  letter-spacing:0;flex:1;text-align:center}
+.ep-save-btn{padding:6px 20px;font-size:calc(14px * var(--font-scale));flex-shrink:0}
+.ep-body{flex:1;overflow-y:auto;padding:12px 14px 40px;display:flex;flex-direction:column;gap:10px}
+.ep-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px}
+.ep-card-hdr{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));
+  color:var(--gold-dim);letter-spacing:.08em;margin-bottom:10px;padding-bottom:8px;
+  border-bottom:1px solid var(--border)}
+.ep-card-opt{color:var(--text-dim);font-style:italic;font-size:calc(10px * var(--font-scale));
+  letter-spacing:0;margin-left:6px}
+.ep-sub-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;padding:7px 0 5px;
+  user-select:none;color:var(--text-dim);font-family:var(--ff-label);
+  font-size:calc(11px * var(--font-scale));letter-spacing:.05em;border-top:1px solid var(--border);margin-top:6px}
+.ep-sub-toggle:hover,.ep-sub-toggle.open{color:var(--text)}
+.ep-sub-arrow{font-size:9px;transition:transform .18s;flex-shrink:0}
+.ep-sub-toggle.open .ep-sub-arrow{transform:rotate(90deg)}
+.ep-sub-body{padding-top:8px}
 .fg{margin-bottom:11px}
 .fl{font-size:calc(14px * var(--font-scale));color:rgba(180,170,195,.9);letter-spacing:0;
   font-family:var(--ff-label);margin-bottom:4px;display:block}
@@ -1185,121 +1203,136 @@ input[type=file]{display:none}
 </div>
 
 <!-- EDIT -->
-<div id="ebk" onclick="closeEP()"></div>
+<div id="ebk"></div>
 <div id="ep">
-  <h3 id="ep-t">EDIT SOUND-PAD</h3>
+  <div class="ep-hdr">
+    <button class="ep-back" onclick="closeEP()">←</button>
+    <span class="ep-title" id="ep-t">EDIT SOUND-PAD</span>
+    <button class="btn-g ep-save-btn" onclick="savePad()">SAVE</button>
+  </div>
+  <div class="ep-body">
 
-  <!-- ① IDENTITY -->
-  <div class="fg">
-    <label class="fl">NAME</label>
-    <input type="text" class="fi" id="en" placeholder="e.g. Thunder, Night Music…" onkeydown="if(event.key==='Enter')savePad()">
-  </div>
-  <div class="fg">
-    <label class="fl">KEY — click field, then press a key</label>
-    <input type="text" class="fi" id="ek" placeholder="Press a key…" readonly onkeydown="captureKey(event)">
-    <div id="key-reserved-warn" style="display:none;font-size:calc(11px * var(--font-scale));color:var(--blood-bright);margin-top:4px;padding:4px 8px;border-left:2px solid var(--blood)"></div>
-  </div>
-  <div id="key-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:calc(12px * var(--font-scale));color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
-    <span id="key-warn-txt"></span>
-    <div style="display:flex;gap:7px;margin-top:8px">
-      <button class="btn-s" style="flex:1" onclick="document.getElementById('key-warn').style.display='none'">CANCEL</button>
-      <button class="btn-d" style="flex:1" onclick="saveForce()">OVERWRITE</button>
-    </div>
-  </div>
-
-  <!-- ② SOUND -->
-  <div class="ep-sep">SOUND</div>
-  <div class="fg">
-    <label class="fl">AUDIO FILE(S)</label>
-    <div style="display:flex;gap:6px">
-      <div class="fbtn" id="fbd" style="flex:1" onclick="document.getElementById('fi').click()">+ Choose file(s)</div>
-      <div class="fbtn" id="fbd-lib" style="flex:0 0 auto;padding-left:12px;padding-right:12px;white-space:nowrap" onclick="openLibPicker(false)">⊞ FROM LIB</div>
-    </div>
-    <input type="file" id="fi" accept="audio/mpeg,audio/wav,audio/mp4,audio/aac,audio/x-m4a,audio/flac,audio/ogg,audio/opus,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus" onchange="onFile(this)">
-    <div id="scrub-wrap" style="display:none;margin-top:7px">
-      <canvas id="scrub" height="48"></canvas>
-      <div id="scrub-time"></div>
-    </div>
-  </div>
-  <div class="fg">
-    <label class="fl">VOLUME</label>
-    <input type="range" id="ev" min="0" max="100" value="80" oninput="liveVol()" style="width:100%;accent-color:var(--gold)">
-  </div>
-  <div class="fg">
-    <label class="fl">FADE-IN — <span id="eft-lbl">Off</span></label>
-    <input type="range" id="eft" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('eft')" style="width:100%;accent-color:var(--gold)">
-  </div>
-  <div class="fg">
-    <label class="fl">FADE-OUT — <span id="efo-lbl">Off</span></label>
-    <input type="range" id="efo" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('efo')" style="width:100%;accent-color:var(--gold)">
-  </div>
-
-  <!-- ③ BEHAVIOR -->
-  <div class="ep-sep">BEHAVIOR</div>
-  <div class="fg">
-    <label class="fl">MODE</label>
-    <div class="trow">
-      <div class="topt" data-m="once" onclick="setMode('once')">SOLO</div>
-      <div class="topt" data-m="loop" onclick="setMode('loop')">LOOP</div>
-      <div class="topt" data-m="playlist" onclick="setMode('playlist')">LIST <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/></svg></div>
-    </div>
-  </div>
-  <div id="mode-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:calc(12px * var(--font-scale));color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
-    <span id="mode-warn-txt"></span>
-    <div style="display:flex;gap:7px;margin-top:8px">
-      <button class="btn-s" style="flex:1" onclick="cancelModeSwitch()">CANCEL</button>
-      <button class="btn-d" style="flex:1" onclick="confirmModeSwitch()">DISCARD</button>
-    </div>
-  </div>
-  <div id="shuffle-row" class="fg" style="display:none">
-    <label class="fl">ORDER</label>
-    <div class="trow">
-      <div class="topt" id="sh-seq" onclick="setShuffle(false)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/></svg> SEQUENTIAL</div>
-      <div class="topt" id="sh-rnd" onclick="setShuffle(true)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M10 19H2v-2h8v2Zm12 0h-8v-2h8v2Zm-10-2h-2v-6h2v6Zm6-10h2v2h2v2h-2v2h-2v2h-2v-4h-4V9h4V5h2v2ZM8 11H2V9h6v2Z"/></svg> SHUFFLE</div>
-    </div>
-  </div>
-  <div id="loopcount-row" class="fg">
-    <label class="fl">REPEAT</label>
-    <div style="display:flex;gap:8px;align-items:center">
-      <div class="topt" id="lc-inf" onclick="setLoopCount(0)" style="flex:0 0 52px;padding:7px 4px;text-align:center">∞</div>
-      <input type="number" id="lc-val" min="1" max="999" placeholder="Count…"
-        style="flex:1;background:var(--deep);border:1px solid var(--border);border-radius:2px;
-               color:var(--text);font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));padding:6px 8px;
-               accent-color:var(--gold)" oninput="onLoopCountInput(this)">
-    </div>
-  </div>
-
-  <!-- ④ VISUAL -->
-  <div class="ep-sep">VISUAL <span style="font-style:italic;color:var(--text-dim);font-size:calc(10px * var(--font-scale))">optional — up to 4 icons</span></div>
-  <div class="fg" style="margin-bottom:0">
-    <div class="icon-slots">
-      <div class="icon-slot" id="islot-0" onclick="openIconPicker(0)">
-        <span class="icon-slot-plus">+</span>
-        <div class="icon-slot-ico"></div>
-        <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(0)">✕</button>
+    <!-- ① IDENTITY -->
+    <div class="ep-card">
+      <div class="ep-card-hdr">IDENTITY</div>
+      <div class="fg">
+        <label class="fl">NAME</label>
+        <input type="text" class="fi" id="en" placeholder="e.g. Thunder, Night Music…" onkeydown="if(event.key==='Enter')savePad()">
       </div>
-      <div class="icon-slot" id="islot-1" onclick="openIconPicker(1)">
-        <span class="icon-slot-plus">+</span>
-        <div class="icon-slot-ico"></div>
-        <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(1)">✕</button>
+      <div class="fg" style="margin-bottom:0">
+        <label class="fl">KEY — click field, then press a key</label>
+        <input type="text" class="fi" id="ek" placeholder="Press a key…" readonly onkeydown="captureKey(event)">
+        <div id="key-reserved-warn" style="display:none;font-size:calc(11px * var(--font-scale));color:var(--blood-bright);margin-top:4px;padding:4px 8px;border-left:2px solid var(--blood)"></div>
       </div>
-      <div class="icon-slot" id="islot-2" onclick="openIconPicker(2)">
-        <span class="icon-slot-plus">+</span>
-        <div class="icon-slot-ico"></div>
-        <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(2)">✕</button>
-      </div>
-      <div class="icon-slot" id="islot-3" onclick="openIconPicker(3)">
-        <span class="icon-slot-plus">+</span>
-        <div class="icon-slot-ico"></div>
-        <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(3)">✕</button>
+      <div id="key-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:calc(12px * var(--font-scale));color:#ef9a9a;margin-top:8px">
+        <span id="key-warn-txt"></span>
+        <div style="display:flex;gap:7px;margin-top:8px">
+          <button class="btn-s" style="flex:1" onclick="document.getElementById('key-warn').style.display='none'">CANCEL</button>
+          <button class="btn-d" style="flex:1" onclick="saveForce()">OVERWRITE</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="eact">
-    <button class="btn-d" id="del-pad-btn" onclick="delPad()">DELETE</button>
-    <button class="btn-s" style="flex:1" onclick="closeEP()">CANCEL</button>
-    <button class="btn-g" style="flex:2" onclick="savePad()">SAVE</button>
+    <!-- ② SOUND -->
+    <div class="ep-card">
+      <div class="ep-card-hdr">SOUND</div>
+      <div class="fg">
+        <div style="display:flex;gap:6px">
+          <div class="fbtn" id="fbd" style="flex:1" onclick="document.getElementById('fi').click()">+ UPLOAD</div>
+          <div class="fbtn" id="fbd-lib" style="flex:0 0 auto;padding-left:12px;padding-right:12px;white-space:nowrap" onclick="openLibPicker(false)">⊞ FROM LIB</div>
+        </div>
+        <input type="file" id="fi" accept="audio/mpeg,audio/wav,audio/mp4,audio/aac,audio/x-m4a,audio/flac,audio/ogg,audio/opus,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus" onchange="onFile(this)">
+        <div id="scrub-wrap" style="display:none;margin-top:7px">
+          <canvas id="scrub" height="48"></canvas>
+          <div id="scrub-time"></div>
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:4px">
+        <label class="fl">VOLUME — <span id="ev-lbl">80</span>%</label>
+        <input type="range" id="ev" min="0" max="100" value="80" oninput="liveVol()" style="width:100%;accent-color:var(--gold)">
+      </div>
+      <div class="ep-sub-toggle" id="fade-toggle" onclick="toggleEpFades()">
+        <span class="ep-sub-arrow">▶</span>
+        <span>FADE</span>
+        <span id="fade-toggle-hint" style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin-left:auto"></span>
+      </div>
+      <div class="ep-sub-body" id="ep-fades" style="display:none">
+        <div class="fg">
+          <label class="fl">FADE-IN — <span id="eft-lbl">Off</span></label>
+          <input type="range" id="eft" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('eft')" style="width:100%;accent-color:var(--gold)">
+        </div>
+        <div class="fg" style="margin-bottom:0">
+          <label class="fl">FADE-OUT — <span id="efo-lbl">Off</span></label>
+          <input type="range" id="efo" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('efo')" style="width:100%;accent-color:var(--gold)">
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ BEHAVIOR -->
+    <div class="ep-card">
+      <div class="ep-card-hdr">BEHAVIOR</div>
+      <div class="fg">
+        <label class="fl">MODE</label>
+        <div class="trow">
+          <div class="topt" data-m="once" onclick="setMode('once')">SOLO</div>
+          <div class="topt" data-m="loop" onclick="setMode('loop')">LOOP</div>
+          <div class="topt" data-m="playlist" onclick="setMode('playlist')">LIST <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/></svg></div>
+        </div>
+      </div>
+      <div id="mode-warn" style="display:none;background:#2a1a1a;border:1px solid var(--blood);border-radius:4px;padding:8px 10px;font-size:calc(12px * var(--font-scale));color:#ef9a9a;margin-top:-4px;margin-bottom:4px">
+        <span id="mode-warn-txt"></span>
+        <div style="display:flex;gap:7px;margin-top:8px">
+          <button class="btn-s" style="flex:1" onclick="cancelModeSwitch()">CANCEL</button>
+          <button class="btn-d" style="flex:1" onclick="confirmModeSwitch()">DISCARD</button>
+        </div>
+      </div>
+      <div id="shuffle-row" class="fg" style="display:none">
+        <label class="fl">ORDER</label>
+        <div class="trow">
+          <div class="topt" id="sh-seq" onclick="setShuffle(false)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/></svg> SEQUENTIAL</div>
+          <div class="topt" id="sh-rnd" onclick="setShuffle(true)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M10 19H2v-2h8v2Zm12 0h-8v-2h8v2Zm-10-2h-2v-6h2v6Zm6-10h2v2h2v2h-2v2h-2v2h-2v-4h-4V9h4V5h2v2ZM8 11H2V9h6v2Z"/></svg> SHUFFLE</div>
+        </div>
+      </div>
+      <div id="loopcount-row" class="fg" style="margin-bottom:0">
+        <label class="fl">REPEAT</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="topt" id="lc-inf" onclick="setLoopCount(0)" style="flex:0 0 52px;padding:7px 4px;text-align:center">∞</div>
+          <input type="number" id="lc-val" min="1" max="999" placeholder="Count…"
+            style="flex:1;background:var(--deep);border:1px solid var(--border);border-radius:2px;
+                   color:var(--text);font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));padding:6px 8px;
+                   accent-color:var(--gold)" oninput="onLoopCountInput(this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- ④ VISUAL -->
+    <div class="ep-card">
+      <div class="ep-card-hdr">VISUAL<span class="ep-card-opt">optional — up to 4 icons</span></div>
+      <div class="icon-slots">
+        <div class="icon-slot" id="islot-0" onclick="openIconPicker(0)">
+          <span class="icon-slot-plus">+</span>
+          <div class="icon-slot-ico"></div>
+          <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(0)">✕</button>
+        </div>
+        <div class="icon-slot" id="islot-1" onclick="openIconPicker(1)">
+          <span class="icon-slot-plus">+</span>
+          <div class="icon-slot-ico"></div>
+          <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(1)">✕</button>
+        </div>
+        <div class="icon-slot" id="islot-2" onclick="openIconPicker(2)">
+          <span class="icon-slot-plus">+</span>
+          <div class="icon-slot-ico"></div>
+          <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(2)">✕</button>
+        </div>
+        <div class="icon-slot" id="islot-3" onclick="openIconPicker(3)">
+          <span class="icon-slot-plus">+</span>
+          <div class="icon-slot-ico"></div>
+          <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(3)">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-d" id="del-pad-btn" onclick="delPad()" style="width:100%;padding:11px">DELETE PAD</button>
   </div>
 </div>
 
@@ -2261,8 +2294,9 @@ const BUILTIN_ICONS=[
   {id:"window-frame-sharp",label:"Window Frame Sharp",cat:"Design & Development",d:"M2 2h20v2H2zm2 6h16v2H4zM2 20h20v2H2zM2 4h2v16H2zm18 0h2v16h-2zM5 5h2v2H5zm3 0h2v2H8z"},
 ];
 
-const APP_VERSION = 55;
+const APP_VERSION = 56;
 const CHANGELOG=[
+  {v:56,date:'2026-05-22',items:['PAD editor redesigned as a full-screen overlay with four card sections (Identity / Sound / Behavior / Visual)','SAVE button in header, ← to cancel; DELETE at the bottom of the scroll area','Volume shows live percentage value; FADE is a collapsible sub-section, auto-expands when non-zero','FADE hint shows current values (e.g. "in 2s · out 1s") even when collapsed']},
   {v:55,date:'2026-05-22',items:['Library picker: files already used by another pad on this board show "↳ Pad Name" hint below the filename','Used rows get a blue left border so duplicates are immediately visible','Current pad being edited is excluded from the in-use check']},
   {v:54,date:'2026-05-22',items:['PADs now support up to 4 icons — tap each slot in the VISUAL section to pick','Multi-icon layout: 1→centred, 2→side by side, 3→2+1, 4→2×2 grid','Icons scale with PAD size; hidden automatically on very small pads (text only)','Backward-compatible: pads with a single icon still display correctly']},
   {v:53,date:'2026-05-22',items:['Icons sorted into 15 collapsible categories (Interface, Navigation, Objects, People …)','Icon names shown under each icon with a NAMES toggle to show/hide them','Search still works across all categories with a flat result view']},
@@ -2320,7 +2354,7 @@ let ctx = null, db = null, masterGain = null, analyser = null, analyserData = nu
 let bufs = {}, srcs = {}, gains = {};
 let libBufs = {};
 let eqRAF = null;
-let eId = null, eFiles = [], eMode = 'once', eImage = null, eIcons = [null,null,null,null], eIconSlot = 0, eShuffle = false, pendingMode = null, eLoopCount = 0, appendFiles = false;
+let eId = null, eFiles = [], eMode = 'once', eImage = null, eIcons = [null,null,null,null], eIconSlot = 0, eShuffle = false, pendingMode = null, eLoopCount = 0, appendFiles = false, fadeSub = false;
 let libMainTab = 'audio';
 const iconSvgCache = {};
 const playPos = {};
@@ -4062,10 +4096,17 @@ async function openEP(id){
   const keyEl=document.getElementById('ek');
   keyEl.value=p?.keyLabel||p?.key||'';
   keyEl.dataset.code=p?.key||'';
-  document.getElementById('ev').value=p?.volume??80;
+  const vol=p?.volume??80;
+  document.getElementById('ev').value=vol;
+  const evLbl=document.getElementById('ev-lbl'); if(evLbl) evLbl.textContent=vol;
   document.getElementById('eft').value=p?.fadeIn??0;
   document.getElementById('efo').value=p?.fadeOut??0;
   updFadeLabel('eft'); updFadeLabel('efo');
+  const hasFades=(p?.fadeIn??0)>0||(p?.fadeOut??0)>0;
+  fadeSub=hasFades;
+  document.getElementById('ep-fades').style.display=hasFades?'':'none';
+  document.getElementById('fade-toggle')?.classList.toggle('open',hasFades);
+  _updFadeHint();
   eFiles=[]; waveforms=[];
   eImage=p?.image||null;
   eIcons=[null,null,null,null];
@@ -4585,8 +4626,9 @@ function pausePreview(){
   updFB();
 }
 function liveVol(){
-  if(previewAudio && !previewAudio.paused)
-    previewAudio.volume=+document.getElementById('ev').value/100;
+  const v=+document.getElementById('ev').value;
+  if(previewAudio && !previewAudio.paused) previewAudio.volume=v/100;
+  const lbl=document.getElementById('ev-lbl'); if(lbl) lbl.textContent=v;
   drawScrubber();
 }
 function previewFile(i){
@@ -4961,9 +5003,26 @@ function renderPerf(){
   applyPadFilter();
 }
 
+function toggleEpFades(){
+  fadeSub=!fadeSub;
+  document.getElementById('ep-fades').style.display=fadeSub?'':'none';
+  document.getElementById('fade-toggle')?.classList.toggle('open',fadeSub);
+  _updFadeHint();
+}
+function _updFadeHint(){
+  const fi=+document.getElementById('eft').value;
+  const fo=+document.getElementById('efo').value;
+  const hint=document.getElementById('fade-toggle-hint');
+  if(!hint) return;
+  const parts=[];
+  if(fi>0) parts.push('in '+fi+'s');
+  if(fo>0) parts.push('out '+fo+'s');
+  hint.textContent=parts.join(' · ');
+}
 function updFadeLabel(id){
   const v=+document.getElementById(id).value;
   document.getElementById(id+'-lbl').textContent=v>0?v+'s':'Off';
+  _updFadeHint();
   drawScrubber();
 }
 
