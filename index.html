@@ -541,6 +541,19 @@ input[type=file]{display:none}
   display:none;flex-direction:column}
 .lp-row{background:var(--surface);border:1px solid var(--border);border-radius:4px;
   padding:9px 12px;display:flex;align-items:center;gap:10px}
+#import-ov{position:fixed;inset:0;z-index:210;background:var(--deep);display:none;flex-direction:column}
+#import-ov.open{display:flex}
+.imp-section-title{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--gold);margin:0 0 8px}
+.imp-row{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:9px 12px;display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
+.imp-row-name{font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);word-break:break-all}
+.imp-row-meta{font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)}
+.imp-badge{display:inline-block;font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));padding:1px 6px;border-radius:2px;margin-left:4px;border:1px solid}
+.imp-badge.new{background:rgba(60,168,112,.15);color:var(--emerald);border-color:var(--emerald-dim)}
+.imp-badge.exists{background:rgba(201,168,76,.1);color:var(--gold);border-color:var(--gold-dim)}
+.imp-badge.conflict{background:rgba(229,115,115,.1);color:var(--blood-bright);border-color:var(--blood)}
+.imp-choice{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+.imp-choice button{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;letter-spacing:0}
+.imp-choice button.active{border-color:var(--active);color:var(--active)}
 .ptp-ico{font-size:calc(20px * var(--font-scale));width:28px;text-align:center;flex-shrink:0;color:var(--gold)}
 .ptp-lbl{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;color:var(--text)}
 .ptp-sub{font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);
@@ -785,8 +798,13 @@ input[type=file]{display:none}
     <!-- DATA -->
     <div class="sg-hdr">DATA</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
-      <button onclick="doRemigrateAudio()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">RE-MIGRATE AUDIO TO LIBRARY</button>
-      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Run if pads lost their sounds after an update. Moves any remaining raw audio data into the Library.</p>
+      <button onclick="doExportLibrary()" style="background:var(--raised);border:1px solid var(--gold-dim);color:var(--gold);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">⬇ EXPORT LIBRARY</button>
+      <button onclick="triggerImportFile()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">⬆ IMPORT LIBRARY</button>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Export saves all boards, audio files and settings as one file. Import merges into existing data — you choose per file and per board.</p>
+      <button id="auto-backup-btn" onclick="toggleAutoBackup()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">AUTO-BACKUP: OFF</button>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Writes 3 rotating backup files to a folder you choose, every 10 minutes. Brave &amp; Chrome only.</p>
+      <button onclick="doRemigrateAudio()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%;margin-top:4px">RE-MIGRATE AUDIO TO LIBRARY</button>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Run if pads lost their sounds after an update.</p>
       <button onclick="doResetAllData()" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%;margin-top:4px">RESET ALL DATA</button>
       <p style="font-size:calc(10px * var(--font-scale));color:var(--blood-bright);margin:0;line-height:1.6">Deletes all boards, pads, and Library files. Cannot be undone.</p>
     </div>
@@ -1214,6 +1232,17 @@ input[type=file]{display:none}
   <div id="lp-list" style="overflow-y:auto;flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:6px;max-width:var(--cx-max);width:100%;box-sizing:border-box;margin:0 auto"></div>
 </div>
 
+<!-- IMPORT OVERLAY -->
+<input type="file" id="import-file-input" accept=".json" style="display:none" onchange="parseAndShowImport(this)">
+<div id="import-ov">
+  <div class="fs-hdr">
+    <button class="fs-back" onclick="closeImportOverlay()">←</button>
+    <span class="fs-title">IMPORT LIBRARY</span>
+    <button onclick="executeImport()" style="background:var(--emerald);color:#000;border:none;border-radius:2px;font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));padding:4px 14px;cursor:pointer;flex-shrink:0;letter-spacing:0">IMPORT</button>
+  </div>
+  <div id="import-content" style="flex:1;overflow-y:auto;padding:12px 14px;max-width:var(--cx-max);width:100%;box-sizing:border-box;margin:0 auto"></div>
+</div>
+
 <!-- COMBO EDITOR OVERLAY -->
 <div id="combo-ghost"></div>
 <div id="combo-ov">
@@ -1259,7 +1288,8 @@ input[type=file]{display:none}
 </div>
 
 <script>
-const APP_VERSION = 43;
+const APP_VERSION = 44;
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration'];
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
 //  grep for "// ── SECTION" to jump to any area
@@ -2167,6 +2197,212 @@ async function libRenameSave(hash){
   await libPut({...entry,name:newName});
   showToast('File renamed.');
   initLibScreen();
+}
+
+// ── EXPORT / IMPORT / AUTO-BACKUP ──
+function bufToBase64(buf){
+  if(!buf) return '';
+  const bytes=new Uint8Array(buf);
+  let s=''; const chunk=0x8000;
+  for(let i=0;i<bytes.length;i+=chunk)
+    s+=String.fromCharCode(...bytes.subarray(i,Math.min(i+chunk,bytes.length)));
+  return btoa(s);
+}
+function base64ToBuf(b64){
+  const s=atob(b64), buf=new Uint8Array(s.length);
+  for(let i=0;i<s.length;i++) buf[i]=s.charCodeAt(i);
+  return buf.buffer;
+}
+function getAllBoardsFull(){
+  return new Promise(res=>{
+    if(!db) return res([]);
+    db.transaction('p','readonly').objectStore('p').getAll().onsuccess=ev=>{
+      const all=ev.target.result||[];
+      res(all.filter(b=>typeof b.id==='string'&&b.id.startsWith('board_')));
+    };
+  });
+}
+function putBoard(b){
+  return new Promise(r=>{ const tx=db.transaction('p','readwrite'); tx.objectStore('p').put(b).onsuccess=r; });
+}
+async function buildExportJson(){
+  const libEntries=await libGetAll();
+  const boards=await getAllBoardsFull();
+  const settings={};
+  SETTINGS_KEYS.forEach(k=>{ const v=localStorage.getItem(k); if(v!==null) settings[k]=v; });
+  const library=libEntries.map(e=>({hash:e.hash,name:e.name,type:e.type||'',size:e.size||0,added:e.added||0,data:bufToBase64(e.buf)}));
+  return JSON.stringify({version:APP_VERSION,exported:new Date().toISOString(),settings,boards,library});
+}
+async function doExportLibrary(){
+  showToast('Preparing export…');
+  await new Promise(r=>setTimeout(r,60));
+  const json=await buildExportJson();
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`botc-library-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Library exported.');
+}
+
+// ── IMPORT ──
+let _importParsed=null, _importAudioChoices={}, _importBoardChoices={};
+function openImportOverlay(){ document.getElementById('import-ov').classList.add('open'); }
+function closeImportOverlay(){ document.getElementById('import-ov').classList.remove('open'); _importParsed=null; }
+function triggerImportFile(){ document.getElementById('import-file-input').click(); }
+function _impDate(ts){ return ts?new Date(ts).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'}):'?'; }
+
+async function parseAndShowImport(inp){
+  const file=inp.files[0]; inp.value=''; if(!file) return;
+  showToast('Parsing file…');
+  let data;
+  try{ data=JSON.parse(await file.text()); }
+  catch(e){ showToast('Invalid file — could not parse.'); return; }
+  if(!Array.isArray(data.library)||!Array.isArray(data.boards)){ showToast('Invalid backup file.'); return; }
+  _importParsed=data; _importAudioChoices={}; _importBoardChoices={};
+
+  const currentLib=await libGetAll();
+  const currentHashes=new Set(currentLib.map(e=>e.hash));
+  const currentNameMap=Object.fromEntries(currentLib.map(e=>[e.name,e.hash]));
+  const currentBoards=await getAllBoardsFull();
+  const currentBoardIds=new Set(currentBoards.map(b=>b.id));
+
+  data.library.forEach(e=>{
+    if(currentHashes.has(e.hash)) _importAudioChoices[e.hash]='skip';
+    else if(currentNameMap[e.name]&&currentNameMap[e.name]!==e.hash) _importAudioChoices[e.hash]='keep-both';
+    else _importAudioChoices[e.hash]='add';
+  });
+  data.boards.forEach(b=>{ _importBoardChoices[b.id]=currentBoardIds.has(b.id)?'skip':'import'; });
+
+  const dupes=data.library.filter(e=>currentHashes.has(e.hash));
+  const conflicts=data.library.filter(e=>!currentHashes.has(e.hash)&&currentNameMap[e.name]&&currentNameMap[e.name]!==e.hash);
+  const newFiles=data.library.filter(e=>!currentHashes.has(e.hash)&&!(currentNameMap[e.name]&&currentNameMap[e.name]!==e.hash));
+
+  let html='<div class="imp-section-title">AUDIO FILES</div>';
+  if(!data.library.length) html+=`<p style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text-dim)">No audio files in this backup.</p>`;
+  if(dupes.length) html+=`<p style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin:0 0 6px">${dupes.length} file${dupes.length===1?'':'s'} already in Library — will be skipped.</p>`;
+  if(newFiles.length) html+=`<p style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--emerald);margin:0 0 6px">${newFiles.length} new file${newFiles.length===1?'':'s'} will be added.</p>`;
+  conflicts.forEach(e=>{
+    html+=`<div class="imp-row">
+      <div class="imp-row-name">${escHtml(e.name)}<span class="imp-badge conflict">CONFLICT</span></div>
+      <div class="imp-row-meta">${fmtSize(e.size||0)} · Same name, different content</div>
+      <div class="imp-choice">
+        <button id="ac-kb-${e.hash}" class="active" onclick="setAudioChoice('${e.hash}','keep-both',this)">KEEP BOTH</button>
+        <button id="ac-rp-${e.hash}" onclick="setAudioChoice('${e.hash}','replace',this)">REPLACE</button>
+        <button id="ac-sk-${e.hash}" onclick="setAudioChoice('${e.hash}','skip',this)">SKIP</button>
+      </div></div>`;
+  });
+
+  html+='<div class="imp-section-title" style="margin-top:16px">BOARDS</div>';
+  if(!data.boards.length) html+=`<p style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text-dim)">No boards in this backup.</p>`;
+  data.boards.forEach(b=>{
+    const padCount=(b.pads||[]).filter(p=>p).length;
+    const audioHashes=new Set(); (b.pads||[]).forEach(p=>{ if(p?.files) p.files.forEach(h=>audioHashes.add(h)); });
+    const exists=currentBoardIds.has(b.id);
+    const ch=_importBoardChoices[b.id];
+    html+=`<div class="imp-row">
+      <div class="imp-row-name">${escHtml(b.name||'Unnamed')}<span class="imp-badge ${exists?'exists':'new'}">${exists?'EXISTS':'NEW'}</span></div>
+      <div class="imp-row-meta">${padCount} pad${padCount===1?'':'s'} · ${audioHashes.size} audio file${audioHashes.size===1?'':'s'} · Created ${_impDate(b.createdAt)}</div>
+      <div class="imp-choice">
+        <button id="bc-im-${b.id}" class="${ch==='import'?'active':''}" onclick="setBoardChoice('${b.id}','import',this)">${exists?'AS NEW':'IMPORT'}</button>
+        ${exists?`<button id="bc-rp-${b.id}" class="${ch==='replace'?'active':''}" onclick="setBoardChoice('${b.id}','replace',this)">REPLACE</button>`:''}
+        <button id="bc-sk-${b.id}" class="${ch==='skip'?'active':''}" onclick="setBoardChoice('${b.id}','skip',this)">SKIP</button>
+      </div></div>`;
+  });
+
+  document.getElementById('import-content').innerHTML=html;
+  openImportOverlay();
+}
+function setAudioChoice(hash,choice,btn){
+  _importAudioChoices[hash]=choice;
+  ['kb','rp','sk'].forEach(k=>{ const b=document.getElementById(`ac-${k}-${hash}`); if(b) b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+function setBoardChoice(id,choice,btn){
+  _importBoardChoices[id]=choice;
+  ['im','rp','sk'].forEach(k=>{ const b=document.getElementById(`bc-${k}-${id}`); if(b) b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+async function executeImport(){
+  if(!_importParsed) return;
+  const data=_importParsed;
+  showToast('Importing…'); await new Promise(r=>setTimeout(r,60));
+  let audioAdded=0,audioReplaced=0;
+  for(const e of data.library){
+    const choice=_importAudioChoices[e.hash];
+    if(choice==='skip') continue;
+    const buf=base64ToBuf(e.data);
+    if(choice==='replace'){
+      const all=await libGetAll();
+      const ex=all.find(x=>x.name===e.name&&x.hash!==e.hash);
+      if(ex) await libDelete(ex.hash);
+      await libPut({hash:e.hash,name:e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
+      audioReplaced++;
+    } else if(choice==='keep-both'){
+      const ext=e.name.includes('.')?'.'+e.name.split('.').pop():'';
+      const base=e.name.includes('.')?e.name.slice(0,e.name.lastIndexOf('.')):e.name;
+      await libPut({hash:e.hash,name:base+'_imported'+ext,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
+      audioAdded++;
+    } else {
+      await libPut({hash:e.hash,name:e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
+      audioAdded++;
+    }
+  }
+  const currentBoardIds=new Set((await getAllBoardsFull()).map(b=>b.id));
+  let boardsImported=0;
+  for(const b of data.boards){
+    const choice=_importBoardChoices[b.id];
+    if(choice==='skip') continue;
+    const boardToSave={...b};
+    if(choice==='import'&&currentBoardIds.has(b.id))
+      boardToSave.id='board_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+    await putBoard(boardToSave); boardsImported++;
+  }
+  if(data.settings) SETTINGS_KEYS.forEach(k=>{ if(data.settings[k]!=null) localStorage.setItem(k,data.settings[k]); });
+  closeImportOverlay();
+  showToast(`Done: ${audioAdded} file${audioAdded===1?'':'s'} added, ${audioReplaced} replaced, ${boardsImported} board${boardsImported===1?'':'s'} imported. Reloading…`);
+  setTimeout(()=>location.reload(),2200);
+}
+
+// ── AUTO-BACKUP ──
+let _autoBackupDirHandle=null, _autoBackupIdx=0, _autoBackupTimer=null;
+function hasFileSystemAccess(){ return 'showDirectoryPicker' in window; }
+async function toggleAutoBackup(){
+  if(_autoBackupDirHandle){ stopAutoBackup(); return; }
+  if(!hasFileSystemAccess()){ showToast('Auto-backup is only supported in Brave and Chrome.'); return; }
+  try{
+    _autoBackupDirHandle=await showDirectoryPicker({mode:'readwrite'});
+    startAutoBackupTimer();
+    showToast('Auto-backup active — saves every 10 min.');
+    updateAutoBackupBtn();
+    doAutoBackup(); // immediate first save
+  } catch(e){ /* user cancelled */ }
+}
+function stopAutoBackup(){
+  clearInterval(_autoBackupTimer); _autoBackupTimer=null; _autoBackupDirHandle=null;
+  showToast('Auto-backup disabled.'); updateAutoBackupBtn();
+}
+function startAutoBackupTimer(){
+  clearInterval(_autoBackupTimer);
+  _autoBackupTimer=setInterval(doAutoBackup,10*60*1000);
+}
+async function doAutoBackup(){
+  if(!_autoBackupDirHandle) return;
+  _autoBackupIdx=(_autoBackupIdx+1)%3;
+  try{
+    const json=await buildExportJson();
+    const fh=await _autoBackupDirHandle.getFileHandle(`botc-autobackup-${_autoBackupIdx+1}.json`,{create:true});
+    const w=await fh.createWritable();
+    await w.write(json); await w.close();
+  } catch(e){ stopAutoBackup(); showToast('Auto-backup failed — please re-enable in Settings.'); }
+}
+function updateAutoBackupBtn(){
+  const active=!!_autoBackupDirHandle;
+  const btn=document.getElementById('auto-backup-btn'); if(!btn) return;
+  btn.textContent=active?'AUTO-BACKUP: ON ●':'AUTO-BACKUP: OFF';
+  btn.style.borderColor=active?'var(--emerald)':'var(--border)';
+  btn.style.color=active?'var(--emerald)':'var(--text)';
 }
 
 // ── DATA MANAGEMENT ──
