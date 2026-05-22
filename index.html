@@ -319,6 +319,11 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 .pbtn::before{content:'';position:absolute;inset:0;transform:scaleY(var(--plevel,0));transform-origin:bottom;border-radius:inherit;pointer-events:none;z-index:0}
 body.mode-play .pbtn::before{background:linear-gradient(to top,rgba(201,168,76,.38) 0%,rgba(201,168,76,.1) 55%,transparent 100%)}
 body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.3) 0%,rgba(79,195,247,.07) 55%,transparent 100%)}
+#hint-ov{display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.88);flex-direction:column}
+#hint-ov-hdr{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+#hint-body{flex:1;overflow-y:auto;padding:0 14px 20px}
+#hint-body .tip{border-bottom:1px solid var(--border)}
+.hint-q{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:2px 7px;border-radius:2px;cursor:pointer;line-height:1.4;flex-shrink:0}
 .pbtn.has-img::after{content:'';position:absolute;inset:0;background:rgba(10,10,20,0.52);border-radius:inherit;pointer-events:none}
 .pbtn.has-img .pico{display:none}
 .pbtn.has-img .plbl,.pbtn.has-img .pnum{position:relative;z-index:1}
@@ -756,7 +761,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <!-- MY BOARDS -->
 <div id="smb" class="screen">
-  <div class="s-hdr"><div class="cx"><h2>MY BOARDS</h2></div></div>
+  <div class="s-hdr"><div class="cx"><h2>MY BOARDS</h2><button class="hint-q" onclick="openHints(['smb'])" title="Hints">?</button></div></div>
   <div style="flex:1;overflow-y:auto">
     <div id="board-list" class="cx" style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px"></div>
   </div>
@@ -843,6 +848,15 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 </div>
 
 
+<!-- HINTS OVERLAY -->
+<div id="hint-ov" onclick="if(event.target===this)closeHints()">
+  <div id="hint-ov-hdr">
+    <button onclick="closeHints()" style="background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);font-size:calc(20px * var(--font-scale));cursor:pointer;padding:0 4px 0 0;line-height:1;flex-shrink:0">←</button>
+    <span style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));letter-spacing:0;color:var(--gold);flex:1;text-align:center">HINTS</span>
+  </div>
+  <div id="hint-body"></div>
+</div>
+
 <!-- KEY DETECT -->
 <div id="sk" class="screen">
   <h2>KEY DETECTION</h2>
@@ -861,7 +875,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <!-- APP SETTINGS -->
 <div id="sa" class="screen">
-  <div class="s-hdr"><div class="cx"><h2>SETTINGS</h2></div></div>
+  <div class="s-hdr"><div class="cx"><h2>SETTINGS</h2><button class="hint-q" onclick="openHints(['sa'])" title="Hints">?</button></div></div>
   <div style="flex:1;overflow-y:auto">
    <div class="cx">
     <div style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px">
@@ -1006,7 +1020,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <!-- LIBRARY -->
 <div id="sli" class="screen">
-  <div class="s-hdr"><div class="cx"><h2>LIBRARY</h2></div></div>
+  <div class="s-hdr"><div class="cx"><h2>LIBRARY</h2><button class="hint-q" onclick="openHints(['sli'])" title="Hints">?</button></div></div>
   <div class="lib-main-tabs">
     <div class="lib-main-tab active" id="lmt-audio" onclick="setLibMainTab('audio')">AUDIO</div>
     <div class="lib-main-tab" id="lmt-icons" onclick="setLibMainTab('icons')">ICONS</div>
@@ -1157,119 +1171,119 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   <div class="s-hdr"><div class="cx"><h2>TIPS &amp; TRICKS</h2></div></div>
   <div style="flex:1;overflow-y:auto">
    <div class="cx">
-    <div class="tip">
+    <div class="tip" data-screens="sp">
       <div class="tip-key">SETUP|GAME</div>
       <div class="tip-body">
         <div class="tip-ttl">SETUP ↔ GAME MODE</div>
         <div class="tip-desc">The SETUP|GAME switch at the top of the board toggles between modes. In SETUP mode (blue) you can edit pads. In GAME mode (gold) keys and taps trigger sounds.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="sp">
       <div class="tip-key">↕ Drag</div>
       <div class="tip-body">
         <div class="tip-ttl">MOVING PADS</div>
         <div class="tip-desc">In SETUP mode, hold a pad and drag it to another position — the two pads swap places. A short tap opens the edit panel. Drag &amp; drop is disabled in GAME mode.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="ep">
       <div class="tip-key">Fade</div>
       <div class="tip-body">
         <div class="tip-ttl">FADE-IN / FADE-OUT</div>
         <div class="tip-desc">Configurable per pad in the edit panel (0–10s). Fade-In gradually raises the volume when the sound starts. Fade-Out lowers it when stopping. Enter stops immediately without a fade.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="sp">
       <div class="tip-key">Space</div>
       <div class="tip-body">
         <div class="tip-ttl">PAUSE / RESUME</div>
         <div class="tip-desc">Pauses all running sounds and resumes them on the next press. Works on every screen and in GAME mode. Exception: when a text input field is active.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="sp">
       <div class="tip-key">Enter</div>
       <div class="tip-body">
         <div class="tip-ttl">STOP ALL</div>
         <div class="tip-desc">Immediately stops all running sounds and resets their position to the beginning. Works on every screen and in GAME mode.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="sp,ep">
       <div class="tip-key">Escape</div>
       <div class="tip-body">
         <div class="tip-ttl">BACK / CANCEL</div>
         <div class="tip-desc">Navigates back to the main menu. If the edit panel is open, Escape closes it (= Cancel). Has no effect in GAME mode.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="sp,ep">
       <div class="tip-key">Tap</div>
       <div class="tip-body">
         <div class="tip-ttl">ASSIGN SOUND-PAD</div>
         <div class="tip-desc">In SETUP mode, tap a pad to open the edit panel. Click the key field and press the desired key — the code is detected automatically.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="ep">
       <div class="tip-key"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 2h16v2H4zm0 18h16v2H4zM20 4h2v16h-2zM2 4h2v16H2zm9 2h2v8h-2zm0 10h2v2h-2z"/></svg></div>
       <div class="tip-body">
         <div class="tip-ttl">KEY CONFLICT</div>
         <div class="tip-desc">When saving, the app checks whether a key is already assigned to another pad. If there is a conflict, a warning appears with the options Cancel or Overwrite.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="ep">
       <div class="tip-key">1 ≠ 1</div>
       <div class="tip-body">
         <div class="tip-ttl">NUMPAD VS. NUMBER KEY</div>
         <div class="tip-desc">The "1" on the numpad and the "1" on the main keyboard are detected as different codes internally. Assigning one never accidentally affects the other.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="sli">
       <div class="tip-key">⊞ LIB</div>
       <div class="tip-body">
         <div class="tip-ttl">THE AUDIO LIBRARY</div>
         <div class="tip-desc">Every audio file you upload is stored once in the global Library and identified by a fingerprint. Uploading the same file twice is detected automatically — no duplicates. Open the Library from the main menu to browse, upload, or delete files and see which ones are in use.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="ep,sli">
       <div class="tip-key">FROM LIB</div>
       <div class="tip-body">
         <div class="tip-ttl">REUSE AUDIO WITHOUT RE-UPLOADING</div>
         <div class="tip-desc">In the pad edit panel, tap "FROM LIB" next to the file picker to assign audio already in the Library — no second copy is stored. Multiple pads can share the same file. Great for recurring sounds like dice rolls or ambient loops.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="sp,combo">
       <div class="tip-key"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> C-PAD</div>
       <div class="tip-body">
         <div class="tip-ttl">COMBO-PAD: STEPS IN SEQUENCE</div>
         <div class="tip-desc">A Combo-PAD plays a sequence of steps one after another. Each step can contain one or more pads that play simultaneously. Tap <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> in SETUP mode to build one. Combo-PADs can be nested inside other Combos — but a Combo cannot reference itself or create a loop.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="combo">
       <div class="tip-key">Pause</div>
       <div class="tip-body">
         <div class="tip-ttl">TIMED PAUSE IN A COMBO</div>
         <div class="tip-desc">Add a step with no pads and set a duration to create a silent pause between two steps. Useful for dramatic timing — e.g. a quiet moment before a thunder clap. Duration is set per step in the Combo editor.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="combo">
       <div class="tip-key">∞ BG</div>
       <div class="tip-body">
         <div class="tip-ttl">BACKGROUND TRACKS IN COMBOS</div>
         <div class="tip-desc">A pad set to ∞ LOOP inside a Combo step runs as a non-blocking background track — the sequence advances to the next step immediately without waiting for it to finish. Use it for ambient music that plays under a sequence of sound effects.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="sa">
       <div class="tip-key">⬇ EXP</div>
       <div class="tip-body">
         <div class="tip-ttl">EXPORT &amp; IMPORT YOUR LIBRARY</div>
         <div class="tip-desc">Settings → DATA → EXPORT LIBRARY saves everything — all boards, pads, audio files and settings — into one compressed file. IMPORT LIBRARY merges a backup into your current data: you choose per audio file and per board what to keep, replace or skip. Use this to transfer your setup to another device or browser.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="sa">
       <div class="tip-key">⚙ BAK</div>
       <div class="tip-body">
         <div class="tip-ttl">PROTECTING YOUR DATA</div>
         <div class="tip-desc">Browser storage can be cleared unexpectedly. On desktop: enable AUTO-BACKUP in Settings → DATA to save 3 rotating backup files to a local folder every 10 minutes (requires browser support). On iPhone or if auto-backup is unavailable: export manually after every session and save the file to iCloud or Files. The export age is shown in Settings so you always know how fresh your last backup is.</div>
       </div>
     </div>
-    <div class="tip">
+    <div class="tip" data-screens="smb">
       <div class="tip-key">⊞ BRD</div>
       <div class="tip-body">
         <div class="tip-ttl">MULTIPLE BOARDS</div>
@@ -1286,6 +1300,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   <div class="ep-hdr">
     <button class="ep-back" onclick="tryCloseEP()">←</button>
     <span class="ep-title" id="ep-t">EDIT SOUND-PAD</span>
+    <button class="hint-q" onclick="openHints(['ep'])" title="Hints">?</button>
     <button class="btn-g ep-save-btn" onclick="savePad()">SAVE</button>
   </div>
   <div class="ep-body">
@@ -1434,6 +1449,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     </div>
     <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
       <button id="phdr-menu-btn" onclick="onMenuBtn()">MENU</button>
+      <button class="hint-q" onclick="openHints(['sp'])" title="Hints">?</button>
       <button id="fs-btn" onclick="toggleFullscreen()" title="Fullscreen"
         style="display:none;background:none;border:none;color:var(--mode-accent);cursor:pointer;padding:2px 3px;line-height:1">
         <svg id="fs-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
@@ -1507,6 +1523,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     <button onclick="tryCloseComboEditor()" style="background:none;border:none;color:var(--text-dim);font-size:calc(18px * var(--font-scale));cursor:pointer;padding:0 6px;line-height:1">←</button>
     <span style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));letter-spacing:0;color:var(--gold);flex:1;text-align:center">COMBO-PAD</span>
     <button id="combo-del-btn" onclick="deleteCombo()" style="display:none;margin-left:auto;background:none;border:1px solid var(--blood);color:var(--blood);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:4px 8px;border-radius:2px;cursor:pointer">DELETE</button>
+    <button class="hint-q" onclick="openHints(['combo'])" title="Hints">?</button>
   </div>
   <div id="combo-body">
     <div class="fg">
@@ -1576,8 +1593,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 81;
+const APP_VERSION = 82;
 const CHANGELOG=[
+  {v:82,date:'2026-05-22',items:["Hints overlay: context-aware tips accessible via the ? button in every screen header","Tips are filtered by the current context (board, PAD editor, combo editor, library, settings, boards)","Close with ← button, backdrop tap, or Escape key"]},
   {v:81,date:'2026-05-22',items:["Live PAD level meters: each playing PAD shows its own amplitude as a gradient fill rising from the bottom","Per-PAD AnalyserNode inserted between pad gain and master gain — individual levels, not the master mix","Toggle in Settings → GRAPHICS → PAD LEVEL (default: ON)","Fix: playSwitchSound was referencing an undefined variable"]},
   {v:80,date:'2026-05-22',items:["All screens are now fully scrollable — content centers when it fits, scrolls when it doesn't","Fixes title screen and main menu clipping content on small screens or with large font scale"]},
   {v:79,date:'2026-05-22',items:["Library entries now remember their original filename","After renaming, the original name is shown dimmed (← original.mp3) below the current name in the Library and Library Picker","origName stored on first upload; preserved across renames, exports, and imports"]},
@@ -4758,6 +4776,24 @@ function _initPadLevelUI(){
   const b=document.getElementById('pl-off'); if(b) b.className='topt'+(!on?' al':'');
 }
 
+// ── HINTS OVERLAY ──
+function openHints(screens){
+  const body=document.getElementById('hint-body');
+  const tips=document.querySelectorAll('#st .tip[data-screens]');
+  let html='';
+  for(const tip of tips){
+    const s=tip.dataset.screens.split(',');
+    if(screens.some(sc=>s.includes(sc))) html+=tip.outerHTML;
+  }
+  if(!html) html='<p style="color:var(--text-dim);font-family:var(--ff-body);padding:16px">No hints for this screen.</p>';
+  body.innerHTML=html;
+  body.scrollTop=0;
+  document.getElementById('hint-ov').style.display='flex';
+}
+function closeHints(){
+  document.getElementById('hint-ov').style.display='none';
+}
+
 // ── SWITCH SOUND ──
 let _switchSoundBuf=null;
 async function _loadSwitchSound(){
@@ -4908,6 +4944,7 @@ document.addEventListener('keydown', e=>{
 
   if(code==='Escape'){
     e.preventDefault();
+    if(document.getElementById('hint-ov').style.display!=='none'){ closeHints(); return; }
     if(document.getElementById('ep').classList.contains('open')){ tryCloseEP(); return; }
     if(document.getElementById('combo-ov').classList.contains('open')){ tryCloseComboEditor(); return; }
     if(cur!=='smm'&&cur!=='su') show('smm');
