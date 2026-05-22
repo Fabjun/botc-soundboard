@@ -29,6 +29,8 @@
   --font-scale:1; --sym-scale:1;
   /* Mode accent — updated by body.mode-edit / body.mode-play */
   --mode-accent:var(--active); --mode-accent-dim:rgba(79,195,247,.35); --mode-accent-glow:rgba(79,195,247,.2);
+  /* Fixed header height — used by #ep, #combo-ov, #ebk, #sp */
+  --p-hdr-h:49px;
 }
 body.theme-modern {
   --ff-title:system-ui,-apple-system,'Inter',sans-serif;
@@ -140,9 +142,9 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
   border-top:1px solid rgba(79,195,247,.22);
   border-radius:0 0 var(--pad-radius) var(--pad-radius)}
 .pad-edit-banner:active{background:rgba(79,195,247,.22)}
-#ebk{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99}
+#ebk{display:none;position:fixed;top:var(--p-hdr-h);left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:99}
 #ebk.open{display:block}
-#ep{position:fixed;inset:0;background:var(--raised);
+#ep{position:fixed;top:var(--p-hdr-h);left:0;right:0;bottom:0;background:var(--raised);
   transform:translateY(100%);transition:transform .3s ease;z-index:100;
   display:flex;flex-direction:column}
 #ep.open{transform:translateY(0)}
@@ -221,14 +223,14 @@ input[type=file]{display:none}
   color:var(--text);margin-bottom:2px}
 .tip-desc{font-size:calc(12px * var(--font-scale));color:var(--text-dim);line-height:1.5}
 
-#sp{background:var(--night);position:relative;overflow:hidden}
+#sp{background:var(--night);position:relative;overflow:hidden;padding-top:var(--p-hdr-h)}
 .pbtn.dragging{opacity:0.25}
 .pbtn.drag-over{border-color:var(--mode-accent)!important;background:var(--raised)}
 #sp::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.08) 0%,transparent 50%)}
 .p-hdr{display:flex;justify-content:center;align-items:center;
   padding:8px 13px 6px;border-bottom:1px solid rgba(42,42,74,.6);
-  flex-shrink:0;position:relative;z-index:2}
+  flex-shrink:0;position:fixed;top:0;left:0;right:0;z-index:200;background:var(--night)}
 .hdr-center{display:flex;align-items:center;gap:10px}
 /* MODE SWITCH */
 #mode-switch{position:relative;display:flex;align-items:stretch;
@@ -494,7 +496,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 #loopcount-row{display:none}
 
 /* COMBO EDITOR */
-#combo-ov{position:fixed;inset:0;z-index:150;background:var(--night);
+#combo-ov{position:fixed;top:var(--p-hdr-h);left:0;right:0;bottom:0;z-index:150;background:var(--night);
   display:none;flex-direction:column;overflow:hidden}
 #combo-ov.open{display:flex}
 #combo-hdr{padding:11px 13px;border-bottom:1px solid var(--border);
@@ -768,6 +770,22 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
     <div style="display:flex;gap:8px">
       <button onclick="closeConfirmDel()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:9px;border-radius:2px;cursor:pointer;letter-spacing:0">CANCEL</button>
       <button id="confirm-del-ok" onclick="execConfirmDel()" style="flex:1;background:var(--blood);border:1px solid var(--blood-bright);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:9px;border-radius:2px;cursor:pointer;letter-spacing:0">DELETE</button>
+    </div>
+  </div>
+</div>
+
+<!-- LEAVE WITHOUT SAVING OVERLAY -->
+<div id="leave-warn-ov"
+  style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.82);align-items:center;justify-content:center">
+  <div style="background:var(--raised);border:1px solid var(--border);border-radius:4px;padding:22px 20px 18px;max-width:300px;width:88%;box-sizing:border-box">
+    <div style="font-family:var(--ff-label);font-size:calc(16px*var(--font-scale));color:var(--gold);letter-spacing:1px;margin-bottom:8px">UNSAVED CHANGES</div>
+    <div style="font-family:var(--ff-body);font-size:calc(13px*var(--font-scale));color:var(--text-dim);line-height:1.5;margin-bottom:20px">Leave the editor? Your changes will be lost.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button onclick="execLeaveWarn('save')" style="width:100%;background:var(--emerald);border:1px solid var(--emerald);color:#fff;font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:10px;border-radius:2px;cursor:pointer;letter-spacing:0">SAVE &amp; LEAVE</button>
+      <div style="display:flex;gap:8px">
+        <button onclick="execLeaveWarn('cancel')" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:9px;border-radius:2px;cursor:pointer;letter-spacing:0">CANCEL</button>
+        <button onclick="execLeaveWarn('leave')" style="flex:1;background:var(--blood);border:1px solid var(--blood-bright);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:9px;border-radius:2px;cursor:pointer;letter-spacing:0">LEAVE</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1221,7 +1239,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 <div id="ebk"></div>
 <div id="ep">
   <div class="ep-hdr">
-    <button class="ep-back" onclick="closeEP()">←</button>
+    <button class="ep-back" onclick="tryCloseEP()">←</button>
     <span class="ep-title" id="ep-t">EDIT SOUND-PAD</span>
     <button class="btn-g ep-save-btn" onclick="savePad()">SAVE</button>
   </div>
@@ -1451,7 +1469,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 <div id="combo-ghost"></div>
 <div id="combo-ov">
   <div id="combo-hdr">
-    <button onclick="closeComboEditor()" style="background:none;border:none;color:var(--text-dim);font-size:calc(18px * var(--font-scale));cursor:pointer;padding:0 6px;line-height:1">←</button>
+    <button onclick="tryCloseComboEditor()" style="background:none;border:none;color:var(--text-dim);font-size:calc(18px * var(--font-scale));cursor:pointer;padding:0 6px;line-height:1">←</button>
     <span style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));letter-spacing:0;color:var(--gold);flex:1;text-align:center">COMBO-PAD</span>
     <button id="combo-del-btn" onclick="deleteCombo()" style="display:none;margin-left:auto;background:none;border:1px solid var(--blood);color:var(--blood);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:4px 8px;border-radius:2px;cursor:pointer">DELETE</button>
   </div>
@@ -1486,7 +1504,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
     </div>
   </div>
   <div class="eact" style="padding:10px 13px;flex-shrink:0;border-top:1px solid var(--border)">
-    <button class="btn-s" style="flex:1" onclick="closeComboEditor()">CANCEL</button>
+    <button class="btn-s" style="flex:1" onclick="tryCloseComboEditor()">CANCEL</button>
     <button class="btn-g" style="flex:2" onclick="saveCombo()">SAVE</button>
   </div>
 </div>
@@ -3785,8 +3803,13 @@ const BUILTIN_ICONS=[
   {id:"px-weather-windy-air-element",label:"Windy Air",cat:"Nature",d:"M5 0h3v1H5zM10 0h4v1H10zM5 1h1v1H5zM7 1h4v1H7zM13 1h2v1H13zM2 2h5v1H2zM8 2h2v1H8zM11 2h2v1H11zM14 2h1v1H14zM2 3h1v1H2zM7 3h6v1H7zM14 3h1v1H14zM2 4h10v1H2zM13 4h2v1H13zM3 5h1v1H3zM12 5h2v1H12zM2 6h12v1H2zM2 7h1v1H2zM13 7h2v1H13zM1 8h12v1H1zM14 8h1v1H14zM1 9h1v1H1zM8 9h2v1H8zM11 9h2v1H11zM14 9h1v1H14zM1 10h7v1H1zM9 10h2v1H9zM13 10h2v1H13zM2 11h1v1H2zM7 11h7v1H7zM2 12h5v1H2zM8 12h1v1H8zM3 13h1v1H3zM5 13h2v1H5zM8 13h1v1H8zM3 14h2v1H3zM7 14h2v1H7zM4 15h4v1H4z",v:"0 0 16 16"}
 ];
 
-const APP_VERSION = 70;
+const APP_VERSION = 71;
 const CHANGELOG=[
+  {v:71,date:'2026-05-22',items:['Mode switch and MENU button always visible — they float above the PAD editor and combo editor at all times','Unsaved changes guard: leaving either editor with unsaved changes shows a warning overlay (SAVE & LEAVE / LEAVE / CANCEL)','Guard triggers on: ← back button, CANCEL button, MENU button, mode switch, Escape key','Applies to both S-PAD editor and Combo editor']},
+  {v:70,date:'2026-05-22',items:['SETUP mode: tapping a PAD now opens the editor directly instead of requiring a separate EDIT tap','EDIT banner on pads removed — the tap-to-edit behavior replaces it','Drag & drop and swap still work as before in SETUP mode']},
+  {v:69,date:'2026-05-22',items:['"Play" mode renamed to "GAME" throughout the UI — labels, tooltips, tips, onboarding']},
+  {v:68,date:'2026-05-22',items:['All delete actions now use a consistent confirmation overlay instead of browser confirm() or 2-tap buttons','Overlay shows a short description and requires a deliberate DELETE tap to proceed']},
+  {v:67,date:'2026-05-22',items:['Changelog backfilled with missing v60–v66 entries']},
   {v:66,date:'2026-05-22',items:['PAD filter tabs (ALL / S-PAD / C-PAD) and settings selectors now follow the active mode color (blue in SETUP, gold in GAME)']},
   {v:65,date:'2026-05-22',items:['Global mode color system: --mode-accent CSS variable switches all UI elements between blue (SETUP) and gold (GAME)','Menu button, empty PAD slot, PAD icons, key labels and drag-over border all follow the active mode','Playing PAD glow stays gold regardless of mode — it indicates active audio, not the current mode']},
   {v:64,date:'2026-05-22',items:['Icon picker search placeholder now shows the live icon count instead of the hardcoded "813"','Library built-in icon count updates dynamically on startup']},
@@ -4005,8 +4028,12 @@ function load(){
 // ── GLOBAL MENU BUTTON ──
 let menuConfirmTimer = null, menuConfirmTick = 0;
 function onMenuBtn(){
-  if(locked) showMenuConfirm();
-  else show('smm');
+  if(locked){ showMenuConfirm(); return; }
+  const epOpen=document.getElementById('ep').classList.contains('open');
+  const coOpen=document.getElementById('combo-ov').classList.contains('open');
+  if(epOpen){ tryCloseEP(()=>show('smm')); return; }
+  if(coOpen){ tryCloseComboEditor(()=>show('smm')); return; }
+  show('smm');
 }
 // ── CONFIRM DELETE ──
 let _confirmDelCb=null;
@@ -4022,6 +4049,61 @@ function closeConfirmDel(){
 }
 function execConfirmDel(){
   const cb=_confirmDelCb; closeConfirmDel(); if(cb) cb();
+}
+
+// ── UNSAVED CHANGES GUARD ──
+let _epSnap=null, _comboSnap=null, _leaveWarnCb=null;
+
+function _snapshotEP(){
+  return JSON.stringify({
+    name:document.getElementById('en').value,
+    key:document.getElementById('ek').dataset.code||'',
+    vol:document.getElementById('ev').value,
+    fi:document.getElementById('eft').value,
+    fo:document.getElementById('efo').value,
+    mode:eMode, shuffle:eShuffle, loopCount:eLoopCount,
+    files:eFiles.map(f=>f.hash||f.name),
+    icons:eIcons, image:eImage
+  });
+}
+function epHasChanges(){ return !!_epSnap && _snapshotEP()!==_epSnap; }
+
+function _snapshotCombo(){
+  return JSON.stringify({
+    name:document.getElementById('cn').value,
+    key:document.getElementById('ck').dataset.code||'',
+    steps:comboSteps
+  });
+}
+function comboHasChanges(){ return !!_comboSnap && _snapshotCombo()!==_comboSnap; }
+
+function showLeaveWarning(onSave, onLeave){
+  _leaveWarnCb={save:onSave,leave:onLeave};
+  document.getElementById('leave-warn-ov').style.display='flex';
+}
+function closeLeaveWarn(){
+  _leaveWarnCb=null;
+  document.getElementById('leave-warn-ov').style.display='none';
+}
+function execLeaveWarn(action){
+  const cb=_leaveWarnCb; closeLeaveWarn();
+  if(action==='save'&&cb?.save) cb.save();
+  else if(action==='leave'&&cb?.leave) cb.leave();
+}
+
+function tryCloseEP(afterClose){
+  if(!epHasChanges()){ closeEP(); if(afterClose) afterClose(); return; }
+  showLeaveWarning(
+    async ()=>{ await savePad(); if(afterClose) afterClose(); },
+    ()=>{ closeEP(); if(afterClose) afterClose(); }
+  );
+}
+function tryCloseComboEditor(afterClose){
+  if(!comboHasChanges()){ closeComboEditor(); if(afterClose) afterClose(); return; }
+  showLeaveWarning(
+    ()=>{ doSaveCombo(); if(afterClose) afterClose(); },
+    ()=>{ closeComboEditor(); if(afterClose) afterClose(); }
+  );
 }
 
 function showMenuConfirm(){
@@ -5677,8 +5759,10 @@ async function openEP(id){
     eFiles.forEach((_,i)=>decodeWaveform(i));
     updFB();
   }
+  _epSnap=_snapshotEP();
 }
 function closeEP(){
+  _epSnap=null;
   closeConfirmDel();
   document.getElementById('ep').classList.remove('open');
   document.getElementById('ebk').classList.remove('open');
@@ -5716,9 +5800,11 @@ function openComboEditor(editId=null){
   if(delBtn) delBtn.style.display=editId!==null?'block':'none';
   renderComboSteps(); renderComboPalette();
   document.getElementById('combo-ov').classList.add('open');
+  _comboSnap=_snapshotCombo();
 }
 
 function closeComboEditor(){
+  _comboSnap=null;
   document.getElementById('combo-ov').classList.remove('open');
   comboDragId=null;
   document.getElementById('combo-ghost').style.display='none';
@@ -5726,7 +5812,7 @@ function closeComboEditor(){
 }
 
 function captureComboKey(e){
-  if(e.key==='Escape'){ closeComboEditor(); return; }
+  if(e.key==='Escape'){ tryCloseComboEditor(); return; }
   e.preventDefault();
   const ck=document.getElementById('ck');
   ck.value=e.key; ck.dataset.code=e.code;
@@ -6814,7 +6900,7 @@ function spawnSparks(rect,toPlay){
   }
 }
 
-function toggleLock(){
+function _doToggleLock(){
   locked=!locked;
   if(localStorage.getItem('start-mode')==='remember')
     localStorage.setItem('last-mode',locked?'locked':'unlocked');
@@ -6825,6 +6911,27 @@ function toggleLock(){
   if(locked) focusKB();
   const sw=document.getElementById('mode-switch');
   if(sw) spawnSparks(sw.getBoundingClientRect(),locked);
+}
+function toggleLock(){
+  const epOpen=document.getElementById('ep').classList.contains('open');
+  const coOpen=document.getElementById('combo-ov').classList.contains('open');
+  if(epOpen){
+    if(!epHasChanges()){ closeEP(); _doToggleLock(); return; }
+    showLeaveWarning(
+      async()=>{ await savePad(); _doToggleLock(); },
+      ()=>{ closeEP(); _doToggleLock(); }
+    );
+    return;
+  }
+  if(coOpen){
+    if(!comboHasChanges()){ closeComboEditor(); _doToggleLock(); return; }
+    showLeaveWarning(
+      ()=>{ doSaveCombo(); _doToggleLock(); },
+      ()=>{ closeComboEditor(); _doToggleLock(); }
+    );
+    return;
+  }
+  _doToggleLock();
 }
 
 document.addEventListener('keydown', e=>{
@@ -6849,7 +6956,8 @@ document.addEventListener('keydown', e=>{
 
   if(code==='Escape'){
     e.preventDefault();
-    if(document.getElementById('ep').classList.contains('open')){ closeEP(); return; }
+    if(document.getElementById('ep').classList.contains('open')){ tryCloseEP(); return; }
+    if(document.getElementById('combo-ov').classList.contains('open')){ tryCloseComboEditor(); return; }
     if(cur!=='smm'&&cur!=='su') show('smm');
     return;
   }
