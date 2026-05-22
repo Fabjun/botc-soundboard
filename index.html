@@ -192,8 +192,15 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 .topt.ao{background:rgba(122,95,40,.12);border-color:var(--gold-dim);color:var(--gold)}
 .topt.al{background:#1a2a3a;border-color:#1a5a8b;color:var(--active)}
 .topt.ap{background:#1a2a1a;border-color:#1a5a1a;color:#81c784}
-#scrub{display:block;width:100%;border-radius:3px;cursor:pointer;background:var(--raised);border:1px solid var(--border)}
-#scrub-time{font-size:calc(13px * var(--font-scale));color:var(--text-dim);font-family:var(--ff-label);text-align:right;margin-top:2px;letter-spacing:0}
+#scrub{display:block;width:100%;cursor:pointer;background:var(--raised)}
+#ep-snd-block{border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px}
+.snd-row{display:flex;align-items:center;gap:6px;padding:6px 8px}
+.snd-row+.snd-row{border-top:1px solid rgba(42,42,74,.4)}
+.snd-row-act{background:rgba(201,168,76,.05)}
+.snd-name{flex:1;font-size:calc(12px * var(--font-scale));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.snd-meta{font-size:calc(10px * var(--font-scale));color:var(--text-dim);white-space:nowrap;flex-shrink:0}
+#ep-snd-ctrl{display:flex;align-items:center;gap:6px;padding:5px 8px;border-top:1px solid rgba(42,42,74,.35);flex-wrap:wrap;min-height:36px}
+#scrub-time{font-size:calc(11px * var(--font-scale));color:var(--text-dim);font-family:var(--ff-label);letter-spacing:0;min-width:68px}
 .eact{display:flex;gap:7px;margin-top:12px}
 .btn-d{background:transparent;border:1px solid var(--blood);color:var(--blood-bright);
   font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
@@ -1291,14 +1298,20 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
     <div class="ep-card">
       <div class="ep-card-hdr">SOUND</div>
       <div class="fg">
-        <div style="display:flex;gap:6px">
+        <div id="ep-snd-upload" style="display:flex;gap:6px">
           <div class="fbtn" id="fbd" style="flex:1" onclick="document.getElementById('fi').click()">+ UPLOAD</div>
           <div class="fbtn" id="fbd-lib" style="flex:0 0 auto;padding-left:12px;padding-right:12px;white-space:nowrap" onclick="openLibPicker(false)">⊞ FROM LIB</div>
         </div>
         <input type="file" id="fi" accept="audio/mpeg,audio/wav,audio/mp4,audio/aac,audio/x-m4a,audio/flac,audio/ogg,audio/opus,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus" onchange="onFile(this)">
-        <div id="scrub-wrap" style="display:none;margin-top:7px">
-          <canvas id="scrub" height="48"></canvas>
+      </div>
+      <div id="ep-snd-block" style="display:none;margin-bottom:11px">
+        <div id="ep-snd-files"></div>
+        <canvas id="scrub" height="64"></canvas>
+        <div id="ep-snd-ctrl">
+          <div id="ep-snd-btn"></div>
           <div id="scrub-time"></div>
+          <div style="flex:1"></div>
+          <div id="ep-snd-act" style="display:flex;gap:6px;align-items:center"></div>
         </div>
       </div>
       <div class="fg" style="margin-bottom:4px">
@@ -1546,8 +1559,9 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 77;
+const APP_VERSION = 78;
 const CHANGELOG=[
+  {v:78,date:'2026-05-22',items:["PAD editor SOUND section redesigned: file metadata, waveform, and controls are now a single unified block","File rows show filename + duration + file size together","Waveform canvas is taller (64 px); playback controls (▶ ⏹) and action buttons (CHANGE / FROM LIB) sit directly under the waveform","Upload/FROM LIB buttons shown only when no file is loaded; action buttons inside the block when a file is loaded"]},
   {v:77,date:'2026-05-22',items:["Mode-switch sound: upload a custom sound in Settings → CONTROLS → SWITCH SOUND; plays on every mode toggle","More sparks on mode switch: 52 particles (was 26), slower animation (0.55–1.0 s), burst from the newly activated half's edge instead of center","Ambient sparks slightly slower and farther reaching"]},
   {v:76,date:'2026-05-22',items:["Fullscreen button in the header (top-right, next to MENU)","Toggles browser fullscreen mode; hidden on browsers without Fullscreen API support (e.g. iOS Safari)","Icon switches between expand and collapse based on fullscreen state"]},
   {v:75,date:'2026-05-22',items:["Backup and Import buttons added at the bottom of the main menu","BACKUP button color-codes backup age: green (<1h), amber (1-3h), red (>3h or never)","Shows time since last export next to the label"]},
@@ -4195,44 +4209,58 @@ function removeFile(i){
     if(eFiles.length) drawScrubber();
   });
 }
+function _fmtSize(bytes){
+  if(bytes<1024) return bytes+'B';
+  if(bytes<1048576) return Math.round(bytes/1024)+'KB';
+  return (bytes/1048576).toFixed(1)+'MB';
+}
 function updFB(){
-  const b=document.getElementById('fbd');
-  const sw=document.getElementById('scrub-wrap');
+  const uploadRow=document.getElementById('ep-snd-upload');
+  const block=document.getElementById('ep-snd-block');
+  const filesEl=document.getElementById('ep-snd-files');
+  const btnEl=document.getElementById('ep-snd-btn');
+  const actEl=document.getElementById('ep-snd-act');
   if(!eFiles.length){
-    b.innerHTML='+ Choose file(s)';
-    b.classList.remove('hf');
-    b.onclick=()=>document.getElementById('fi').click();
-    b.style.cursor='pointer';
-    if(sw) sw.style.display='none';
-  } else {
-    b.classList.add('hf');
-    b.onclick=null;
-    b.style.cursor='default';
-    b.innerHTML=eFiles.map((f,i)=>{
-      const active=previewFileIdx===i;
-      const paused=active&&previewAudio?.paused;
-      const dim='opacity:0.25;pointer-events:none';
-      const playAct=active&&paused?'pausePreview()':`previewFile(${i})`;
-      return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(42,42,74,.4)">
-        <button class="pvbtn" onclick="${playAct}">▶</button>
-        <button class="pvbtn" onclick="pausePreview()" style="${active&&!paused?'':''+dim}">⏸</button>
-        <button class="pvbtn" onclick="stopPreview()" style="${active?'':''+dim}">⏹</button>
-        <span style="font-size:calc(12px * var(--font-scale));flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${f.name}</span>
-        <button class="pvbtn" onclick="removeFile(${i})" style="border-color:var(--blood);color:var(--blood-bright);flex-shrink:0">✕</button>
-      </div>`;
-    }).join('')+
-    (eMode==='playlist'
-      ? `<div style="display:flex;justify-content:flex-end;gap:8px;padding-top:6px">
-          <button onclick="appendFiles=true;document.getElementById('fi').click()" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px">+ ADD</button>
-          <button onclick="openLibPicker(true)" style="background:none;border:1px solid var(--gold-dim);border-radius:2px;color:var(--gold);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px">⊞ FROM LIB</button>
-          <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ REPLACE</button>
-        </div>`
-      : `<div style="display:flex;justify-content:flex-end;gap:8px;padding-top:6px">
-          <button onclick="openLibPicker(false)" style="background:none;border:1px solid var(--gold-dim);border-radius:2px;color:var(--gold);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px">⊞ FROM LIB</button>
-          <button onclick="document.getElementById('fi').click()" style="background:none;border:none;color:var(--text-dim);font-size:calc(14px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0">↺ CHANGE</button>
-        </div>`);
-    if(sw){ sw.style.display=''; initScrub(); drawScrubber(); }
+    if(uploadRow) uploadRow.style.display='flex';
+    if(block) block.style.display='none';
+    return;
   }
+  if(uploadRow) uploadRow.style.display='none';
+  if(block) block.style.display='block';
+  const isPlaylist=eMode==='playlist';
+  // File rows
+  filesEl.innerHTML=eFiles.map((f,i)=>{
+    const active=previewFileIdx===i;
+    const dur=waveforms[i]?.duration;
+    const sz=f.data?.byteLength;
+    const meta=[dur?_fmtTime(dur):'',sz?_fmtSize(sz):''].filter(Boolean).join(' · ');
+    const playBtn=isPlaylist?`<button class="pvbtn" onclick="previewFile(${i})">▶</button>`:'';
+    return `<div class="snd-row${active?' snd-row-act':''}">
+      ${playBtn}
+      <span class="snd-name">${escHtml(f.name)}</span>
+      ${meta?`<span class="snd-meta">${meta}</span>`:''}
+      <button class="pvbtn" onclick="removeFile(${i})" style="border-color:var(--blood);color:var(--blood-bright)">✕</button>
+    </div>`;
+  }).join('');
+  // Playback controls
+  const ai=previewFileIdx!==null?previewFileIdx:0;
+  const isPlaying=previewFileIdx!==null&&!previewAudio?.paused;
+  const dim='opacity:0.25;pointer-events:none';
+  btnEl.innerHTML=
+    `<button class="pvbtn" onclick="${isPlaying?'pausePreview()':'previewFile('+ai+')'}">${isPlaying?'⏸':'▶'}</button>`+
+    `<button class="pvbtn" onclick="stopPreview()" style="${previewFileIdx!==null?'':dim}">⏹</button>`;
+  // Action buttons
+  const s12=`background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-size:calc(12px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px`;
+  const s12g=`background:none;border:1px solid var(--gold-dim);border-radius:2px;color:var(--gold);font-size:calc(12px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px`;
+  const s12n=`background:none;border:none;color:var(--text-dim);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0`;
+  actEl.innerHTML=isPlaylist
+    ?`<button onclick="appendFiles=true;document.getElementById('fi').click()" style="${s12}">+ ADD</button>`+
+     `<button onclick="openLibPicker(true)" style="${s12g}">⊞ FROM LIB</button>`+
+     `<button onclick="document.getElementById('fi').click()" style="${s12n}">↺ REPLACE</button>`
+    :`<button onclick="openLibPicker(false)" style="${s12g}">⊞ FROM LIB</button>`+
+     `<button onclick="document.getElementById('fi').click()" style="${s12n}">↺ CHANGE</button>`;
+  initScrub();
+  drawScrubber();
 }
 function setMode(m){
   // warn before discarding playlist files
