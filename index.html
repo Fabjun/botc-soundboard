@@ -231,7 +231,8 @@ input[type=file]{display:none}
 
 #sp{background:var(--night);position:relative;overflow:hidden;padding-top:var(--p-hdr-h)}
 .pbtn.dragging{opacity:0.25}
-.pbtn.drag-over{border-color:var(--mode-accent)!important;background:var(--raised)}
+.pbtn.drag-insert-before{box-shadow:inset 3px 0 0 var(--mode-accent)!important}
+.pbtn.drag-insert-after{box-shadow:inset -3px 0 0 var(--mode-accent)!important}
 #sp::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.08) 0%,transparent 50%)}
 .p-hdr{display:flex;justify-content:space-between;align-items:center;
@@ -1182,7 +1183,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <div class="tip-key">↕ Drag</div>
       <div class="tip-body">
         <div class="tip-ttl">MOVING PADS</div>
-        <div class="tip-desc">In SETUP mode, hold a pad and drag it to another position — the two pads swap places. A short tap opens the edit panel. Drag &amp; drop is disabled in GAME mode.</div>
+        <div class="tip-desc">In SETUP mode, hold a pad and drag it to a new position — a line indicator shows where it will be inserted, and all pads in between shift by one slot. A short tap opens the edit panel. Drag &amp; drop is disabled in GAME mode.</div>
       </div>
     </div>
     <div class="tip" data-screens="ep">
@@ -1593,8 +1594,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 82;
+const APP_VERSION = 83;
 const CHANGELOG=[
+  {v:83,date:'2026-05-22',items:["Drag-and-drop PAD reorder now shows an insert-line indicator instead of a swap highlight","A vertical line on the pad edge shows exactly where the dragged PAD will land; pads in between shift by one slot","Combo step references are remapped correctly after every reorder"]},
   {v:82,date:'2026-05-22',items:["Hints overlay: context-aware tips accessible via the ? button in every screen header","Tips are filtered by the current context (board, PAD editor, combo editor, library, settings, boards)","Close with ← button, backdrop tap, or Escape key"]},
   {v:81,date:'2026-05-22',items:["Live PAD level meters: each playing PAD shows its own amplitude as a gradient fill rising from the bottom","Per-PAD AnalyserNode inserted between pad gain and master gain — individual levels, not the master mix","Toggle in Settings → GRAPHICS → PAD LEVEL (default: ON)","Fix: playSwitchSound was referencing an undefined variable"]},
   {v:80,date:'2026-05-22',items:["All screens are now fully scrollable — content centers when it fits, scrolls when it doesn't","Fixes title screen and main menu clipping content on small screens or with large font scale"]},
@@ -1696,6 +1698,7 @@ let locked = false;
 const klog = [];
 let dragSrc=null, dragGhost=null, dragMoved=false;
 let dragStartX=0, dragStartY=0, dragGhostW=0, dragGhostH=0;
+let _dragInsertAt=null;
 
 // ── DB ──
 // DB name is permanently "botc" — never rename it, use version bumps for schema changes only.
@@ -4649,9 +4652,17 @@ function onDragMove(e){
   dragGhost.style.display='none';
   const under=document.elementFromPoint(e.clientX, e.clientY);
   dragGhost.style.display='';
-  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('drag-over'));
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('drag-insert-before','drag-insert-after'));
   const tgt=under?.closest('.pbtn[data-id]');
-  if(tgt&&+tgt.dataset.id!==dragSrc) tgt.classList.add('drag-over');
+  if(tgt){
+    const tgtId=+tgt.dataset.id;
+    const r=tgt.getBoundingClientRect();
+    const insertBefore=e.clientX < r.left+r.width/2;
+    _dragInsertAt = insertBefore ? tgtId : tgtId+1;
+    if(_dragInsertAt!==dragSrc && _dragInsertAt!==dragSrc+1)
+      tgt.classList.add(insertBefore?'drag-insert-before':'drag-insert-after');
+    else _dragInsertAt=null;
+  } else { _dragInsertAt=null; }
 }
 function onDragEnd(e){
   document.removeEventListener('pointermove', onDragMove);
@@ -4663,15 +4674,14 @@ function onDragEnd(e){
     return;
   }
   dragGhost.style.display='none';
-  const under=document.elementFromPoint(e.clientX, e.clientY);
   dragGhost.remove(); dragGhost=null;
-  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('dragging','drag-over'));
-  const tgt=under?.closest('.pbtn[data-id]');
-  const tgtId=tgt?+tgt.dataset.id:null;
-  if(tgtId!==null && Number.isInteger(tgtId) && tgtId!==dragSrc){
-    reorderPad(dragSrc, tgtId);
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('dragging','drag-insert-before','drag-insert-after'));
+  const from=dragSrc; dragSrc=null;
+  const ins=_dragInsertAt; _dragInsertAt=null;
+  if(ins!==null){
+    const to = from < ins ? ins-1 : ins;
+    if(to!==from) reorderPad(from, to);
   }
-  dragSrc=null;
 }
 
 function emitAmbientSpark(){
