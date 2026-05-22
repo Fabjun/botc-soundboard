@@ -3803,8 +3803,9 @@ const BUILTIN_ICONS=[
   {id:"px-weather-windy-air-element",label:"Windy Air",cat:"Nature",d:"M5 0h3v1H5zM10 0h4v1H10zM5 1h1v1H5zM7 1h4v1H7zM13 1h2v1H13zM2 2h5v1H2zM8 2h2v1H8zM11 2h2v1H11zM14 2h1v1H14zM2 3h1v1H2zM7 3h6v1H7zM14 3h1v1H14zM2 4h10v1H2zM13 4h2v1H13zM3 5h1v1H3zM12 5h2v1H12zM2 6h12v1H2zM2 7h1v1H2zM13 7h2v1H13zM1 8h12v1H1zM14 8h1v1H14zM1 9h1v1H1zM8 9h2v1H8zM11 9h2v1H11zM14 9h1v1H14zM1 10h7v1H1zM9 10h2v1H9zM13 10h2v1H13zM2 11h1v1H2zM7 11h7v1H7zM2 12h5v1H2zM8 12h1v1H8zM3 13h1v1H3zM5 13h2v1H5zM8 13h1v1H8zM3 14h2v1H3zM7 14h2v1H7zM4 15h4v1H4z",v:"0 0 16 16"}
 ];
 
-const APP_VERSION = 71;
+const APP_VERSION = 72;
 const CHANGELOG=[
+  {v:72,date:'2026-05-22',items:['Library audio list scroll position is remembered — returning to the Library after navigating away restores your position']},
   {v:71,date:'2026-05-22',items:['Mode switch and MENU button always visible — they float above the PAD editor and combo editor at all times','Unsaved changes guard: leaving either editor with unsaved changes shows a warning overlay (SAVE & LEAVE / LEAVE / CANCEL)','Guard triggers on: ← back button, CANCEL button, MENU button, mode switch, Escape key','Applies to both S-PAD editor and Combo editor']},
   {v:70,date:'2026-05-22',items:['SETUP mode: tapping a PAD now opens the editor directly instead of requiring a separate EDIT tap','EDIT banner on pads removed — the tap-to-edit behavior replaces it','Drag & drop and swap still work as before in SETUP mode']},
   {v:69,date:'2026-05-22',items:['"Play" mode renamed to "GAME" throughout the UI — labels, tooltips, tips, onboarding']},
@@ -4761,7 +4762,7 @@ function focusKB(){
 }
 
 // ── LIBRARY SCREEN ──
-let libFilterMode='all';
+let libFilterMode='all', _libAudioScroll=0;
 async function initLibScreen(){
   const all=await libGetAll();
   const usedHashes=new Set();
@@ -4811,6 +4812,7 @@ function renderLibList(entries,usedHashes){
       <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date} · ${inUse?'<span style="color:var(--active)">in use</span>':'<span style="color:var(--mist)">unused</span>'}</div>
     </div>`;
   }).join('');
+  requestAnimationFrame(()=>{ const s=document.getElementById('lib-audio-section'); if(s) s.scrollTop=_libAudioScroll; });
 }
 async function onLibUpload(inp){
   const files=Array.from(inp.files); inp.value='';
@@ -5565,6 +5567,7 @@ function showToast(msg,dur=3000){
 
 function show(id){
   if(locked && id!=='sp') return;
+  if(cur==='sli') _libAudioScroll=document.getElementById('lib-audio-section')?.scrollTop||0;
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if(menuConfirmTimer) hideMenuConfirm();
