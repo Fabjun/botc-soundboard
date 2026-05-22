@@ -58,7 +58,7 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 
 /* UNLOCK */
 #su{overflow-y:auto;background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
-.sigil{font-size:calc(60px * var(--sym-scale));animation:fire-flicker 4s ease-in-out infinite,fire-color 5.5s ease-in-out infinite;color:var(--gold);position:relative;display:inline-block;line-height:1;transition:--fire-excite-mix 2s ease;cursor:pointer}
+.sigil{font-size:calc(80px * var(--sym-scale));animation:fire-flicker 4s ease-in-out infinite,fire-color 5.5s ease-in-out infinite;color:var(--gold);position:relative;display:inline-block;line-height:1;transition:--fire-excite-mix 2s ease;cursor:pointer}
 .sigil::before,.sigil::after{content:'';position:absolute;width:.06em;height:.06em;border-radius:50%;background:currentColor;filter:blur(.4px);pointer-events:none}
 .sigil::before{top:.1em;left:.42em;animation:sigil-spark-a 1.9s ease-out infinite .5s}
 .sigil::after{top:.15em;right:.32em;animation:sigil-spark-b 2.3s ease-out infinite 1.3s}
@@ -703,7 +703,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <!-- UNLOCK -->
 <div id="su" class="screen active">
   <div class="sc-wrap" style="text-align:center;gap:12px;padding:32px">
-    <div class="sigil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
+    <div class="sigil" style="margin-bottom:12px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
     <h1>Soundboard of Storytelling</h1>
     <p class="sub">A tool for Game-Masters<br>and other creative Creatures</p>
     <button class="unlock-btn" onclick="unlock()">TAP TO START</button>
@@ -714,7 +714,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <div id="smm" class="screen">
   <div class="sc-wrap" style="padding:32px 24px 20px;gap:0">
   <div class="m-title">
-    <div class="sigil" style="font-size:calc(44px * var(--sym-scale));margin-bottom:12px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
+    <div class="sigil" style="font-size:calc(60px * var(--sym-scale));margin-bottom:24px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
     <h1 style="font-family:var(--ff-hero);font-size:calc(22px * var(--font-scale));letter-spacing:.04em;color:var(--gold);line-height:1.3;text-shadow:0 0 24px rgba(201,168,76,.3);margin:0 0 6px">Soundboard of Storytelling</h1>
     <p style="font-family:var(--ff-subtitle);font-size:calc(14px * var(--font-scale));color:var(--text-dim);margin-top:4px;line-height:1.5">A tool for Game-Masters<br>and other creative Creatures</p>
     <p id="ver-label" onclick="openChangelog()" style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:var(--mist);margin-top:10px;letter-spacing:.04em;cursor:pointer;display:inline-flex;align-items:center;gap:5px">v<span id="ver-num"></span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(11px * var(--font-scale));height:calc(11px * var(--font-scale));opacity:.6"><path d="M5 3h10v2H5zm14 4h-2V5h-2V3h2v2h2v2zm0 14H5V5h8v2H7v12h10V9h2v12zM9 9h6v2H9zm0 4h6v2H9zm0 4h4v2H9z"/></svg></p>
@@ -1623,8 +1623,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 88;
+const APP_VERSION = 89;
 const CHANGELOG=[
+  {v:89,date:'2026-05-22',items:["Fire sigil enlarged on start screen (60 → 80 px) and main menu (44 → 60 px)","More breathing room between fire and title: 24px gap on both screens (was 12px)","Glow and spark effects scale automatically with the larger size"]},
   {v:88,date:'2026-05-22',items:["Library gets a PADS tab — fourth tab alongside AUDIO, ICONS, BOARDS","Filter pads by CURRENT BOARD (default) or ALL BOARDS","Save any pad as a reusable template with one tap","Templates section: import a saved pad into the current board with + ADD, or remove with ✕","PAD templates are included in backup/restore — exported with full pad data, imported automatically alongside audio files"]},
   {v:87,date:'2026-05-22',items:["MY BOARDS removed from the main menu — the Library is now the single entry point for board management"]},
   {v:86,date:'2026-05-22',items:["Library gets a BOARDS tab — board management moves into the Library","MY BOARDS in the main menu now opens Library → BOARDS directly","Board list renders in both locations; all operations (rename, duplicate, delete, switch) work from either place","Library subtitle updated to reflect expanded scope: Audio, icons & boards"]},
