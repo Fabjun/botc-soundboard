@@ -1633,8 +1633,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 95;
+const APP_VERSION = 96;
 const CHANGELOG=[
+  {v:96,date:'2026-05-23',items:["Backup now includes switch sound (switch-sound-b64 + switch-sound-name) for seamless environment restore","Enter key now stops sounds in LIFO order — each press stops only the most recently activated sound; repeated presses peel back the stack one by one","NumpadDecimal (·) still stops everything at once","Stack is maintained across all pad modes (S-PAD, Loop, Playlist, Combo)"]},
   {v:95,date:'2026-05-23',items:["Library tab order changed: AUDIO · PADS · BOARDS · ICONS","Audio entries: original filename shown as 'upload-name: …' (was '← …')","Audio 'in use' is now a clickable button — expands inline to list all PADs that use this file, with mode badge (S-PAD/LOOP/LIST/C-PAD) and board name","Board PADs in the PADS tab: non-combo pads that are referenced by combo steps show a 'used in N combo(s)' button — expands to list those combos","Library tab active color now follows --screen-accent (always gold for Library)"]},
   {v:94,date:'2026-05-23',items:["Library preview: Combo-PADs now also have a ▶ button — plays the first audio file found in the combo's steps","Template combos resolve their step pad-references against the current board (best-effort)"]},
   {v:93,date:'2026-05-23',items:["Library audio preview — each audio file in the Library now has a ▶/⏸ button for in-place listening","Preview also available for PAD entries (board pads + templates) in the PADS tab — plays the first file of the pad","Only one preview plays at a time; switching tabs or navigating away stops the preview"]},
@@ -1693,7 +1694,7 @@ const CHANGELOG=[
   {v:38,date:'2026-05-22',items:['Edit mode accent: blue icons/borders; Play mode accent: gold','Looping pad border pulses gold (breathe-gold animation)']},
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name'];
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
 //  grep for "// ── SECTION" to jump to any area
@@ -1728,6 +1729,9 @@ let pads = [];
 let currentBoardId = null, currentBoardName = '', renamingBoardId = null;
 let ctx = null, db = null, masterGain = null, analyser = null, analyserData = null;
 let bufs = {}, srcs = {}, gains = {}, padAnalysers = {};
+let _playStack = []; // LIFO: last activated pad id is at the end
+function _onPadStarted(id){ _playStack=_playStack.filter(x=>x!==id); _playStack.push(id); }
+function _onPadStopped(id){ _playStack=_playStack.filter(x=>x!==id); }
 let _padLevelRAF = null;
 let libBufs = {};
 let eqRAF = null;
@@ -2309,8 +2313,8 @@ function play(id){
     fadeInGain(g,vol,fi);
     s.buffer=b; s.connect(g); _connectGainToMaster(id,g); s.start(0);
     srcs[id]=[s]; gains[id]=g;
-    s.onended=()=>{ delete srcs[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); };
-    updBtn(id,true,false); setNP(p.name);
+    s.onended=()=>{ _onPadStopped(id); delete srcs[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); };
+    updBtn(id,true,false); _onPadStarted(id); setNP(p.name);
   } else if(p.mode==='loop'){
     if(srcs[id]){ stopPad(id); return; }
     const b=bufs[id][0]; if(!b) return;
@@ -2331,17 +2335,17 @@ function play(id){
         s.buffer=b; s.connect(g); s.start(0);
         srcs[id]=[s]; rem--;
         if(rem<=0){
-          s.onended=()=>{ if(srcs[id]){ delete srcs[id]; delete gains[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); } };
+          s.onended=()=>{ if(srcs[id]){ _onPadStopped(id); delete srcs[id]; delete gains[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); } };
         } else {
           s.onended=()=>{ if(srcs[id]) loopOne(); };
         }
       })();
     }
-    updBtn(id,true,lc===0); setNP(p.name+' ↻');
+    updBtn(id,true,lc===0); _onPadStarted(id); setNP(p.name+' ↻');
   } else {
     if(srcs[id]){ stopPad(id); return; }
     const all=(bufs[id]||[]).filter(Boolean); if(!all.length) return;
-    playNext(id,all);
+    _onPadStarted(id); playNext(id,all);
   }
 }
 function playNext(id,all){
@@ -2366,6 +2370,7 @@ function playNext(id,all){
 function stopPad(id, immediate=false){
   if(pads[id]?.mode==='combo'){ stopCombo(id); return; }
   if(!srcs[id]) return;
+  _onPadStopped(id);
   const fo=(!immediate&&pads[id]?.fadeOut)||0;
   if(fo>0&&gains[id]){
     const g=gains[id];
@@ -2452,7 +2457,7 @@ function playCombo(id, onFinish=null){
   if(!onFinish && comboState[id]) stopCombo(id);
   const state={stopped:false, bgInstances:[], currentFgInstances:[], onFinish};
   comboState[id]=state;
-  if(!onFinish){ srcs[id]=[{}]; updBtn(id,true,false); flash(id); setNP(p.name); }
+  if(!onFinish){ srcs[id]=[{}]; updBtn(id,true,false); _onPadStarted(id); flash(id); setNP(p.name); }
   playComboStep(id,state,p.steps||[],0);
 }
 
@@ -2505,7 +2510,7 @@ function finishCombo(id,state){
   clearTimeout(state.pauseTimer);
   state.bgInstances.forEach(i=>i.stop());
   delete comboState[id];
-  if(!state.onFinish){ delete srcs[id]; updBtn(id,false); chkNP(); }
+  if(!state.onFinish){ _onPadStopped(id); delete srcs[id]; updBtn(id,false); chkNP(); }
   else state.onFinish();
 }
 
@@ -2519,7 +2524,7 @@ function stopCombo(id){
   const p=pads[id];
   if(p?.steps) p.steps.forEach(s=>(s.pads||[]).forEach(pid=>{ if(comboState[pid]) stopCombo(pid); }));
   delete comboState[id];
-  if(!state.onFinish){ delete srcs[id]; updBtn(id,false); chkNP(); }
+  if(!state.onFinish){ _onPadStopped(id); delete srcs[id]; updBtn(id,false); chkNP(); }
 }
 
 function pauseAllAudio(){
@@ -2537,6 +2542,7 @@ function pauseAllAudio(){
 function stopAll(){
   if(ctx) ctx.resume().catch(()=>{});
   stopPreview();
+  _playStack=[];
   Object.keys(srcs).forEach(id=>stopPad(+id,true));
   document.getElementById('nptxt').textContent='No sound active';
   document.getElementById('nptxt').style.color='var(--text-dim)';
@@ -5258,7 +5264,11 @@ document.addEventListener('keydown', e=>{
   if((tag==='INPUT'||tag==='TEXTAREA') && document.activeElement?.id!=='kfocus') return;
 
   if(code==='Space'){ e.preventDefault(); pauseAllAudio(); return; }
-  if(code==='Enter'){ e.preventDefault(); stopAll(); return; }
+  if(code==='Enter'){
+    e.preventDefault();
+    if(_playStack.length>0) stopPad(_playStack[_playStack.length-1]);
+    return;
+  }
 
   const helpCode=localStorage.getItem('help-key-code');
   if(helpCode&&code===helpCode){ e.preventDefault(); toggleKeymap(); return; }
