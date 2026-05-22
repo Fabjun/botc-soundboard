@@ -72,7 +72,7 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 .sigil[data-excite="3"] .sigil-smoke,.sigil[data-excite="4"] .sigil-smoke,.sigil[data-excite="5"] .sigil-smoke{background:rgba(100,160,240,.22);width:.45em;height:.45em}
 .sigil-spark{position:absolute;width:.05em;height:.05em;border-radius:50%;background:currentColor;filter:blur(.3px);pointer-events:none;animation:spark-fly 1.1s ease-out forwards}
 #su h1{font-family:var(--ff-hero);font-size:calc(26px * var(--font-scale));letter-spacing:.04em;
-  color:var(--gold);line-height:1.3;text-shadow:0 0 28px rgba(201,168,76,.35)}
+  color:var(--gold);line-height:1.3}
 #su .sub{font-family:var(--ff-subtitle);font-size:calc(15px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:4px 0 0}
 #su p{color:var(--text-dim);font-size:calc(14px * var(--font-scale));font-style:italic}
 .unlock-btn{background:linear-gradient(135deg,var(--emerald-dim),#0e3820);border:1px solid var(--emerald);
@@ -395,6 +395,10 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   65% {color:color-mix(in srgb,#ffb830 calc(100% - var(--fire-excite-mix)),#5ab8ff)}
   80% {color:color-mix(in srgb,#ff7c35 calc(100% - var(--fire-excite-mix)),#3498db)}
   100%{color:color-mix(in srgb,#c9a84c calc(100% - var(--fire-excite-mix)),#4fc3f7)}}
+@keyframes ltr-glow{
+  0%,100%{text-shadow:0 0 3px rgba(201,168,76,.12)}
+  42%,58%{text-shadow:0 0 7px rgba(255,210,80,.92),0 0 20px rgba(201,168,76,.58),0 0 42px rgba(255,140,0,.22)}
+}
 @keyframes sigil-spark-a{
   0%{transform:translate(0,0) scale(1.2);opacity:1}60%{opacity:.7}100%{transform:translate(-.23em,-.7em) scale(0);opacity:0}}
 @keyframes sigil-spark-b{
@@ -715,7 +719,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   <div class="sc-wrap" style="padding:32px 24px 20px;gap:0">
   <div class="m-title">
     <div class="sigil" style="font-size:calc(60px * var(--sym-scale));margin-bottom:24px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
-    <h1 style="font-family:var(--ff-hero);font-size:calc(22px * var(--font-scale));letter-spacing:.04em;color:var(--gold);line-height:1.3;text-shadow:0 0 24px rgba(201,168,76,.3);margin:0 0 6px">Soundboard of Storytelling</h1>
+    <h1 style="font-family:var(--ff-hero);font-size:calc(22px * var(--font-scale));letter-spacing:.04em;color:var(--gold);line-height:1.3;margin:0 0 6px">Soundboard of Storytelling</h1>
     <p style="font-family:var(--ff-subtitle);font-size:calc(14px * var(--font-scale));color:var(--text-dim);margin-top:4px;line-height:1.5">A tool for Game-Masters<br>and other creative Creatures</p>
     <p id="ver-label" onclick="openChangelog()" style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:var(--mist);margin-top:10px;letter-spacing:.04em;cursor:pointer;display:inline-flex;align-items:center;gap:5px">v<span id="ver-num"></span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(11px * var(--font-scale));height:calc(11px * var(--font-scale));opacity:.6"><path d="M5 3h10v2H5zm14 4h-2V5h-2V3h2v2h2v2zm0 14H5V5h8v2H7v12h10V9h2v12zM9 9h6v2H9zm0 4h6v2H9zm0 4h4v2H9z"/></svg></p>
   </div>
@@ -1623,8 +1627,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 89;
+const APP_VERSION = 90;
 const CHANGELOG=[
+  {v:90,date:'2026-05-22',items:["Title glow — each letter of \"Soundboard of Storytelling\" pulses independently with a warm amber glow","Timing is deterministic per character position: durations 3–8 s, delays staggered across 0–7 s so the effect looks organic from first paint","Applies on both the start screen and the main menu title"]},
   {v:89,date:'2026-05-22',items:["Fire sigil enlarged on start screen (60 → 80 px) and main menu (44 → 60 px)","More breathing room between fire and title: 24px gap on both screens (was 12px)","Glow and spark effects scale automatically with the larger size"]},
   {v:88,date:'2026-05-22',items:["Library gets a PADS tab — fourth tab alongside AUDIO, ICONS, BOARDS","Filter pads by CURRENT BOARD (default) or ALL BOARDS","Save any pad as a reusable template with one tap","Templates section: import a saved pad into the current board with + ADD, or remove with ✕","PAD templates are included in backup/restore — exported with full pad data, imported automatically alongside audio files"]},
   {v:87,date:'2026-05-22',items:["MY BOARDS removed from the main menu — the Library is now the single entry point for board management"]},
@@ -5247,6 +5252,21 @@ if('serviceWorker' in navigator){
     if(e.data?.type==='SW_UPDATED') showSwUpdate(e.data.version);
   });
 }
+
+// ── TITLE GLOW ──
+function initTitleGlow(){
+  function h(i){ const x=Math.sin(i*127.1+311.7)*43758.5453; return x-Math.floor(x); }
+  document.querySelectorAll('#su h1,#smm .m-title h1').forEach(el=>{
+    const txt=el.textContent;
+    el.innerHTML=txt.split('').map((c,i)=>{
+      if(c===' ') return ' ';
+      const dur=(3+h(i)*5).toFixed(2);
+      const del=(h(i*7+3)*7).toFixed(2);
+      return `<span style="animation:ltr-glow ${dur}s ease-in-out -${del}s infinite">${c}</span>`;
+    }).join('');
+  });
+}
+initTitleGlow();
 
 // ── FIRE EXCITE ──
 (function(){
