@@ -760,6 +760,18 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
          padding:5px 10px;border-radius:2px;cursor:pointer;
          backdrop-filter:blur(4px)">MENU</button>
 
+<!-- CONFIRM DELETE OVERLAY -->
+<div id="confirm-del-ov" onclick="if(event.target===this)closeConfirmDel()"
+  style="display:none;position:fixed;inset:0;z-index:450;background:rgba(0,0,0,.78);align-items:center;justify-content:center">
+  <div style="background:var(--raised);border:1px solid var(--blood);border-radius:4px;padding:22px 20px 18px;max-width:300px;width:88%;box-sizing:border-box">
+    <div id="confirm-del-msg" style="font-family:var(--ff-label);font-size:calc(15px*var(--font-scale));color:var(--text);line-height:1.5;margin-bottom:20px;white-space:pre-line"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closeConfirmDel()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:9px;border-radius:2px;cursor:pointer;letter-spacing:0">CANCEL</button>
+      <button id="confirm-del-ok" onclick="execConfirmDel()" style="flex:1;background:var(--blood);border:1px solid var(--blood-bright);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:9px;border-radius:2px;cursor:pointer;letter-spacing:0">DELETE</button>
+    </div>
+  </div>
+</div>
+
 <!-- PLAY-MODE MENU CONFIRMATION OVERLAY -->
 <div id="menu-confirm-ov" onclick="if(event.target===this)hideMenuConfirm()"
   style="display:none;position:fixed;inset:0;z-index:350;
@@ -3773,7 +3785,7 @@ const BUILTIN_ICONS=[
   {id:"px-weather-windy-air-element",label:"Windy Air",cat:"Nature",d:"M5 0h3v1H5zM10 0h4v1H10zM5 1h1v1H5zM7 1h4v1H7zM13 1h2v1H13zM2 2h5v1H2zM8 2h2v1H8zM11 2h2v1H11zM14 2h1v1H14zM2 3h1v1H2zM7 3h6v1H7zM14 3h1v1H14zM2 4h10v1H2zM13 4h2v1H13zM3 5h1v1H3zM12 5h2v1H12zM2 6h12v1H2zM2 7h1v1H2zM13 7h2v1H13zM1 8h12v1H1zM14 8h1v1H14zM1 9h1v1H1zM8 9h2v1H8zM11 9h2v1H11zM14 9h1v1H14zM1 10h7v1H1zM9 10h2v1H9zM13 10h2v1H13zM2 11h1v1H2zM7 11h7v1H7zM2 12h5v1H2zM8 12h1v1H8zM3 13h1v1H3zM5 13h2v1H5zM8 13h1v1H8zM3 14h2v1H3zM7 14h2v1H7zM4 15h4v1H4z",v:"0 0 16 16"}
 ];
 
-const APP_VERSION = 67;
+const APP_VERSION = 68;
 const CHANGELOG=[
   {v:66,date:'2026-05-22',items:['PAD filter tabs (ALL / S-PAD / C-PAD) and settings selectors now follow the active mode color (blue in SETUP, gold in GAME)']},
   {v:65,date:'2026-05-22',items:['Global mode color system: --mode-accent CSS variable switches all UI elements between blue (SETUP) and gold (GAME)','Menu button, empty PAD slot, PAD icons, key labels and drag-over border all follow the active mode','Playing PAD glow stays gold regardless of mode — it indicates active audio, not the current mode']},
@@ -3996,6 +4008,22 @@ function onMenuBtn(){
   if(locked) showMenuConfirm();
   else show('smm');
 }
+// ── CONFIRM DELETE ──
+let _confirmDelCb=null;
+function showConfirmDel(msg,onConfirm,okLabel='DELETE'){
+  _confirmDelCb=onConfirm;
+  document.getElementById('confirm-del-msg').textContent=msg;
+  document.getElementById('confirm-del-ok').textContent=okLabel;
+  document.getElementById('confirm-del-ov').style.display='flex';
+}
+function closeConfirmDel(){
+  _confirmDelCb=null;
+  document.getElementById('confirm-del-ov').style.display='none';
+}
+function execConfirmDel(){
+  const cb=_confirmDelCb; closeConfirmDel(); if(cb) cb();
+}
+
 function showMenuConfirm(){
   menuConfirmTick = 0;
   document.getElementById('menu-confirm-bar').style.transform = 'scaleX(1)';
@@ -4155,13 +4183,14 @@ async function triggerDelete(id){
   const boards=await loadBoardsMeta();
   if(boards.length<=1){ alert('The last board cannot be deleted.'); return; }
   const b=boards.find(x=>x.id===id);
-  if(!confirm(`Really delete board "${b?.name||id}"?`)) return;
-  if(id===currentBoardId){
-    const other=boards.find(x=>x.id!==id);
-    if(other) await switchBoard(other.id);
-  }
-  await deleteBoard(id);
-  loadBoardsMeta().then(renderBoardList);
+  showConfirmDel(`Delete board "${b?.name||id}"?`,async()=>{
+    if(id===currentBoardId){
+      const other=boards.find(x=>x.id!==id);
+      if(other) await switchBoard(other.id);
+    }
+    await deleteBoard(id);
+    loadBoardsMeta().then(renderBoardList);
+  });
 }
 function showCreateBoard(){
   document.getElementById('bnd-input').value='New Board';
@@ -4717,11 +4746,14 @@ async function onLibUpload(inp){
   initLibScreen();
 }
 async function libDeleteFile(hash){
-  if(!confirm('Delete this file from the Library?\n\nPads referencing it will no longer play.')) return;
-  await libDelete(hash);
-  delete libBufs[hash];
-  showToast('File deleted from Library.');
-  initLibScreen();
+  const entry=await libGet(hash);
+  const name=entry?.name||'this file';
+  showConfirmDel(`Delete "${name}" from Library?\nPads using it will no longer play.`,async()=>{
+    await libDelete(hash);
+    delete libBufs[hash];
+    showToast('File deleted from Library.');
+    initLibScreen();
+  });
 }
 async function libRenameStart(hash){
   const entry=await libGet(hash); if(!entry) return;
@@ -4809,11 +4841,12 @@ async function onLibIconUpload(inp){
   renderLibIcons();
 }
 async function libDeleteIcon(hash){
-  if(!confirm('Delete this icon from the Library?\nPads using it will revert to the default icon.')) return;
-  await libDelete(hash);
-  delete iconSvgCache[hash];
-  showToast('Icon deleted.');
-  renderLibIcons();
+  showConfirmDel('Delete this custom icon from the Library?\nPads using it will revert to the default icon.',async()=>{
+    await libDelete(hash);
+    delete iconSvgCache[hash];
+    showToast('Icon deleted.');
+    renderLibIcons();
+  });
 }
 async function loadLibIcons(){
   const el=document.getElementById('lib-builtin-count'); if(el) el.textContent=BUILTIN_ICONS.length;
@@ -5327,11 +5360,12 @@ async function doRemigrateAudio(){
   showToast('Migration complete.');
 }
 async function doResetAllData(){
-  if(!confirm('Delete ALL boards, pads, and Library files?\n\nThis cannot be undone.')) return;
-  stopAll();
-  await new Promise(r=>{ const req=indexedDB.deleteDatabase('botc'); req.onsuccess=r; req.onerror=r; });
-  localStorage.clear();
-  location.reload();
+  showConfirmDel('DELETE ALL DATA\n\nThis removes all boards, pads, audio and icons. Cannot be undone.',async()=>{
+    stopAll();
+    await new Promise(r=>{ const req=indexedDB.deleteDatabase('botc'); req.onsuccess=r; req.onerror=r; });
+    localStorage.clear();
+    location.reload();
+  },'RESET ALL');
 }
 
 // ── LIBRARY PICKER ──
@@ -5646,13 +5680,13 @@ async function openEP(id){
   }
 }
 function closeEP(){
+  closeConfirmDel();
   document.getElementById('ep').classList.remove('open');
   document.getElementById('ebk').classList.remove('open');
   document.querySelectorAll('#pgrid [data-id]').forEach(c=>c.classList.remove('ed'));
   document.getElementById('key-warn').style.display='none';
   stopPreview();
   eFiles=[]; eId=null;
-  if(_delPending){ clearTimeout(_delTimer); _delPending=false; }
 }
 // ── PAD TYPE PICKER ──
 function openPadTypePicker(){ document.getElementById('pad-type-picker').classList.add('open'); }
@@ -5690,7 +5724,6 @@ function closeComboEditor(){
   comboDragId=null;
   document.getElementById('combo-ghost').style.display='none';
   document.querySelectorAll('.cpal-item').forEach(i=>i.classList.remove('cpal-dragging'));
-  if(_delComboPending){ clearTimeout(_delComboTimer); _delComboPending=false; }
 }
 
 function captureComboKey(e){
@@ -5711,16 +5744,20 @@ function addComboStep(){ comboSteps.push({pads:[],dur:1,chipOpts:[]}); renderCom
 function insertComboStep(i){ comboSteps.splice(i,0,{pads:[],dur:1,chipOpts:[]}); renderComboSteps(); }
 
 function removeComboStep(i){
-  comboSteps.splice(i,1);
-  if(!comboSteps.length) comboSteps.push({pads:[]});
-  renderComboSteps();
+  showConfirmDel(`Remove step ${i+1} from this combo?`,()=>{
+    comboSteps.splice(i,1);
+    if(!comboSteps.length) comboSteps.push({pads:[]});
+    renderComboSteps();
+  });
 }
 
 function removePadFromStep(si,pi){
-  comboSteps[si].pads.splice(pi,1);
-  if(comboSteps[si].chipOpts) comboSteps[si].chipOpts.splice(pi,1);
-  comboChipExpanded.delete(`${si}-${pi}`);
-  renderComboSteps();
+  showConfirmDel(`Remove this sound from step ${si+1}?`,()=>{
+    comboSteps[si].pads.splice(pi,1);
+    if(comboSteps[si].chipOpts) comboSteps[si].chipOpts.splice(pi,1);
+    comboChipExpanded.delete(`${si}-${pi}`);
+    renderComboSteps();
+  });
 }
 function setStepDur(si,val){ comboSteps[si].dur=isNaN(val)||val<0?0:val; }
 function setChipOpt(si,pi,key,val){
@@ -5935,23 +5972,14 @@ function doSaveCombo(){
   save(); closeComboEditor(); renderSetup();
 }
 
-let _delComboPending=false,_delComboTimer=null;
 function deleteCombo(){
   if(comboEditId===null) return;
-  const btn=document.getElementById('combo-del-btn');
-  if(!_delComboPending){
-    _delComboPending=true;
-    if(btn){ btn.textContent='SURE?'; btn.style.borderColor='var(--blood-bright)'; btn.style.color='var(--blood-bright)'; }
-    _delComboTimer=setTimeout(()=>{
-      _delComboPending=false;
-      if(btn){ btn.textContent='DELETE'; btn.style.borderColor=''; btn.style.color=''; }
-    },2500);
-    return;
-  }
-  clearTimeout(_delComboTimer); _delComboPending=false;
-  stopCombo(comboEditId);
-  pads[comboEditId]=null;
-  save(); closeComboEditor(); renderSetup();
+  const name=pads[comboEditId]?.name||'this combo';
+  showConfirmDel(`Delete combo "${name}"?`,()=>{
+    stopCombo(comboEditId);
+    pads[comboEditId]=null;
+    save(); closeComboEditor(); renderSetup();
+  });
 }
 
 function _fmtTime(s){
@@ -6288,15 +6316,18 @@ function updImgPreview(){
   else { prev.style.backgroundImage=''; prev.style.display='none'; clr&&(clr.style.display='none'); }
 }
 function removeFile(i){
-  if(previewFileIdx===i) stopPreview();
-  eFiles.splice(i, 1);
-  waveforms.splice(i, 1);
-  if(previewFileIdx!==null){
-    if(previewFileIdx>i) previewFileIdx--;
-    else if(previewFileIdx===i) previewFileIdx=null;
-  }
-  updFB();
-  if(eFiles.length) drawScrubber();
+  const name=eFiles[i]?.name||'this audio file';
+  showConfirmDel(`Remove "${name}" from this pad?`,()=>{
+    if(previewFileIdx===i) stopPreview();
+    eFiles.splice(i,1);
+    waveforms.splice(i,1);
+    if(previewFileIdx!==null){
+      if(previewFileIdx>i) previewFileIdx--;
+      else if(previewFileIdx===i) previewFileIdx=null;
+    }
+    updFB();
+    if(eFiles.length) drawScrubber();
+  });
 }
 function updFB(){
   const b=document.getElementById('fbd');
@@ -6443,21 +6474,12 @@ async function doSave(){
     volume:vol,fadeIn,fadeOut,files:fileHashes,icons:(eIcons.filter(Boolean).length?eIcons.filter(Boolean):undefined)};
   await decodePad(eId); await save(); closeEP(); renderSetup();
 }
-let _delPending=false,_delTimer=null;
 function delPad(){
-  const btn=document.getElementById('del-pad-btn');
-  if(!_delPending){
-    _delPending=true;
-    if(btn){ btn.textContent='SURE?'; btn.style.borderColor='var(--blood-bright)'; btn.style.color='var(--blood-bright)'; }
-    _delTimer=setTimeout(()=>{
-      _delPending=false;
-      if(btn){ btn.textContent='DELETE'; btn.style.borderColor=''; btn.style.color=''; }
-    },2500);
-    return;
-  }
-  clearTimeout(_delTimer); _delPending=false;
-  stopPad(eId); pads[eId]=null; delete bufs[eId];
-  save(); closeEP(); renderSetup();
+  const name=pads[eId]?.name||'this pad';
+  showConfirmDel(`Delete pad "${name}"?`,()=>{
+    stopPad(eId); pads[eId]=null; delete bufs[eId];
+    save(); closeEP(); renderSetup();
+  });
 }
 
 // ── PERF ──
