@@ -724,10 +724,6 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M3 7h2v5H3zm4 0h2v13H7zm4-3h2v16h-2zm4 0h2v13h-2zM5 5h2v2H5zm4 15h2v2H9zm4-18h2v2h-2zm4 15h2v2h-2zm2-5h2v5h-2zm2-2h2v2h-2zM1 12h2v2H1z"/></svg></div>
       <div><div class="mlbl">BOARD</div><div class="msub" id="board-subtitle">Loading…</div></div>
     </div>
-    <div class="mopt" onclick="show('sli');setLibMainTab('boards')">
-      <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M4 2h16v2H4zm0 18h16v2H4zM2 4h2v16H2zm18 0h2v16h-2zM4 8h16v2H4zm0 6h16v2H4z"/><path d="M8 4h2v16H8zm6 0h2v16h-2z"/></svg></div>
-      <div><div class="mlbl">MY BOARDS</div><div class="msub">Manage &amp; switch boards</div></div>
-    </div>
     <div class="mopt" onclick="show('sli');setLibMainTab('audio')">
       <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M3 4h2v17H3zm4 4h2v13H7zm4-2h2v15h-2zm4 0h2v5h-2zm2 5h2v5h-2zm2 5h2v5h-2z"/></svg></div>
       <div><div class="mlbl">LIBRARY</div><div class="msub">Audio, icons &amp; boards</div></div>
@@ -1615,8 +1611,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 86;
+const APP_VERSION = 87;
 const CHANGELOG=[
+  {v:87,date:'2026-05-22',items:["MY BOARDS removed from the main menu — the Library is now the single entry point for board management"]},
   {v:86,date:'2026-05-22',items:["Library gets a BOARDS tab — board management moves into the Library","MY BOARDS in the main menu now opens Library → BOARDS directly","Board list renders in both locations; all operations (rename, duplicate, delete, switch) work from either place","Library subtitle updated to reflect expanded scope: Audio, icons & boards"]},
   {v:85,date:'2026-05-22',items:["Mode accent colors now applied consistently across the full UI","PAD editor header, card labels, input focus, icon slots, combo editor, toggle buttons and sliders all follow --mode-accent (blue in SETUP, gold in GAME)","Removed unused .topt.ao dead CSS rule"]},
   {v:84,date:'2026-05-22',items:["Wake Lock: prevents screen auto-lock in GAME mode so a Bluetooth numpad keeps working","Toggle in Settings → CONTROLS → SCREEN WAKE LOCK (default: ON)","Wake lock is acquired on switch to GAME mode, released on switch to SETUP; re-acquired when tab becomes visible again","Setting hidden automatically on browsers that don't support the Wake Lock API"]},
