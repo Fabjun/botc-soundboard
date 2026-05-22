@@ -679,7 +679,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 /* Library main tabs */
 .lib-main-tabs{display:flex;border-bottom:2px solid var(--border);flex-shrink:0}
 .lib-main-tab{flex:1;text-align:center;padding:10px 4px;font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;letter-spacing:.5px}
-.lib-main-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.lib-main-tab.active{color:var(--mode-accent);border-bottom-color:var(--mode-accent)}
 /* Icon preview in PAD editor */
 .icon-prev-box{width:48px;height:48px;background:var(--raised);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold)}
 .icon-prev-box svg{width:28px;height:28px;display:block}
@@ -724,13 +724,13 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M3 7h2v5H3zm4 0h2v13H7zm4-3h2v16h-2zm4 0h2v13h-2zM5 5h2v2H5zm4 15h2v2H9zm4-18h2v2h-2zm4 15h2v2h-2zm2-5h2v5h-2zm2-2h2v2h-2zM1 12h2v2H1z"/></svg></div>
       <div><div class="mlbl">BOARD</div><div class="msub" id="board-subtitle">Loading…</div></div>
     </div>
-    <div class="mopt" onclick="show('smb')">
+    <div class="mopt" onclick="show('sli');setLibMainTab('boards')">
       <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M4 2h16v2H4zm0 18h16v2H4zM2 4h2v16H2zm18 0h2v16h-2zM4 8h16v2H4zm0 6h16v2H4z"/><path d="M8 4h2v16H8zm6 0h2v16h-2z"/></svg></div>
       <div><div class="mlbl">MY BOARDS</div><div class="msub">Manage &amp; switch boards</div></div>
     </div>
-    <div class="mopt" onclick="show('sli')">
+    <div class="mopt" onclick="show('sli');setLibMainTab('audio')">
       <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M3 4h2v17H3zm4 4h2v13H7zm4-2h2v15h-2zm4 0h2v5h-2zm2 5h2v5h-2zm2 5h2v5h-2z"/></svg></div>
-      <div><div class="mlbl">LIBRARY</div><div class="msub">All audio files in one place</div></div>
+      <div><div class="mlbl">LIBRARY</div><div class="msub">Audio, icons &amp; boards</div></div>
     </div>
     <div class="mopt" onclick="show('sa')">
       <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M4 14h2v6H4zm6 0h2v6h-2zm-4-2h4v2H6zm0 8h4v2H6zm-4-4h2v2H2zm20-8h-4V6h4z"/><path d="M10 16h12v2H10zm4-8H2V6h12zm6-4v2h-2V4zm0 6V8h-2v2zm-6-8h4v2h-4zm0 10h4v-2h-4zm-2-8h2v2h-2zm0 6h2V8h-2z"/></svg></div>
@@ -1035,6 +1035,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   <div class="lib-main-tabs">
     <div class="lib-main-tab active" id="lmt-audio" onclick="setLibMainTab('audio')">AUDIO</div>
     <div class="lib-main-tab" id="lmt-icons" onclick="setLibMainTab('icons')">ICONS</div>
+    <div class="lib-main-tab" id="lmt-boards" onclick="setLibMainTab('boards')">BOARDS</div>
   </div>
   <div id="lib-audio-section" style="flex:1;overflow-y:auto">
    <div class="cx" style="padding-top:14px;padding-bottom:14px">
@@ -1050,6 +1051,16 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     <div id="lib-stats" style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-bottom:10px"></div>
     <div id="lib-list" style="display:flex;flex-direction:column;gap:8px"></div>
    </div>
+  </div>
+  <div id="lib-boards-section" style="flex:1;display:none;flex-direction:column">
+    <div style="flex:1;overflow-y:auto">
+      <div id="lib-board-list" class="cx" style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px"></div>
+    </div>
+    <div style="border-top:1px solid var(--border);flex-shrink:0">
+      <div class="cx" style="padding-top:10px;padding-bottom:10px">
+        <button class="btn-p" onclick="showCreateBoard()" style="width:100%">+ NEW BOARD</button>
+      </div>
+    </div>
   </div>
   <div id="lib-icons-section" style="flex:1;overflow-y:auto;display:none">
    <div class="cx" style="padding-top:14px;padding-bottom:32px">
@@ -1604,8 +1615,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 85;
+const APP_VERSION = 86;
 const CHANGELOG=[
+  {v:86,date:'2026-05-22',items:["Library gets a BOARDS tab — board management moves into the Library","MY BOARDS in the main menu now opens Library → BOARDS directly","Board list renders in both locations; all operations (rename, duplicate, delete, switch) work from either place","Library subtitle updated to reflect expanded scope: Audio, icons & boards"]},
   {v:85,date:'2026-05-22',items:["Mode accent colors now applied consistently across the full UI","PAD editor header, card labels, input focus, icon slots, combo editor, toggle buttons and sliders all follow --mode-accent (blue in SETUP, gold in GAME)","Removed unused .topt.ao dead CSS rule"]},
   {v:84,date:'2026-05-22',items:["Wake Lock: prevents screen auto-lock in GAME mode so a Bluetooth numpad keeps working","Toggle in Settings → CONTROLS → SCREEN WAKE LOCK (default: ON)","Wake lock is acquired on switch to GAME mode, released on switch to SETUP; re-acquired when tab becomes visible again","Setting hidden automatically on browsers that don't support the Wake Lock API"]},
   {v:83,date:'2026-05-22',items:["Drag-and-drop PAD reorder now shows an insert-line indicator instead of a swap highlight","A vertical line on the pad edge shows exactly where the dragged PAD will land; pads in between shift by one slot","Combo step references are remapped correctly after every reorder"]},
@@ -2060,26 +2072,29 @@ async function initBoardScreen(){
   renderBoardList(boards);
 }
 function renderBoardList(boards){
-  const el=document.getElementById('board-list'); if(!el) return;
-  if(!boards.length){ el.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:20px">Keine Boards vorhanden.</p>'; return; }
-  el.innerHTML=boards.map(b=>{
+  const html=boards.length
+    ? boards.map(b=>{
     const active=b.id===currentBoardId;
     const isRenaming=renamingBoardId===b.id;
     const nameHtml=isRenaming
       ? `<input id="rn-${b.id}" class="fi" value="${b.name.replace(/"/g,'&quot;')}" style="font-size:calc(15px * var(--font-scale));padding:4px 8px" onkeydown="handleRenameKey(event,'${b.id}')" onblur="commitRename('${b.id}')">`
-      : `<div style="font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));color:${active?'var(--gold)':'var(--text)'};letter-spacing:0">${b.name}${active?' ◈':''}</div>`;
-    const dateStr=new Date(b.createdAt).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    return `<div style="background:var(--surface);border:1px solid ${active?'var(--gold-dim)':'var(--border)'};border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:6px">
+      : `<div style="font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));color:${active?'var(--mode-accent)':'var(--text)'};letter-spacing:0">${b.name}${active?' ◈':''}</div>`;
+    const dateStr=new Date(b.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    return `<div style="background:var(--surface);border:1px solid ${active?'var(--mode-accent-dim)':'var(--border)'};border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:6px">
       ${nameHtml}
       <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${b.padCount} Pad${b.padCount===1?'':'s'} · ${dateStr}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button onclick="switchBoard('${b.id}')" style="background:${active?'rgba(201,168,76,.15)':'var(--raised)'};border:1px solid ${active?'var(--gold-dim)':'var(--border)'};color:${active?'var(--gold)':'var(--text)'};font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">${active?'◈ OFFEN':'→ ÖFFNEN'}</button>
+        <button onclick="switchBoard('${b.id}')" style="background:${active?'var(--mode-accent-glow)':'var(--raised)'};border:1px solid ${active?'var(--mode-accent-dim)':'var(--border)'};color:${active?'var(--mode-accent)':'var(--text)'};font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">${active?'◈ OPEN':'→ OPEN'}</button>
         <button onclick="startRename('${b.id}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">✎ RENAME</button>
         <button onclick="triggerDuplicate('${b.id}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">⧉ DUPLICATE</button>
         ${boards.length>1?`<button onclick="triggerDelete('${b.id}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">✕ DELETE</button>`:''}
       </div>
     </div>`;
-  }).join('');
+  }).join('')
+  : '<p style="color:var(--text-dim);text-align:center;padding:20px">No boards yet.</p>';
+  for(const cid of ['board-list','lib-board-list']){
+    const el=document.getElementById(cid); if(el) el.innerHTML=html;
+  }
 }
 function startRename(id){
   renamingBoardId=id;
@@ -2719,11 +2734,13 @@ function closeChangelog(){ document.getElementById('changelog-ov')?.classList.re
 // ── LIBRARY TABS ──
 function setLibMainTab(tab){
   libMainTab=tab;
-  ['audio','icons'].forEach(t=>{
+  ['audio','icons','boards'].forEach(t=>{
     document.getElementById('lmt-'+t)?.classList.toggle('active',t===tab);
-    document.getElementById('lib-'+(t==='audio'?'audio':'icons')+'-section').style.display=t===tab?'':'none';
+    const el=document.getElementById('lib-'+t+'-section');
+    if(el) el.style.display=t!==tab?'none':(t==='boards'?'flex':'');
   });
   if(tab==='icons') renderLibIcons();
+  if(tab==='boards') loadBoardsMeta().then(renderBoardList);
 }
 async function renderLibIcons(){
   const all=await libGetAll();
@@ -3440,7 +3457,7 @@ function show(id){
   if(id==='sp'){ renderBoard(); if(locked) focusKB(); }
   if(id==='sa'){ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); _initPadLevelUI(); _initWakeLockUI(); }
   if(id==='smb') initBoardScreen();
-  if(id==='sli') initLibScreen();
+  if(id==='sli'){ if(libMainTab==='boards') loadBoardsMeta().then(renderBoardList); else initLibScreen(); }
   if(id==='smm') updateMenuBackupBtns();
   updMenuBtn(id);
 }
