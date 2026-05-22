@@ -1512,8 +1512,9 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 72;
+const APP_VERSION = 73;
 const CHANGELOG=[
+  {v:73,date:'2026-05-22',items:["BUILTIN_ICONS extracted to icons.js — index.html shrinks from 1.2 MB to 263 KB; faster loads and cache updates"]},
   {v:72,date:'2026-05-22',items:['Library audio list scroll position is remembered — returning to the Library after navigating away restores your position']},
   {v:71,date:'2026-05-22',items:['Mode switch and MENU button always visible — they float above the PAD editor and combo editor at all times','Unsaved changes guard: leaving either editor with unsaved changes shows a warning overlay (SAVE & LEAVE / LEAVE / CANCEL)','Guard triggers on: ← back button, CANCEL button, MENU button, mode switch, Escape key','Applies to both S-PAD editor and Combo editor']},
   {v:70,date:'2026-05-22',items:['SETUP mode: tapping a PAD now opens the editor directly instead of requiring a separate EDIT tap','EDIT banner on pads removed — the tap-to-edit behavior replaces it','Drag & drop and swap still work as before in SETUP mode']},
