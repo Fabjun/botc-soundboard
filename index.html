@@ -956,7 +956,7 @@ input[type=file]{display:none}
     </div>
     <div id="lib-icons-custom" style="margin-bottom:20px"></div>
     <div style="display:flex;align-items:center;margin-bottom:8px">
-      <div style="font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--gold-dim);letter-spacing:.5px;flex:1">BUILT-IN ICONS (813)</div>
+      <div style="font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--gold-dim);letter-spacing:.5px;flex:1">BUILT-IN ICONS (<span id="lib-builtin-count">813</span>)</div>
       <button class="ico-names-btn" id="lib-names-btn" onclick="toggleIconNames()">NAMES</button>
     </div>
     <div id="lib-icons-builtin"></div>
@@ -3770,7 +3770,7 @@ const BUILTIN_ICONS=[
   {id:"px-weather-windy-air-element",label:"Windy Air",cat:"Nature",d:"M5 0h3v1H5zM10 0h4v1H10zM5 1h1v1H5zM7 1h4v1H7zM13 1h2v1H13zM2 2h5v1H2zM8 2h2v1H8zM11 2h2v1H11zM14 2h1v1H14zM2 3h1v1H2zM7 3h6v1H7zM14 3h1v1H14zM2 4h10v1H2zM13 4h2v1H13zM3 5h1v1H3zM12 5h2v1H12zM2 6h12v1H2zM2 7h1v1H2zM13 7h2v1H13zM1 8h12v1H1zM14 8h1v1H14zM1 9h1v1H1zM8 9h2v1H8zM11 9h2v1H11zM14 9h1v1H14zM1 10h7v1H1zM9 10h2v1H9zM13 10h2v1H13zM2 11h1v1H2zM7 11h7v1H7zM2 12h5v1H2zM8 12h1v1H8zM3 13h1v1H3zM5 13h2v1H5zM8 13h1v1H8zM3 14h2v1H3zM7 14h2v1H7zM4 15h4v1H4z",v:"0 0 16 16"}
 ];
 
-const APP_VERSION = 61;
+const APP_VERSION = 62;
 const CHANGELOG=[
   {v:59,date:'2026-05-22',items:['Database renamed from botc3 to "botc" — clean permanent name, no suffix','Legacy migration code removed (test data was expendable)','Schema simplified to v1 with p and lib stores; future changes via version bumps only']},
   {v:57,date:'2026-05-22',items:['Update notification replaced by a full modal with backup and safe reload','⬇ BACKUP NOW exports your library before reloading','RELOAD requires a second tap ("TAP AGAIN TO CONFIRM") to prevent accidental data loss','Honest warning: IndexedDB is normally preserved, but backup is recommended as a precaution']},
@@ -4807,6 +4807,7 @@ async function libDeleteIcon(hash){
   renderLibIcons();
 }
 async function loadLibIcons(){
+  const el=document.getElementById('lib-builtin-count'); if(el) el.textContent=BUILTIN_ICONS.length;
   const all=await libGetAll();
   for(const e of all.filter(e=>e.type==='icon')){
     if(e.buf) iconSvgCache[e.hash]=new TextDecoder().decode(e.buf);
@@ -4854,26 +4855,36 @@ function _renderGroupedIcons(icons, containerId, selectedId, isPicker){
   for(const cat of CAT_ORDER){ if(groups[cat]) ordered.push([cat,groups[cat]]); }
   for(const [cat,list] of Object.entries(groups)){ if(!CAT_ORDER.includes(cat)) ordered.push([cat,list]); }
 
-  let html='';
+  // Render only category headers — icon cells are lazy-loaded on first expand
+  let h='';
   for(const [cat,list] of ordered){
-    const open = catOpen[cat]??false;
-    html+=`<div class="ico-cat-header" data-cat="${escHtml(cat)}">`;
-    html+=`<span class="ico-cat-arrow">${open?'▼':'▶'}</span>`;
-    html+=`<span class="ico-cat-name">${escHtml(cat)}</span>`;
-    html+=`<span class="ico-cat-count">${list.length}</span></div>`;
-    html+=`<div class="ico-grid"${open?'':' style="display:none"'}>`;
-    html+=list.map(ic=>renderIconCell(ic,selectedId,isPicker)).join('');
-    html+='</div>';
+    const open=catOpen[cat]??false;
+    h+=`<div class="ico-cat-header" data-cat="${escHtml(cat)}"><span class="ico-cat-arrow">${open?'▼':'▶'}</span><span class="ico-cat-name">${escHtml(cat)}</span><span class="ico-cat-count">${list.length}</span></div>`;
+    h+=`<div class="ico-grid"${open?'':' style="display:none"'}></div>`;
   }
-  container.innerHTML=html;
+  container.innerHTML=h;
 
   container.querySelectorAll('.ico-cat-header').forEach(hdr=>{
+    const cat=hdr.dataset.cat;
+    const list=groups[cat]||[];
+    const grid=hdr.nextElementSibling;
+    // Eagerly render any category that starts open
+    if((catOpen[cat]??false)&&!grid._rendered){
+      grid.innerHTML=list.map(ic=>renderIconCell(ic,selectedId,isPicker)).join('');
+      grid._rendered=true;
+    }
     hdr.addEventListener('click',()=>{
-      const cat=hdr.dataset.cat;
       catOpen[cat]=!(catOpen[cat]??false);
       hdr.querySelector('.ico-cat-arrow').textContent=catOpen[cat]?'▼':'▶';
-      const grid=hdr.nextElementSibling;
-      if(grid) grid.style.display=catOpen[cat]?'':'none';
+      if(catOpen[cat]){
+        if(!grid._rendered){
+          grid.innerHTML=list.map(ic=>renderIconCell(ic,selectedId,isPicker)).join('');
+          grid._rendered=true;
+        }
+        grid.style.display='';
+      } else {
+        grid.style.display='none';
+      }
     });
   });
 }
