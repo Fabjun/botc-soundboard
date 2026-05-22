@@ -590,6 +590,7 @@ input[type=file]{display:none}
   display:none;flex-direction:column}
 .lp-row{background:var(--surface);border:1px solid var(--border);border-radius:4px;
   padding:9px 12px;display:flex;align-items:center;gap:10px}
+.lp-row-used{border-left:2px solid var(--active)}
 #backup-hint{position:fixed;bottom:0;left:0;right:0;z-index:90;display:none;
   background:var(--surface);border-top:1px solid var(--gold-dim);padding:10px 14px;
   align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
@@ -2260,8 +2261,9 @@ const BUILTIN_ICONS=[
   {id:"window-frame-sharp",label:"Window Frame Sharp",cat:"Design & Development",d:"M2 2h20v2H2zm2 6h16v2H4zM2 20h20v2H2zM2 4h2v16H2zm18 0h2v16h-2zM5 5h2v2H5zm3 0h2v2H8z"},
 ];
 
-const APP_VERSION = 54;
+const APP_VERSION = 55;
 const CHANGELOG=[
+  {v:55,date:'2026-05-22',items:['Library picker: files already used by another pad on this board show "↳ Pad Name" hint below the filename','Used rows get a blue left border so duplicates are immediately visible','Current pad being edited is excluded from the in-use check']},
   {v:54,date:'2026-05-22',items:['PADs now support up to 4 icons — tap each slot in the VISUAL section to pick','Multi-icon layout: 1→centred, 2→side by side, 3→2+1, 4→2×2 grid','Icons scale with PAD size; hidden automatically on very small pads (text only)','Backward-compatible: pads with a single icon still display correctly']},
   {v:53,date:'2026-05-22',items:['Icons sorted into 15 collapsible categories (Interface, Navigation, Objects, People …)','Icon names shown under each icon with a NAMES toggle to show/hide them','Search still works across all categories with a flat result view']},
   {v:52,date:'2026-05-22',items:['Icon system: 813 built-in pixelarticons replace the image picker on pads','Library → ICONS tab: browse all 813 built-in icons, upload & manage custom SVGs','PAD editor: VISUAL section now shows an icon picker with live search']},
@@ -3793,16 +3795,22 @@ let libPickerAppend=false;
 let _lpEntries=[],_lpQuery='',_lpScroll=0;
 let _lpPrev={src:null,hash:null};
 
-function _lpUsedHashes(){
-  const s=new Set();
-  pads.forEach(p=>{ if(p?.files) p.files.forEach(h=>s.add(h)); });
-  return s;
+function _lpUsedPads(excludeId){
+  const m=new Map();
+  pads.forEach((p,i)=>{
+    if(!p?.files||i===excludeId) return;
+    p.files.forEach(h=>{
+      if(!m.has(h)) m.set(h,[]);
+      m.get(h).push(p.name||`PAD ${i+1}`);
+    });
+  });
+  return m;
 }
 function _lpRenderList(){
   const list=document.getElementById('lp-list');
   if(!list) return;
   const q=_lpQuery.toLowerCase().trim();
-  const used=_lpUsedHashes();
+  const usedPads=_lpUsedPads(eId);
   const rows=q?_lpEntries.filter(e=>e.name.toLowerCase().includes(q)):_lpEntries;
   if(!rows.length){
     list.innerHTML=`<p style="color:var(--text-dim);text-align:center;padding:20px 0">${_lpEntries.length?'No matches.':'Library is empty.<br>Upload audio files to the Library first.'}</p>`;
@@ -3810,14 +3818,18 @@ function _lpRenderList(){
   }
   list.innerHTML=rows.map(e=>{
     const date=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    const inUse=used.has(e.hash);
+    const padNames=usedPads.get(e.hash);
     const playing=_lpPrev.hash===e.hash;
-    return `<div class="lp-row">
+    const usedHtml=padNames?.length
+      ? `<div style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--active);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">↳ ${padNames.map(escHtml).join(', ')}</div>`
+      : '';
+    return `<div class="lp-row${padNames?.length?' lp-row-used':''}">
       <button class="lp-play-btn" data-hash="${e.hash}" onclick="lpPlay('${e.hash}')"
         style="background:none;border:1px solid ${playing?'var(--active)':'var(--border)'};color:${playing?'var(--active)':'var(--text-dim)'};font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));width:32px;height:32px;border-radius:2px;cursor:pointer;flex-shrink:0;padding:0;letter-spacing:0;line-height:1">${playing?'■':'▶'}</button>
       <div style="flex:1;min-width:0">
         <div style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(e.name)}</div>
-        <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date}${inUse?' · <span style="color:var(--active)">in use</span>':''}</div>
+        <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date}</div>
+        ${usedHtml}
       </div>
       <button onclick="pickFromLib('${e.hash}')" style="background:var(--raised);border:1px solid var(--gold-dim);color:var(--gold);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));padding:5px 12px;border-radius:2px;cursor:pointer;white-space:nowrap;letter-spacing:0">SELECT</button>
     </div>`;
