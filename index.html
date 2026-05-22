@@ -113,9 +113,8 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 /* Section body inside .cx — only vertical spacing needed */
 .sec-body{padding:10px 0 16px}
 .s-hdr{border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
-.s-hdr .cx{padding-top:11px;padding-bottom:11px;
-  display:flex;align-items:center;justify-content:space-between}
-.s-hdr h2{font-family:var(--ff-label);color:var(--gold);font-size:calc(17px * var(--font-scale));letter-spacing:0;text-align:center}
+.s-hdr .cx{padding-top:11px;padding-bottom:11px;display:flex;align-items:center}
+.s-hdr h2{font-family:var(--ff-label);color:var(--gold);font-size:calc(17px * var(--font-scale));letter-spacing:0;text-align:center;flex:1}
 .pbtn.ed{border-color:var(--active)!important;box-shadow:0 0 8px rgba(79,195,247,.25)}
 #crop-dlg{position:fixed;inset:0;background:rgba(10,10,20,0.97);z-index:300;
   display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px}
@@ -802,6 +801,7 @@ input[type=file]{display:none}
       <button onclick="triggerImportFile()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">⬆ IMPORT LIBRARY</button>
       <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Export saves all boards, audio files and settings as one file. Import merges into existing data — you choose per file and per board.</p>
       <button id="auto-backup-btn" onclick="toggleAutoBackup()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">AUTO-BACKUP: OFF</button>
+      <p id="auto-backup-path" style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6;display:none"></p>
       <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Writes 3 rotating backup files to a folder you choose, every 10 minutes. Brave &amp; Chrome only.</p>
       <button onclick="doRemigrateAudio()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%;margin-top:4px">RE-MIGRATE AUDIO TO LIBRARY</button>
       <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Run if pads lost their sounds after an update.</p>
@@ -1288,7 +1288,7 @@ input[type=file]{display:none}
 </div>
 
 <script>
-const APP_VERSION = 44;
+const APP_VERSION = 45;
 const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration'];
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
@@ -1745,6 +1745,7 @@ function unlock(){
     applyStartMode();
     initStartModeUI();
     updBoardSubtitle();
+    tryRestoreAutoBackup();
     show(locked?'sp':'smm');
   });
 }
@@ -2368,19 +2369,36 @@ async function executeImport(){
 // ── AUTO-BACKUP ──
 let _autoBackupDirHandle=null, _autoBackupIdx=0, _autoBackupTimer=null;
 function hasFileSystemAccess(){ return 'showDirectoryPicker' in window; }
+async function _persistAutoBackupHandle(handle){
+  if(!db) return;
+  return new Promise(r=>{ const tx=db.transaction('p','readwrite'); tx.objectStore('p').put({id:'_settings_autobackup',dirHandle:handle}).onsuccess=r; });
+}
+async function _clearAutoBackupHandle(){
+  if(!db) return;
+  return new Promise(r=>{ const tx=db.transaction('p','readwrite'); tx.objectStore('p').delete('_settings_autobackup').onsuccess=r; });
+}
+async function tryRestoreAutoBackup(){
+  if(!hasFileSystemAccess()||!db) return;
+  const rec=await new Promise(r=>{ db.transaction('p','readonly').objectStore('p').get('_settings_autobackup').onsuccess=e=>r(e.target.result); });
+  if(!rec?.dirHandle) return;
+  const perm=await rec.dirHandle.queryPermission({mode:'readwrite'});
+  if(perm==='granted'){ _autoBackupDirHandle=rec.dirHandle; startAutoBackupTimer(); updateAutoBackupBtn(); }
+}
 async function toggleAutoBackup(){
   if(_autoBackupDirHandle){ stopAutoBackup(); return; }
   if(!hasFileSystemAccess()){ showToast('Auto-backup is only supported in Brave and Chrome.'); return; }
   try{
     _autoBackupDirHandle=await showDirectoryPicker({mode:'readwrite'});
+    await _persistAutoBackupHandle(_autoBackupDirHandle);
     startAutoBackupTimer();
     showToast('Auto-backup active — saves every 10 min.');
     updateAutoBackupBtn();
-    doAutoBackup(); // immediate first save
+    doAutoBackup();
   } catch(e){ /* user cancelled */ }
 }
-function stopAutoBackup(){
+async function stopAutoBackup(){
   clearInterval(_autoBackupTimer); _autoBackupTimer=null; _autoBackupDirHandle=null;
+  await _clearAutoBackupHandle();
   showToast('Auto-backup disabled.'); updateAutoBackupBtn();
 }
 function startAutoBackupTimer(){
@@ -2393,8 +2411,7 @@ async function doAutoBackup(){
   try{
     const json=await buildExportJson();
     const fh=await _autoBackupDirHandle.getFileHandle(`botc-autobackup-${_autoBackupIdx+1}.json`,{create:true});
-    const w=await fh.createWritable();
-    await w.write(json); await w.close();
+    const w=await fh.createWritable(); await w.write(json); await w.close();
   } catch(e){ stopAutoBackup(); showToast('Auto-backup failed — please re-enable in Settings.'); }
 }
 function updateAutoBackupBtn(){
@@ -2403,6 +2420,12 @@ function updateAutoBackupBtn(){
   btn.textContent=active?'AUTO-BACKUP: ON ●':'AUTO-BACKUP: OFF';
   btn.style.borderColor=active?'var(--emerald)':'var(--border)';
   btn.style.color=active?'var(--emerald)':'var(--text)';
+  const pathEl=document.getElementById('auto-backup-path');
+  if(pathEl){
+    if(active&&_autoBackupDirHandle?.name){
+      pathEl.textContent=`Folder: ${_autoBackupDirHandle.name}`; pathEl.style.display='block';
+    } else { pathEl.style.display='none'; }
+  }
 }
 
 // ── DATA MANAGEMENT ──
