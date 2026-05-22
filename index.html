@@ -533,6 +533,27 @@ input[type=file]{display:none}
 #changelog-ov{position:fixed;inset:0;z-index:215;background:var(--deep);display:none;flex-direction:column}
 #changelog-ov.open{display:flex}
 .cl-entry{margin-bottom:20px}
+/* ONBOARDING */
+#onboard-ov{position:fixed;inset:0;z-index:300;background:var(--deep);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px}
+#onboard-ov.open{display:flex}
+.ob-skip{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));cursor:pointer;padding:4px 8px;letter-spacing:.5px}
+.ob-skip:active{color:var(--gold)}
+.ob-slides{width:100%;max-width:380px;flex:1;display:flex;flex-direction:column;justify-content:center}
+.ob-slide{display:none;flex-direction:column;align-items:center;text-align:center;gap:16px}
+.ob-slide.active{display:flex}
+.ob-icon{font-size:52px;line-height:1}
+.ob-title{font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));color:var(--gold);letter-spacing:1px}
+.ob-body{font-family:var(--ff-body);font-size:calc(14px * var(--font-scale));color:var(--text);line-height:1.6;max-width:320px}
+.ob-rows{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;text-align:left}
+.ob-row{display:flex;align-items:flex-start;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px}
+.ob-row-ico{font-size:18px;flex-shrink:0;margin-top:2px;line-height:1}
+.ob-row-text{font-family:var(--ff-body);font-size:calc(13px * var(--font-scale));color:var(--text);line-height:1.5}
+.ob-row-lbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--gold);display:block;margin-bottom:2px}
+.ob-dots{display:flex;gap:8px;justify-content:center;padding:16px 0 8px}
+.ob-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:background .2s}
+.ob-dot.active{background:var(--gold)}
+.ob-nav{display:flex;gap:10px;width:100%;max-width:320px}
+.ob-nav button{flex:1;font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));padding:10px;border-radius:3px;cursor:pointer;letter-spacing:.5px;border:1px solid;transition:background .15s}
 .cl-ver{font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));color:var(--gold);margin-bottom:5px}
 .cl-date{font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--mist);margin-left:8px}
 .cl-item{font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);
@@ -1338,8 +1359,9 @@ input[type=file]{display:none}
 </div>
 
 <script>
-const APP_VERSION = 50;
+const APP_VERSION = 51;
 const CHANGELOG=[
+  {v:51,date:'2026-05-22',items:['Onboarding: 3-slide welcome walkthrough shown on first launch (Welcome / How it works / Get started)']},
   {v:50,date:'2026-05-22',items:['PAD-Filter bar: ALL / S-PAD / C-PAD tabs above the grid to focus the view','Level Meter: RMS amplitude bar (green→gold→red) behind the EQ spectrum in the Now Playing bar']},
   {v:49,date:'2026-05-22',items:['Export now opens a native "Save As" dialog on desktop (Chrome/Brave) so you can choose the save location']},
   {v:48,date:'2026-05-22',items:['In-app Changelog: tap the version number on the title screen to see all release notes']},
@@ -1817,6 +1839,7 @@ function unlock(){
     const hint=document.getElementById('export-location-hint');
     if(hint&&!window.showSaveFilePicker) hint.style.display='block';
     show(locked?'sp':'smm');
+    if(!localStorage.getItem('onboarded')) showOnboard();
   });
 }
 function decodeAll(){ pads.forEach((p,i)=>{ if(p&&p.files&&p.files.length) decodePad(i); }); }
@@ -2295,6 +2318,43 @@ function openChangelog(){
   ov.classList.add('open');
 }
 function closeChangelog(){ document.getElementById('changelog-ov')?.classList.remove('open'); }
+
+// ── ONBOARDING ──
+let onboardSlide=0;
+const OB_TOTAL=3;
+function showOnboard(){
+  document.getElementById('onboard-ov')?.classList.add('open');
+  showOnboardSlide(0);
+}
+function closeOnboard(){
+  document.getElementById('onboard-ov')?.classList.remove('open');
+  localStorage.setItem('onboarded','1');
+}
+function showOnboardSlide(n){
+  onboardSlide=n;
+  for(let i=0;i<OB_TOTAL;i++){
+    document.getElementById('ob-s'+i)?.classList.toggle('active',i===n);
+    const dot=document.getElementById('ob-dot-'+i);
+    if(dot) dot.classList.toggle('active',i===n);
+  }
+  const back=document.getElementById('ob-back');
+  const next=document.getElementById('ob-next');
+  if(back) back.style.display=n>0?'':'none';
+  if(next){
+    const last=n===OB_TOTAL-1;
+    next.textContent=last?'GET STARTED':'NEXT →';
+    next.style.background=last?'var(--emerald)':'var(--gold)';
+    next.style.borderColor=last?'var(--emerald)':'var(--gold)';
+    next.style.color=last?'#fff':'#000';
+  }
+}
+function nextOnboardSlide(){
+  if(onboardSlide<OB_TOTAL-1) showOnboardSlide(onboardSlide+1);
+  else closeOnboard();
+}
+function prevOnboardSlide(){
+  if(onboardSlide>0) showOnboardSlide(onboardSlide-1);
+}
 
 // ── COMPRESSION ──
 async function compressData(str){
@@ -4214,6 +4274,64 @@ if('serviceWorker' in navigator){
   </div>
   <div style="flex:1;overflow-y:auto">
     <div class="cx" id="changelog-content" style="padding:16px 0 32px"></div>
+  </div>
+</div>
+
+<div id="onboard-ov">
+  <button class="ob-skip" onclick="closeOnboard()">SKIP ✕</button>
+  <div class="ob-slides">
+
+    <div class="ob-slide active" id="ob-s0">
+      <div class="ob-icon">🎲</div>
+      <div class="ob-title">SOUNDBOARD OF STORYTELLING</div>
+      <div class="ob-body">Your personal audio companion for tabletop game-masters. Create immersive soundscapes — no cloud, no account, fully offline.</div>
+    </div>
+
+    <div class="ob-slide" id="ob-s1">
+      <div class="ob-title">HOW IT WORKS</div>
+      <div class="ob-rows">
+        <div class="ob-row">
+          <div class="ob-row-ico" style="color:var(--active)">✎</div>
+          <div class="ob-row-text"><span class="ob-row-lbl">SETUP MODE</span>Add pads, assign sounds, arrange your board.</div>
+        </div>
+        <div class="ob-row">
+          <div class="ob-row-ico" style="color:var(--gold)">▶</div>
+          <div class="ob-row-text"><span class="ob-row-lbl">PLAY MODE</span>Tap pads to trigger sounds live, one-handed.</div>
+        </div>
+        <div class="ob-row">
+          <div class="ob-row-ico">📚</div>
+          <div class="ob-row-text"><span class="ob-row-lbl">LIBRARY</span>All audio lives here — pads reference it. No duplicates.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ob-slide" id="ob-s2">
+      <div class="ob-title">GET STARTED</div>
+      <div class="ob-rows">
+        <div class="ob-row">
+          <div class="ob-row-ico" style="color:var(--gold);font-family:var(--ff-label);font-size:16px">1</div>
+          <div class="ob-row-text"><span class="ob-row-lbl">OPEN A BOARD</span>Go to My Boards and create or open a board.</div>
+        </div>
+        <div class="ob-row">
+          <div class="ob-row-ico" style="color:var(--gold);font-family:var(--ff-label);font-size:16px">2</div>
+          <div class="ob-row-text"><span class="ob-row-lbl">ADD A PAD</span>Tap ＋ in Setup mode and pick an audio file.</div>
+        </div>
+        <div class="ob-row">
+          <div class="ob-row-ico" style="color:var(--gold);font-family:var(--ff-label);font-size:16px">3</div>
+          <div class="ob-row-text"><span class="ob-row-lbl">PLAY</span>Switch to Play mode and tap your pad to hear it.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="ob-dots">
+    <div class="ob-dot active" id="ob-dot-0"></div>
+    <div class="ob-dot" id="ob-dot-1"></div>
+    <div class="ob-dot" id="ob-dot-2"></div>
+  </div>
+  <div class="ob-nav">
+    <button id="ob-back" onclick="prevOnboardSlide()" style="display:none;background:none;border-color:var(--border);color:var(--text-dim)">← BACK</button>
+    <button id="ob-next" onclick="nextOnboardSlide()" style="background:var(--gold);border-color:var(--gold);color:#000">NEXT →</button>
   </div>
 </div>
 </body>
