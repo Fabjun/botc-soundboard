@@ -54,10 +54,10 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
   font-family:var(--ff-body);overflow:hidden;user-select:none}
 .screen{display:none;width:100%;height:100%;flex-direction:column}
 .screen.active{display:flex;animation:screen-in 90ms ease-out}
+.sc-wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box}
 
 /* UNLOCK */
-#su{align-items:center;justify-content:center;text-align:center;gap:12px;padding:32px;
-  background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
+#su{overflow-y:auto;background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
 .sigil{font-size:calc(60px * var(--sym-scale));animation:fire-flicker 4s ease-in-out infinite,fire-color 5.5s ease-in-out infinite;color:var(--gold);position:relative;display:inline-block;line-height:1;transition:--fire-excite-mix 2s ease;cursor:pointer}
 .sigil::before,.sigil::after{content:'';position:absolute;width:.06em;height:.06em;border-radius:50%;background:currentColor;filter:blur(.4px);pointer-events:none}
 .sigil::before{top:.1em;left:.42em;animation:sigil-spark-a 1.9s ease-out infinite .5s}
@@ -468,8 +468,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
   border-top:1px solid var(--border);flex-shrink:0}
 
 /* MAIN MENU */
-#smm{align-items:center;justify-content:center;gap:0;padding:32px 24px 20px;
-  background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
+#smm{overflow-y:auto;background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
 .m-title{text-align:center;margin-bottom:28px}
 .m-title h1{font-family:var(--ff-hero);font-size:calc(20px * var(--font-scale));letter-spacing:.04em;
   color:var(--gold);line-height:1.6}
@@ -695,14 +694,17 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 
 <!-- UNLOCK -->
 <div id="su" class="screen active">
-  <div class="sigil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
-  <h1>Soundboard of Storytelling</h1>
-  <p class="sub">A tool for Game-Masters<br>and other creative Creatures</p>
-  <button class="unlock-btn" onclick="unlock()">TAP TO START</button>
+  <div class="sc-wrap" style="text-align:center;gap:12px;padding:32px">
+    <div class="sigil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
+    <h1>Soundboard of Storytelling</h1>
+    <p class="sub">A tool for Game-Masters<br>and other creative Creatures</p>
+    <button class="unlock-btn" onclick="unlock()">TAP TO START</button>
+  </div>
 </div>
 
 <!-- MAIN MENU -->
 <div id="smm" class="screen">
+  <div class="sc-wrap" style="padding:32px 24px 20px;gap:0">
   <div class="m-title">
     <div class="sigil" style="font-size:calc(44px * var(--sym-scale));margin-bottom:12px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
     <h1 style="font-family:var(--ff-hero);font-size:calc(22px * var(--font-scale));letter-spacing:.04em;color:var(--gold);line-height:1.3;text-shadow:0 0 24px rgba(201,168,76,.3);margin:0 0 6px">Soundboard of Storytelling</h1>
@@ -746,6 +748,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
       IMPORT
     </button>
   </div>
+  </div><!-- /.sc-wrap -->
 </div>
 
 <!-- MY BOARDS -->
@@ -1559,8 +1562,9 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 79;
+const APP_VERSION = 80;
 const CHANGELOG=[
+  {v:80,date:'2026-05-22',items:["All screens are now fully scrollable — content centers when it fits, scrolls when it doesn't","Fixes title screen and main menu clipping content on small screens or with large font scale"]},
   {v:79,date:'2026-05-22',items:["Library entries now remember their original filename","After renaming, the original name is shown dimmed (← original.mp3) below the current name in the Library and Library Picker","origName stored on first upload; preserved across renames, exports, and imports"]},
   {v:78,date:'2026-05-22',items:["PAD editor SOUND section redesigned: file metadata, waveform, and controls are now a single unified block","File rows show filename + duration + file size together","Waveform canvas is taller (64 px); playback controls (▶ ⏹) and action buttons (CHANGE / FROM LIB) sit directly under the waveform","Upload/FROM LIB buttons shown only when no file is loaded; action buttons inside the block when a file is loaded"]},
   {v:77,date:'2026-05-22',items:["Mode-switch sound: upload a custom sound in Settings → CONTROLS → SWITCH SOUND; plays on every mode toggle","More sparks on mode switch: 52 particles (was 26), slower animation (0.55–1.0 s), burst from the newly activated half's edge instead of center","Ambient sparks slightly slower and farther reaching"]},
