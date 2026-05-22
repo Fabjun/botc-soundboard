@@ -577,7 +577,7 @@ input[type=file]{display:none}
   font-style:italic;margin-top:2px}
 
 /* ── TOAST ── */
-#app-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:8px 18px;border-radius:4px;z-index:9999;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
+#app-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:8px 18px;border-radius:4px;z-index:9999;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:normal;word-break:break-word;max-width:90vw;text-align:center}
 #app-toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
@@ -2503,7 +2503,7 @@ async function tryRestoreAutoBackup(){
 }
 async function toggleAutoBackup(){
   if(_autoBackupDirHandle){ stopAutoBackup(); return; }
-  if(!hasFileSystemAccess()){ showToast('Auto-backup is only supported in Brave and Chrome.'); return; }
+  if(!hasFileSystemAccess()){ showToast('Auto-backup is not supported by your browser or its current settings.'); return; }
   try{
     _autoBackupDirHandle=await showDirectoryPicker({mode:'readwrite'});
     await _persistAutoBackupHandle(_autoBackupDirHandle);
@@ -2529,6 +2529,7 @@ async function doAutoBackup(){
     const json=await buildExportJson();
     const fh=await _autoBackupDirHandle.getFileHandle(`botc-autobackup-${_autoBackupIdx+1}.json`,{create:true});
     const w=await fh.createWritable(); await w.write(json); await w.close();
+    _markExported();
   } catch(e){ stopAutoBackup(); showToast('Auto-backup failed — please re-enable in Settings.'); }
 }
 function updateAutoBackupBtn(){
