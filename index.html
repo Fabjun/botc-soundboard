@@ -1633,8 +1633,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 92;
+const APP_VERSION = 93;
 const CHANGELOG=[
+  {v:93,date:'2026-05-23',items:["Library audio preview — each audio file in the Library now has a ▶/⏸ button for in-place listening","Preview also available for PAD entries (board pads + templates) in the PADS tab — plays the first file of the pad","Only one preview plays at a time; switching tabs or navigating away stops the preview","Combo-PADs (no direct audio files) show no preview button"]},
   {v:92,date:'2026-05-23',items:["Unified top bar — single shared .p-hdr used by all sub-menus; no more per-screen headers","Layout: [☰] [MENU] [TITLE or MODE-SWITCH] [?] [⛶] — MENU always left, mode-switch replaces title on the Board screen","Color system: each screen sets --screen-accent independently; Board screen is blue (SETUP) or gold (GAME), all others default to gold","Sidebar toggle visible only on screens that have a sidebar (currently Board/SETUP)","Removed floating #menu-btn — navigation now exclusively through the unified top bar","Per-screen hints wired into single #phdr-hint button"]},
   {v:91,date:'2026-05-22',items:["Hover states for all interactive elements — mouse and trackpad users now get visual feedback when moving over buttons, menu items, pads, tabs and key-map rows","Uses @media(hover:hover) so touch devices are unaffected"]},
   {v:90,date:'2026-05-22',items:["Title glow — each letter of \"Soundboard of Storytelling\" pulses independently with a warm amber glow","Timing is deterministic per character position: durations 3–8 s, delays staggered across 0–7 s so the effect looks organic from first paint","Applies on both the start screen and the main menu title"]},
@@ -2641,6 +2642,31 @@ function focusKB(){
 
 // ── LIBRARY SCREEN ──
 let libFilterMode='all', _libAudioScroll=0;
+let _libPreviewHash=null, _libPreviewNode=null;
+
+function stopLibPreview(){
+  if(_libPreviewNode){ try{ _libPreviewNode.stop(); }catch(e){} _libPreviewNode=null; }
+  _libPreviewHash=null;
+  document.querySelectorAll('.lib-prev-btn').forEach(b=>{ b.textContent='▶'; b.style.color='var(--text-dim)'; });
+}
+
+async function toggleLibPreview(hash, btnEl){
+  if(_libPreviewHash===hash){ stopLibPreview(); return; }
+  stopLibPreview();
+  if(!ctx) return;
+  const entry=await libGet(hash);
+  if(!entry?.buf){ showToast('Audio not found in Library.'); return; }
+  let decoded;
+  try{ decoded=await ctx.decodeAudioData(entry.buf.slice(0)); }
+  catch(e){ showToast('Cannot preview this file.'); return; }
+  const node=ctx.createBufferSource();
+  node.buffer=decoded;
+  node.connect(ctx.destination);
+  node.start(0);
+  _libPreviewHash=hash; _libPreviewNode=node;
+  if(btnEl){ btnEl.textContent='⏸'; btnEl.style.color='var(--active)'; }
+  node.onended=()=>{ if(_libPreviewHash===hash) stopLibPreview(); };
+}
 async function initLibScreen(){
   const all=await libGetAll();
   const usedHashes=new Set();
@@ -2683,6 +2709,7 @@ function renderLibList(entries,usedHashes){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div id="lnm-${h}" style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);word-break:break-all;flex:1">${escHtml(e.name)}</div>
         <div style="display:flex;gap:4px;flex-shrink:0">
+          <button id="lpb-${h}" class="lib-prev-btn" onclick="toggleLibPreview('${h}',this)" title="Preview" style="background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">▶</button>
           <button onclick="libRenameStart('${h}')" title="Rename" style="background:none;border:none;color:var(--text-dim);font-size:calc(16px * var(--font-scale));cursor:pointer;padding:0 3px;line-height:1">✎</button>
           <button onclick="libDeleteFile('${h}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;padding:2px 8px;border-radius:2px;cursor:pointer">✕</button>
         </div>
@@ -2755,6 +2782,7 @@ function closeChangelog(){ document.getElementById('changelog-ov')?.classList.re
 
 // ── LIBRARY TABS ──
 function setLibMainTab(tab){
+  stopLibPreview();
   libMainTab=tab;
   ['audio','icons','boards','pads'].forEach(t=>{
     document.getElementById('lmt-'+t)?.classList.toggle('active',t===tab);
@@ -2794,9 +2822,12 @@ async function renderLibPads(){
           const ml=modeLabel(p.mode); const mc=modeColor(p.mode);
           const keyTxt=p.key?` [${escHtml(p.keyLabel||String(p.key))}]`:'';
           const boardTxt=_libPadFilter==='all'?`<span style="color:var(--text-dim);font-size:calc(10px * var(--font-scale))"> · ${escHtml(item.boardName)}</span>`:'';
+          const fh=p.mode!=='combo'&&p.files?.length?p.files[0]:null;
+          const prevBtnP=fh?`<button class="lib-prev-btn" onclick="toggleLibPreview('${fh}',this)" title="Preview" style="background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">▶</button>`:'';
           return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:8px">
             <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
             <div style="flex:1;min-width:0;font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.name)}${keyTxt}${boardTxt}</div>
+            ${prevBtnP}
             <button onclick="savePadTemplate(${i})" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">SAVE</button>
           </div>`;
         }).join('')
@@ -2814,12 +2845,15 @@ async function renderLibPads(){
           const pd=e.padData||{};
           const ml=modeLabel(pd.mode); const mc=modeColor(pd.mode);
           const dateStr=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+          const fhT=pd.mode!=='combo'&&pd.files?.length?pd.files[0]:null;
+          const prevBtnT=fhT?`<button class="lib-prev-btn" onclick="toggleLibPreview('${fhT}',this)" title="Preview" style="background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">▶</button>`:'';
           return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:8px">
             <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
             <div style="flex:1;min-width:0">
               <div style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.name)}</div>
               <div style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim)">${dateStr}</div>
             </div>
+            ${prevBtnT}
             <button onclick="importPadTemplate('${e.hash}')" style="background:none;border:1px solid var(--emerald);color:var(--emerald);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0;letter-spacing:0">+ ADD</button>
             <button onclick="deletePadTemplate('${e.hash}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">✕</button>
           </div>`;
@@ -3623,7 +3657,7 @@ function updateTopBar(id){
 function show(id){
   if(locked && id!=='sp') return;
   closeSidebar();
-  if(cur==='sli') _libAudioScroll=document.getElementById('lib-audio-section')?.scrollTop||0;
+  if(cur==='sli'){ _libAudioScroll=document.getElementById('lib-audio-section')?.scrollTop||0; stopLibPreview(); }
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if(menuConfirmTimer) hideMenuConfirm();
