@@ -1032,6 +1032,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     <div class="lib-main-tab active" id="lmt-audio" onclick="setLibMainTab('audio')">AUDIO</div>
     <div class="lib-main-tab" id="lmt-icons" onclick="setLibMainTab('icons')">ICONS</div>
     <div class="lib-main-tab" id="lmt-boards" onclick="setLibMainTab('boards')">BOARDS</div>
+    <div class="lib-main-tab" id="lmt-pads" onclick="setLibMainTab('pads')">PADS</div>
   </div>
   <div id="lib-audio-section" style="flex:1;overflow-y:auto">
    <div class="cx" style="padding-top:14px;padding-bottom:14px">
@@ -1070,6 +1071,17 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <button class="ico-names-btn" id="lib-names-btn" onclick="toggleIconNames()">NAMES</button>
     </div>
     <div id="lib-icons-builtin"></div>
+   </div>
+  </div>
+  <div id="lib-pads-section" style="flex:1;overflow-y:auto;display:none">
+   <div class="cx" style="padding-top:14px;padding-bottom:32px">
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      <div class="topt al" id="lpf-current" onclick="setLibPadFilter('current')">CURRENT BOARD</div>
+      <div class="topt" id="lpf-all" onclick="setLibPadFilter('all')">ALL BOARDS</div>
+    </div>
+    <div id="lib-pad-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px"></div>
+    <div style="font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--gold-dim);letter-spacing:.5px;margin-bottom:8px">TEMPLATES (<span id="lib-pad-tmpl-count">0</span>)</div>
+    <div id="lib-pad-templates" style="display:flex;flex-direction:column;gap:8px"></div>
    </div>
   </div>
 </div>
@@ -1611,8 +1623,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 87;
+const APP_VERSION = 88;
 const CHANGELOG=[
+  {v:88,date:'2026-05-22',items:["Library gets a PADS tab — fourth tab alongside AUDIO, ICONS, BOARDS","Filter pads by CURRENT BOARD (default) or ALL BOARDS","Save any pad as a reusable template with one tap","Templates section: import a saved pad into the current board with + ADD, or remove with ✕","PAD templates are included in backup/restore — exported with full pad data, imported automatically alongside audio files"]},
   {v:87,date:'2026-05-22',items:["MY BOARDS removed from the main menu — the Library is now the single entry point for board management"]},
   {v:86,date:'2026-05-22',items:["Library gets a BOARDS tab — board management moves into the Library","MY BOARDS in the main menu now opens Library → BOARDS directly","Board list renders in both locations; all operations (rename, duplicate, delete, switch) work from either place","Library subtitle updated to reflect expanded scope: Audio, icons & boards"]},
   {v:85,date:'2026-05-22',items:["Mode accent colors now applied consistently across the full UI","PAD editor header, card labels, input focus, icon slots, combo editor, toggle buttons and sliders all follow --mode-accent (blue in SETUP, gold in GAME)","Removed unused .topt.ao dead CSS rule"]},
@@ -1703,6 +1716,8 @@ let libBufs = {};
 let eqRAF = null;
 let eId = null, eFiles = [], eMode = 'once', eImage = null, eIcons = [null,null,null,null], eIconSlot = 0, eShuffle = false, pendingMode = null, eLoopCount = 0, appendFiles = false, fadeSub = false;
 let libMainTab = 'audio';
+let _libPadFilter = 'current';
+let _libPadItems = [];
 const iconSvgCache = {};
 const playPos = {};
 // Combo editor state
@@ -2731,13 +2746,114 @@ function closeChangelog(){ document.getElementById('changelog-ov')?.classList.re
 // ── LIBRARY TABS ──
 function setLibMainTab(tab){
   libMainTab=tab;
-  ['audio','icons','boards'].forEach(t=>{
+  ['audio','icons','boards','pads'].forEach(t=>{
     document.getElementById('lmt-'+t)?.classList.toggle('active',t===tab);
     const el=document.getElementById('lib-'+t+'-section');
     if(el) el.style.display=t!==tab?'none':(t==='boards'?'flex':'');
   });
   if(tab==='icons') renderLibIcons();
   if(tab==='boards') loadBoardsMeta().then(renderBoardList);
+  if(tab==='pads') renderLibPads();
+}
+function setLibPadFilter(f){
+  _libPadFilter=f;
+  renderLibPads();
+}
+async function renderLibPads(){
+  const modeLabel=m=>m==='combo'?'C-PAD':m==='loop'?'LOOP':m==='playlist'?'LIST':'S-PAD';
+  const modeColor=m=>m==='combo'?'var(--gold)':'var(--emerald)';
+  document.getElementById('lpf-current')?.classList.toggle('al',_libPadFilter==='current');
+  document.getElementById('lpf-all')?.classList.toggle('al',_libPadFilter==='all');
+  // Build board pads list
+  _libPadItems=[];
+  if(_libPadFilter==='current'){
+    _libPadItems=pads.filter(Boolean).map(p=>({pad:p,boardName:currentBoardName}));
+  } else {
+    const allBoards=await getAllBoardsFull();
+    for(const b of allBoards){
+      for(const p of (b.pads||[]).filter(Boolean)){
+        _libPadItems.push({pad:p,boardName:b.name});
+      }
+    }
+  }
+  const listEl=document.getElementById('lib-pad-list');
+  if(listEl){
+    listEl.innerHTML=_libPadItems.length
+      ? _libPadItems.map((item,i)=>{
+          const p=item.pad;
+          const ml=modeLabel(p.mode); const mc=modeColor(p.mode);
+          const keyTxt=p.key?` [${escHtml(p.keyLabel||String(p.key))}]`:'';
+          const boardTxt=_libPadFilter==='all'?`<span style="color:var(--text-dim);font-size:calc(10px * var(--font-scale))"> · ${escHtml(item.boardName)}</span>`:'';
+          return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:8px">
+            <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
+            <div style="flex:1;min-width:0;font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.name)}${keyTxt}${boardTxt}</div>
+            <button onclick="savePadTemplate(${i})" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">SAVE</button>
+          </div>`;
+        }).join('')
+      : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">No pads${_libPadFilter==='current'?' in this board':' in any board'} yet.</p>`;
+  }
+  // Templates
+  const all=await libGetAll();
+  const templates=all.filter(e=>e.type==='pad');
+  const countEl=document.getElementById('lib-pad-tmpl-count');
+  if(countEl) countEl.textContent=templates.length;
+  const tmplEl=document.getElementById('lib-pad-templates');
+  if(tmplEl){
+    tmplEl.innerHTML=templates.length
+      ? templates.map(e=>{
+          const pd=e.padData||{};
+          const ml=modeLabel(pd.mode); const mc=modeColor(pd.mode);
+          const dateStr=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+          return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:8px">
+            <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.name)}</div>
+              <div style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim)">${dateStr}</div>
+            </div>
+            <button onclick="importPadTemplate('${e.hash}')" style="background:none;border:1px solid var(--emerald);color:var(--emerald);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0;letter-spacing:0">+ ADD</button>
+            <button onclick="deletePadTemplate('${e.hash}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">✕</button>
+          </div>`;
+        }).join('')
+      : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">No templates yet. Use SAVE on a pad above to create one.</p>`;
+  }
+}
+async function savePadTemplate(idx){
+  const item=_libPadItems[idx]; if(!item) return;
+  const p=item.pad;
+  const padData={name:p.name,mode:p.mode,files:p.files?[...p.files]:[],
+    icons:p.icons?[...p.icons]:undefined,volume:p.volume,fadeIn:p.fadeIn,fadeOut:p.fadeOut,
+    loopCount:p.loopCount,shuffle:p.shuffle,
+    steps:p.steps?JSON.parse(JSON.stringify(p.steps)):undefined};
+  Object.keys(padData).forEach(k=>{ if(padData[k]===undefined) delete padData[k]; });
+  const hash='pad_'+Date.now();
+  await libPut({hash,type:'pad',name:p.name,added:Date.now(),padData});
+  showToast(`"${escHtml(p.name)}" saved to Library.`);
+  renderLibPads();
+}
+async function importPadTemplate(hash){
+  const entry=await libGet(hash); if(!entry?.padData) return;
+  const pd=entry.padData;
+  const empty=pads.findIndex(p=>p===null);
+  const newId=empty!==-1?empty:pads.length;
+  const newPad={id:newId,name:pd.name,key:'',keyLabel:'',mode:pd.mode,
+    files:pd.files?[...pd.files]:[],
+    icons:pd.icons?[...pd.icons]:undefined,
+    volume:pd.volume??1,fadeIn:pd.fadeIn??0,fadeOut:pd.fadeOut??0,
+    loopCount:pd.loopCount,shuffle:pd.shuffle,
+    steps:pd.steps?JSON.parse(JSON.stringify(pd.steps)):undefined};
+  Object.keys(newPad).forEach(k=>{ if(newPad[k]===undefined) delete newPad[k]; });
+  if(empty!==-1) pads[empty]=newPad; else pads.push(newPad);
+  await decodePad(newId);
+  await save();
+  showToast(`"${escHtml(pd.name)}" added to current board.`);
+  renderLibPads();
+}
+function deletePadTemplate(hash){
+  showConfirmDel('Delete this PAD template from the Library?',async()=>{
+    await libDelete(hash);
+    showToast('Template deleted.');
+    renderLibPads();
+  });
 }
 async function renderLibIcons(){
   const all=await libGetAll();
@@ -3024,7 +3140,7 @@ async function buildExportJson(){
   const boards=await getAllBoardsFull();
   const settings={};
   SETTINGS_KEYS.forEach(k=>{ const v=localStorage.getItem(k); if(v!==null) settings[k]=v; });
-  const library=libEntries.map(e=>({hash:e.hash,name:e.name,origName:e.origName||'',type:e.type||'',size:e.size||0,added:e.added||0,data:bufToBase64(e.buf)}));
+  const library=libEntries.map(e=>({hash:e.hash,name:e.name,origName:e.origName||'',type:e.type||'',size:e.size||0,added:e.added||0,data:bufToBase64(e.buf),...(e.padData?{padData:e.padData}:{})}));
   return JSON.stringify({version:APP_VERSION,exported:new Date().toISOString(),settings,boards,library});
 }
 function _markExported(){
@@ -3118,18 +3234,21 @@ async function parseAndShowImport(inp){
   const currentBoardIds=new Set(currentBoards.map(b=>b.id));
 
   data.library.forEach(e=>{
+    if(e.type==='pad'){ _importAudioChoices[e.hash]=currentHashes.has(e.hash)?'skip':'add'; return; }
     if(currentHashes.has(e.hash)) _importAudioChoices[e.hash]='skip';
     else if(currentNameMap[e.name]&&currentNameMap[e.name]!==e.hash) _importAudioChoices[e.hash]='keep-both';
     else _importAudioChoices[e.hash]='add';
   });
   data.boards.forEach(b=>{ _importBoardChoices[b.id]=currentBoardIds.has(b.id)?'skip':'import'; });
 
-  const dupes=data.library.filter(e=>currentHashes.has(e.hash));
-  const conflicts=data.library.filter(e=>!currentHashes.has(e.hash)&&currentNameMap[e.name]&&currentNameMap[e.name]!==e.hash);
-  const newFiles=data.library.filter(e=>!currentHashes.has(e.hash)&&!(currentNameMap[e.name]&&currentNameMap[e.name]!==e.hash));
+  const mediaLib=data.library.filter(e=>e.type!=='pad');
+  const padLib=data.library.filter(e=>e.type==='pad');
+  const dupes=mediaLib.filter(e=>currentHashes.has(e.hash));
+  const conflicts=mediaLib.filter(e=>!currentHashes.has(e.hash)&&currentNameMap[e.name]&&currentNameMap[e.name]!==e.hash);
+  const newFiles=mediaLib.filter(e=>!currentHashes.has(e.hash)&&!(currentNameMap[e.name]&&currentNameMap[e.name]!==e.hash));
 
   let html='<div class="imp-section-title">AUDIO FILES</div>';
-  if(!data.library.length) html+=`<p style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text-dim)">No audio files in this backup.</p>`;
+  if(!mediaLib.length) html+=`<p style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text-dim)">No audio files in this backup.</p>`;
   if(dupes.length) html+=`<p style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin:0 0 6px">${dupes.length} file${dupes.length===1?'':'s'} already in Library — will be skipped.</p>`;
   if(newFiles.length) html+=`<p style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--emerald);margin:0 0 6px">${newFiles.length} new file${newFiles.length===1?'':'s'} will be added.</p>`;
   conflicts.forEach(e=>{
@@ -3142,6 +3261,12 @@ async function parseAndShowImport(inp){
         <button id="ac-sk-${e.hash}" onclick="setAudioChoice('${e.hash}','skip',this)">SKIP</button>
       </div></div>`;
   });
+  if(padLib.length){
+    const newTmpl=padLib.filter(e=>!currentHashes.has(e.hash));
+    const skipTmpl=padLib.length-newTmpl.length;
+    html+=`<div class="imp-section-title" style="margin-top:16px">PAD TEMPLATES</div>
+      <p style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:${newTmpl.length?'var(--emerald)':'var(--text-dim)'};margin:0 0 6px">${newTmpl.length} template${newTmpl.length===1?'':'s'} will be imported${skipTmpl?` · ${skipTmpl} already exist`:''}</p>`;
+  }
 
   html+='<div class="imp-section-title" style="margin-top:16px">BOARDS</div>';
   if(!data.boards.length) html+=`<p style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text-dim)">No boards in this backup.</p>`;
@@ -3181,6 +3306,10 @@ async function executeImport(){
   for(const e of data.library){
     const choice=_importAudioChoices[e.hash];
     if(choice==='skip') continue;
+    if(e.type==='pad'){
+      await libPut({hash:e.hash,type:'pad',name:e.name,added:e.added||Date.now(),padData:e.padData||{}});
+      audioAdded++; continue;
+    }
     const buf=base64ToBuf(e.data);
     if(choice==='replace'){
       const all=await libGetAll();
@@ -3454,7 +3583,7 @@ function show(id){
   if(id==='sp'){ renderBoard(); if(locked) focusKB(); }
   if(id==='sa'){ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); _initPadLevelUI(); _initWakeLockUI(); }
   if(id==='smb') initBoardScreen();
-  if(id==='sli'){ if(libMainTab==='boards') loadBoardsMeta().then(renderBoardList); else initLibScreen(); }
+  if(id==='sli'){ if(libMainTab==='boards') loadBoardsMeta().then(renderBoardList); else if(libMainTab==='pads') renderLibPads(); else initLibScreen(); }
   if(id==='smm') updateMenuBackupBtns();
   updMenuBtn(id);
 }
