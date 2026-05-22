@@ -2294,8 +2294,9 @@ const BUILTIN_ICONS=[
   {id:"window-frame-sharp",label:"Window Frame Sharp",cat:"Design & Development",d:"M2 2h20v2H2zm2 6h16v2H4zM2 20h20v2H2zM2 4h2v16H2zm18 0h2v16h-2zM5 5h2v2H5zm3 0h2v2H8z"},
 ];
 
-const APP_VERSION = 57;
+const APP_VERSION = 58;
 const CHANGELOG=[
+  {v:58,date:'2026-05-22',items:['One-time migration: on first launch, boards and audio from legacy databases (botc2, botc) are restored into botc3 if botc3 is empty','Handles both v2 format (board_ prefix) and v1 format (integer-id pads)','DB name botc3 is now permanent — future schema changes use version bumps only']},
   {v:57,date:'2026-05-22',items:['Update notification replaced by a full modal with backup and safe reload','⬇ BACKUP NOW exports your library before reloading','RELOAD requires a second tap ("TAP AGAIN TO CONFIRM") to prevent accidental data loss','Honest warning: IndexedDB is normally preserved, but backup is recommended as a precaution']},
   {v:56,date:'2026-05-22',items:['PAD editor redesigned as a full-screen overlay with four card sections (Identity / Sound / Behavior / Visual)','SAVE button in header, ← to cancel; DELETE at the bottom of the scroll area','Volume shows live percentage value; FADE is a collapsible sub-section, auto-expands when non-zero','FADE hint shows current values (e.g. "in 2s · out 1s") even when collapsed']},
   {v:55,date:'2026-05-22',items:['Library picker: files already used by another pad on this board show "↳ Pad Name" hint below the filename','Used rows get a blue left border so duplicates are immediately visible','Current pad being edited is excluded from the in-use check']},
@@ -2375,6 +2376,7 @@ let dragSrc=null, dragGhost=null, dragMoved=false;
 let dragStartX=0, dragStartY=0, dragGhostW=0, dragGhostH=0;
 
 // ── DB ──
+// DB name is permanently "botc3" — never rename it, use version bumps for schema changes only.
 function openDB(){
   return new Promise((res,rej)=>{
     const r = indexedDB.open('botc3',3);
@@ -2400,6 +2402,75 @@ function openDB(){
     };
     r.onsuccess = e => { db=e.target.result; res(); };
     r.onerror = ()=>res();
+  });
+}
+
+// ── LEGACY DB MIGRATION (botc2 / botc → botc3) ──
+let _legacyMigrated = false;
+async function migrateFromLegacyDB(){
+  if(localStorage.getItem('legacy-migrated')) return;
+  // Only migrate into an empty botc3 (no boards yet)
+  const existing=await new Promise(r=>{
+    const req=db.transaction('p','readonly').objectStore('p').getAll();
+    req.onsuccess=e=>r(e.target.result||[]);
+    req.onerror=()=>r([]);
+  });
+  if(existing.length){ localStorage.setItem('legacy-migrated','1'); return; }
+  for(const name of ['botc2','botc']){
+    const ok=await _tryMigrateFrom(name);
+    if(ok){ _legacyMigrated=true; localStorage.setItem('legacy-migrated','1'); return; }
+  }
+  localStorage.setItem('legacy-migrated','1');
+}
+async function _tryMigrateFrom(dbName){
+  return new Promise(resolve=>{
+    let done=false;
+    const fin=v=>{ if(!done){done=true;resolve(v);} };
+    const req=indexedDB.open(dbName);
+    req.onerror=()=>fin(false);
+    // onupgradeneeded fires when DB doesn't exist — abort to avoid creating it
+    req.onupgradeneeded=e=>{ try{e.target.transaction.abort();}catch(_){} fin(false); };
+    req.onsuccess=async e=>{
+      const src=e.target.result;
+      let migrated=false;
+      try{
+        if(src.objectStoreNames.contains('p')){
+          const pData=await new Promise(r2=>{
+            const r=src.transaction('p','readonly').objectStore('p').getAll();
+            r.onsuccess=ev=>r2(ev.target.result||[]);
+            r.onerror=()=>r2([]);
+          });
+          const boards=pData.filter(p=>p?.id?.startsWith?.('board_'));
+          const v1pads=pData.filter(p=>p&&typeof p.id==='number');
+          if(boards.length){
+            const tx=db.transaction('p','readwrite');
+            boards.forEach(b=>tx.objectStore('p').put(b));
+            await new Promise(r2=>{tx.oncomplete=r2;tx.onerror=r2;});
+            migrated=true;
+          } else if(v1pads.length){
+            const padArr=[]; v1pads.forEach(p=>{padArr[p.id]=p;});
+            const tx=db.transaction('p','readwrite');
+            tx.objectStore('p').put({id:'board_default',name:'Board 1',createdAt:Date.now(),pads:padArr});
+            await new Promise(r2=>{tx.oncomplete=r2;tx.onerror=r2;});
+            migrated=true;
+          }
+        }
+        if(src.objectStoreNames.contains('lib')){
+          const libData=await new Promise(r2=>{
+            const r=src.transaction('lib','readonly').objectStore('lib').getAll();
+            r.onsuccess=ev=>r2(ev.target.result||[]);
+            r.onerror=()=>r2([]);
+          });
+          if(libData.length){
+            const tx=db.transaction('lib','readwrite');
+            libData.forEach(entry=>tx.objectStore('lib').put(entry));
+            await new Promise(r2=>{tx.oncomplete=r2;tx.onerror=r2;});
+          }
+        }
+      }catch(_){}
+      src.close();
+      fin(migrated);
+    };
   });
 }
 
@@ -2771,7 +2842,8 @@ function unlock(){
   s.buffer=b; s.connect(ctx.destination); s.start(0);
   initTheme();
   initGridCtrl();
-  openDB().then(load).then(async ()=>{
+  openDB().then(migrateFromLegacyDB).then(load).then(async ()=>{
+    if(_legacyMigrated) showToast('Data restored from a previous version of the app.');
     await migrateToLibrary();
     await loadLibIcons();
     decodeAll();
