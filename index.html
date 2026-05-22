@@ -330,7 +330,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .pbtn.has-img .plbl,.pbtn.has-img .pnum{position:relative;z-index:1}
 /* Multi-icon grid on pad */
 .pbtn{container-type:inline-size}
-.pbtn .pico.pico-g{display:grid;grid-template-columns:1fr 1fr;gap:2px;place-items:center;font-size:calc(var(--pad-sz)*0.27)}
+.pbtn .pico.pico-g{display:grid;grid-template-columns:1fr 1fr;gap:2px;place-items:center;font-size:calc(10px * var(--sym-scale))}
 .pico-span2{grid-column:1/-1;display:flex;justify-content:center}
 @container (max-width:67px){.pbtn .pico{display:none}}
 /* Icon slot picker in PAD editor */
@@ -927,6 +927,17 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         Start mode — <b style="color:var(--text)">SETUP</b> always opens in SETUP mode ·
         <b style="color:var(--text)">GAME</b> opens directly in GAME mode ·
         <b style="color:var(--text)">LAST</b> remembers the last used mode.
+      </p>
+    </div>
+    <div class="sg-sub">ENTER KEY STOP</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="esm-serial" onclick="setEnterStopMode('serial')">SERIAL</div>
+        <div class="topt" id="esm-total" onclick="setEnterStopMode('total')">TOTAL</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        Enter key stop mode — <b style="color:var(--text)">SERIAL</b> stops only the most recently activated sound per press (LIFO) ·
+        <b style="color:var(--text)">TOTAL</b> stops all sounds at once.
       </p>
     </div>
     <div class="sg-sub">SWITCH SOUND</div>
@@ -1633,8 +1644,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 96;
+const APP_VERSION = 97;
 const CHANGELOG=[
+  {v:97,date:'2026-05-23',items:["Enter stop mode toggle in Settings → CONTROLS: SERIAL (LIFO, one per press) or TOTAL (all at once)","Icons now render correctly in SETUP mode (was falling back to text emoji instead of showing selected SVG/emoji icons)","Icon group proportional scaling: 2×2 grid of 4 icons renders at the same total footprint as a single icon"]},
   {v:96,date:'2026-05-23',items:["Backup now includes switch sound (switch-sound-b64 + switch-sound-name) for seamless environment restore","Enter key now stops sounds in LIFO order — each press stops only the most recently activated sound; repeated presses peel back the stack one by one","NumpadDecimal (·) still stops everything at once","Stack is maintained across all pad modes (S-PAD, Loop, Playlist, Combo)"]},
   {v:95,date:'2026-05-23',items:["Library tab order changed: AUDIO · PADS · BOARDS · ICONS","Audio entries: original filename shown as 'upload-name: …' (was '← …')","Audio 'in use' is now a clickable button — expands inline to list all PADs that use this file, with mode badge (S-PAD/LOOP/LIST/C-PAD) and board name","Board PADs in the PADS tab: non-combo pads that are referenced by combo steps show a 'used in N combo(s)' button — expands to list those combos","Library tab active color now follows --screen-accent (always gold for Library)"]},
   {v:94,date:'2026-05-23',items:["Library preview: Combo-PADs now also have a ▶ button — plays the first audio file found in the combo's steps","Template combos resolve their step pad-references against the current board (best-effort)"]},
@@ -1694,7 +1706,7 @@ const CHANGELOG=[
   {v:38,date:'2026-05-22',items:['Edit mode accent: blue icons/borders; Play mode accent: gold','Looping pad border pulses gold (breathe-gold animation)']},
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode'];
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
 //  grep for "// ── SECTION" to jump to any area
@@ -2265,6 +2277,7 @@ function unlock(){
     decodeAll();
     applyStartMode();
     initStartModeUI();
+    initEnterStopModeUI();
     updBoardSubtitle();
     tryRestoreAutoBackup().then(checkBackupHint);
     updateExportAge();
@@ -3794,6 +3807,16 @@ function setStartMode(m){
 function initStartModeUI(){
   setStartMode(localStorage.getItem('start-mode')||'unlocked');
 }
+function setEnterStopMode(m){
+  localStorage.setItem('enter-stop-mode',m);
+  ['serial','total'].forEach(k=>{
+    const el=document.getElementById('esm-'+k);
+    if(el) el.className='topt'+(k===m?' al':'');
+  });
+}
+function initEnterStopModeUI(){
+  setEnterStopMode(localStorage.getItem('enter-stop-mode')||'serial');
+}
 function renderBoard(){
   if(locked) renderPerf(); else renderSetup();
 }
@@ -3833,7 +3856,7 @@ function renderSetup(){
     b.dataset.id=i;
     if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
     b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
-                `<div class="pico">${ico(p)}</div>`+
+                renderPadIconArea(p)+
                 `<div class="plbl">${p.name||''}</div>`;
     b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
     g.appendChild(b);
@@ -5266,7 +5289,8 @@ document.addEventListener('keydown', e=>{
   if(code==='Space'){ e.preventDefault(); pauseAllAudio(); return; }
   if(code==='Enter'){
     e.preventDefault();
-    if(_playStack.length>0) stopPad(_playStack[_playStack.length-1]);
+    if((localStorage.getItem('enter-stop-mode')||'serial')==='total') stopAll();
+    else if(_playStack.length>0) stopPad(_playStack[_playStack.length-1]);
     return;
   }
 
