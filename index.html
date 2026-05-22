@@ -148,16 +148,16 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
   display:flex;flex-direction:column}
 #ep.open{transform:translateY(0)}
 .ep-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;
-  border-bottom:1px solid var(--gold-dim);flex-shrink:0;background:var(--surface)}
+  border-bottom:1px solid var(--mode-accent-dim);flex-shrink:0;background:var(--surface)}
 .ep-back{background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);
   font-size:calc(20px * var(--font-scale));cursor:pointer;padding:0 4px 0 0;line-height:1;flex-shrink:0}
-.ep-title{font-family:var(--ff-label);color:var(--gold);font-size:calc(15px * var(--font-scale));
+.ep-title{font-family:var(--ff-label);color:var(--mode-accent);font-size:calc(15px * var(--font-scale));
   letter-spacing:0;flex:1;text-align:center}
 .ep-save-btn{padding:6px 20px;font-size:calc(14px * var(--font-scale));flex-shrink:0}
 .ep-body{flex:1;overflow-y:auto;padding:12px 14px 40px;display:flex;flex-direction:column;gap:10px}
 .ep-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px}
 .ep-card-hdr{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));
-  color:var(--gold-dim);letter-spacing:.08em;margin-bottom:10px;padding-bottom:8px;
+  color:var(--mode-accent-dim);letter-spacing:.08em;margin-bottom:10px;padding-bottom:8px;
   border-bottom:1px solid var(--border)}
 .ep-card-opt{color:var(--text-dim);font-style:italic;font-size:calc(10px * var(--font-scale));
   letter-spacing:0;margin-left:6px}
@@ -177,20 +177,19 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 .fi{width:100%;background:var(--surface);border:1px solid var(--border);
   color:var(--text);font-family:var(--ff-body);font-size:calc(16px * var(--font-scale));
   padding:7px 10px;border-radius:2px;outline:none}
-.fi:focus{border-color:var(--gold-dim)}
+.fi:focus{border-color:var(--mode-accent-dim)}
 .pvbtn{background:none;border:1px solid var(--border);border-radius:2px;
   color:var(--active);width:24px;height:24px;font-size:calc(11px * var(--font-scale));cursor:pointer;flex-shrink:0}
 .pvbtn:active{background:var(--surface)}
 .fbtn{width:100%;background:var(--surface);border:1px dashed var(--border);
   color:var(--text-dim);font-family:var(--ff-body);font-size:calc(13px * var(--font-scale));
   padding:9px;border-radius:2px;cursor:pointer;text-align:center}
-.fbtn.hf{color:var(--text);border-color:var(--gold-dim);border-style:solid}
+.fbtn.hf{color:var(--text);border-color:var(--mode-accent-dim);border-style:solid}
 .trow{display:flex;gap:6px}
 .topt{flex:1;text-align:center;padding:7px 2px;border-radius:2px;
   font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
   cursor:pointer;border:1px solid rgba(62,62,96,.9);color:rgba(210,200,222,.8)}
-.topt.ao{background:rgba(122,95,40,.12);border-color:var(--gold-dim);color:var(--gold)}
-.topt.al{background:#1a2a3a;border-color:#1a5a8b;color:var(--active)}
+.topt.al{background:var(--mode-accent-glow);border-color:var(--mode-accent-dim);color:var(--mode-accent)}
 .topt.ap{background:#1a2a1a;border-color:#1a5a1a;color:#81c784}
 #scrub{display:block;width:100%;cursor:pointer;background:var(--raised)}
 #ep-snd-block{border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px}
@@ -336,8 +335,8 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 /* Icon slot picker in PAD editor */
 .icon-slots{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
 .icon-slot{position:relative;background:var(--raised);border:1px dashed var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;min-height:54px;color:var(--text-dim);transition:border-color .15s}
-.icon-slot:hover{border-color:var(--gold-dim)}
-.icon-slot.has-icon{border-color:var(--gold-dim);border-style:solid;color:var(--gold)}
+.icon-slot:hover{border-color:var(--mode-accent-dim)}
+.icon-slot.has-icon{border-color:var(--mode-accent-dim);border-style:solid;color:var(--mode-accent)}
 .icon-slot svg{width:26px;height:26px;display:block}
 .icon-slot-plus{font-size:22px;color:var(--border);font-weight:300;line-height:1}
 .icon-slot.has-icon .icon-slot-plus{display:none}
@@ -348,7 +347,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .gc-row{display:flex;align-items:center;gap:8px}
 .gc-ico{font-size:calc(13px * var(--font-scale));color:var(--text-dim);flex-shrink:0;
   font-family:var(--ff-label);letter-spacing:0;white-space:nowrap}
-.gc-row input[type=range]{flex:1;accent-color:var(--gold-dim);cursor:pointer}
+.gc-row input[type=range]{flex:1;accent-color:var(--mode-accent);cursor:pointer}
 .topt.sh-act{background:var(--mode-accent-glow);border-color:var(--mode-accent-dim);color:var(--mode-accent)}
 #img-prev{width:100%;height:90px;background-size:cover;background-position:center;border-radius:3px;border:1px solid var(--border);margin-bottom:6px;display:none}
 #np{padding:5px 13px;background:rgba(30,30,53,.8);border-top:1px solid var(--border);
@@ -532,22 +531,22 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   color:var(--text-dim);flex:1}
 .combo-step-body{min-height:40px;padding:6px 8px;display:flex;flex-wrap:wrap;
   gap:5px;align-items:center;transition:background .1s}
-.combo-step-body.drag-over{background:rgba(201,168,76,.07);
-  outline:1px dashed var(--gold-dim)}
+.combo-step-body.drag-over{background:var(--mode-accent-glow);
+  outline:1px dashed var(--mode-accent-dim)}
 .combo-ins{display:flex;align-items:center;justify-content:center;height:22px;
   color:var(--border);font-family:var(--ff-label);font-size:calc(19px * var(--font-scale));
   cursor:pointer;user-select:none;transition:color .15s;letter-spacing:0}
-.combo-ins:hover{color:var(--gold-dim)}
+.combo-ins:hover{color:var(--mode-accent-dim)}
 .combo-chip{background:var(--raised);border:1px solid var(--border);border-radius:2px;
   padding:3px 6px 3px 8px;font-size:calc(13px * var(--font-scale));font-family:var(--ff-label);letter-spacing:0;
   color:var(--text-dim);display:inline-flex;align-items:center;gap:3px;user-select:none}
 .combo-chip.is-bg{border-color:var(--mist);color:var(--mist)}
-.combo-chip.has-opt{border-color:var(--gold-dim)}
+.combo-chip.has-opt{border-color:var(--mode-accent-dim)}
 .combo-chip.expanded{flex-direction:column;align-items:stretch}
 .combo-chip-top{display:flex;align-items:center;gap:3px}
 .chip-exp-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;
   padding:0 1px;font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));line-height:1;letter-spacing:0}
-.combo-chip.expanded .chip-exp-btn,.combo-chip.has-opt .chip-exp-btn{color:var(--gold-dim)}
+.combo-chip.expanded .chip-exp-btn,.combo-chip.has-opt .chip-exp-btn{color:var(--mode-accent-dim)}
 .chip-opt-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;
   padding-top:5px;margin-top:3px;border-top:1px solid var(--border)}
 .chip-opt-lbl{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--text-dim);letter-spacing:0}
@@ -1533,7 +1532,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <div id="combo-ov">
   <div id="combo-hdr">
     <button onclick="tryCloseComboEditor()" style="background:none;border:none;color:var(--text-dim);font-size:calc(18px * var(--font-scale));cursor:pointer;padding:0 6px;line-height:1">←</button>
-    <span style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));letter-spacing:0;color:var(--gold);flex:1;text-align:center">COMBO-PAD</span>
+    <span style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));letter-spacing:0;color:var(--mode-accent);flex:1;text-align:center">COMBO-PAD</span>
     <button id="combo-del-btn" onclick="deleteCombo()" style="display:none;margin-left:auto;background:none;border:1px solid var(--blood);color:var(--blood);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:4px 8px;border-radius:2px;cursor:pointer">DELETE</button>
     <button class="hint-q" onclick="openHints(['combo'])" title="Hints">?</button>
   </div>
@@ -1605,8 +1604,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 84;
+const APP_VERSION = 85;
 const CHANGELOG=[
+  {v:85,date:'2026-05-22',items:["Mode accent colors now applied consistently across the full UI","PAD editor header, card labels, input focus, icon slots, combo editor, toggle buttons and sliders all follow --mode-accent (blue in SETUP, gold in GAME)","Removed unused .topt.ao dead CSS rule"]},
   {v:84,date:'2026-05-22',items:["Wake Lock: prevents screen auto-lock in GAME mode so a Bluetooth numpad keeps working","Toggle in Settings → CONTROLS → SCREEN WAKE LOCK (default: ON)","Wake lock is acquired on switch to GAME mode, released on switch to SETUP; re-acquired when tab becomes visible again","Setting hidden automatically on browsers that don't support the Wake Lock API"]},
   {v:83,date:'2026-05-22',items:["Drag-and-drop PAD reorder now shows an insert-line indicator instead of a swap highlight","A vertical line on the pad edge shows exactly where the dragged PAD will land; pads in between shift by one slot","Combo step references are remapped correctly after every reorder"]},
   {v:82,date:'2026-05-22',items:["Hints overlay: context-aware tips accessible via the ? button in every screen header","Tips are filtered by the current context (board, PAD editor, combo editor, library, settings, boards)","Close with ← button, backdrop tap, or Escape key"]},
