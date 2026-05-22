@@ -3785,7 +3785,7 @@ const BUILTIN_ICONS=[
   {id:"px-weather-windy-air-element",label:"Windy Air",cat:"Nature",d:"M5 0h3v1H5zM10 0h4v1H10zM5 1h1v1H5zM7 1h4v1H7zM13 1h2v1H13zM2 2h5v1H2zM8 2h2v1H8zM11 2h2v1H11zM14 2h1v1H14zM2 3h1v1H2zM7 3h6v1H7zM14 3h1v1H14zM2 4h10v1H2zM13 4h2v1H13zM3 5h1v1H3zM12 5h2v1H12zM2 6h12v1H2zM2 7h1v1H2zM13 7h2v1H13zM1 8h12v1H1zM14 8h1v1H14zM1 9h1v1H1zM8 9h2v1H8zM11 9h2v1H11zM14 9h1v1H14zM1 10h7v1H1zM9 10h2v1H9zM13 10h2v1H13zM2 11h1v1H2zM7 11h7v1H7zM2 12h5v1H2zM8 12h1v1H8zM3 13h1v1H3zM5 13h2v1H5zM8 13h1v1H8zM3 14h2v1H3zM7 14h2v1H7zM4 15h4v1H4z",v:"0 0 16 16"}
 ];
 
-const APP_VERSION = 69;
+const APP_VERSION = 70;
 const CHANGELOG=[
   {v:66,date:'2026-05-22',items:['PAD filter tabs (ALL / S-PAD / C-PAD) and settings selectors now follow the active mode color (blue in SETUP, gold in GAME)']},
   {v:65,date:'2026-05-22',items:['Global mode color system: --mode-accent CSS variable switches all UI elements between blue (SETUP) and gold (GAME)','Menu button, empty PAD slot, PAD icons, key labels and drag-over border all follow the active mode','Playing PAD glow stays gold regardless of mode — it indicates active audio, not the current mode']},
@@ -5620,8 +5620,7 @@ function renderSetup(){
     if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
     b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
                 `<div class="pico">${ico(p)}</div>`+
-                `<div class="plbl">${p.name||''}</div>`+
-                `<div class="pad-edit-banner" onpointerdown="event.stopPropagation()" onclick="openEP(${i})">EDIT</div>`;
+                `<div class="plbl">${p.name||''}</div>`;
     b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
     g.appendChild(b);
   }
@@ -6704,7 +6703,7 @@ function onDragMove(e){
       `width:${r.width}px;height:${r.height}px;`+
       `left:${e.clientX-r.width/2}px;top:${e.clientY-r.height/2}px;`+
       `opacity:0.85;transform:scale(1.06);border-radius:${padRadius};`+
-      `box-shadow:0 6px 24px rgba(0,0,0,.7);transition:none;border:1px solid var(--gold)`;
+      `box-shadow:0 6px 24px rgba(0,0,0,.7);transition:none;border:1px solid var(--mode-accent)`;
     document.body.appendChild(dragGhost);
     src.classList.add('dragging');
     return;
@@ -6723,7 +6722,8 @@ function onDragEnd(e){
   document.removeEventListener('pointerup', onDragEnd);
   if(!dragMoved){
     const id=dragSrc; dragSrc=null;
-    if(pads[id]) togglePad(id);
+    if(locked){ if(pads[id]) togglePad(id); }
+    else { if(pads[id]) openEP(id); else openPadTypePicker(); }
     return;
   }
   dragGhost.style.display='none';
