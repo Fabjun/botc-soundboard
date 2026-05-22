@@ -698,6 +698,21 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .ico-names-btn.active{border-color:var(--gold-dim);color:var(--gold)}
 /* Icon name label (under the icon, shown when names are on) */
 .ico-cell-name{font-family:var(--ff-body);font-size:calc(9px * var(--font-scale));color:var(--text-dim);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 2px 0;display:none}
+/* ── HOVER STATES (mouse/trackpad only — avoids sticky touch-hover) ── */
+@media(hover:hover){
+  .mopt:hover{background:var(--raised)}
+  .btn-p:hover,.btn-g:hover,.unlock-btn:hover,.m-bkp-btn:hover{filter:brightness(1.18)}
+  .btn-s:hover{background:rgba(100,95,122,.18);border-color:rgba(150,145,172,.9)}
+  .btn-d:hover{background:rgba(139,26,26,.18)}
+  .fbtn:hover{background:var(--raised);border-color:var(--border)}
+  .topt:hover:not(.al):not(.ap){border-color:var(--text-dim);color:var(--text)}
+  .pbtn:not(.empty):hover{filter:brightness(1.1)}
+  .ptp-opt:hover{background:var(--raised)}
+  .lib-main-tab:hover:not(.active){color:var(--text)}
+  .ico-names-btn:hover:not(.active){border-color:var(--text-dim);color:var(--text)}
+  .hint-q:hover{color:var(--text);border-color:var(--text-dim)}
+  .km-row:hover{background:rgba(79,195,247,.05)}
+}
 .ico-names-on .ico-cell{flex-direction:column;aspect-ratio:unset;padding:6px 4px 4px;min-height:58px}
 .ico-names-on .ico-cell-name{display:block}
 </style>
@@ -1627,8 +1642,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 90;
+const APP_VERSION = 91;
 const CHANGELOG=[
+  {v:91,date:'2026-05-22',items:["Hover states for all interactive elements — mouse and trackpad users now get visual feedback when moving over buttons, menu items, pads, tabs and key-map rows","Uses @media(hover:hover) so touch devices are unaffected"]},
   {v:90,date:'2026-05-22',items:["Title glow — each letter of \"Soundboard of Storytelling\" pulses independently with a warm amber glow","Timing is deterministic per character position: durations 3–8 s, delays staggered across 0–7 s so the effect looks organic from first paint","Applies on both the start screen and the main menu title"]},
   {v:89,date:'2026-05-22',items:["Fire sigil enlarged on start screen (60 → 80 px) and main menu (44 → 60 px)","More breathing room between fire and title: 24px gap on both screens (was 12px)","Glow and spark effects scale automatically with the larger size"]},
   {v:88,date:'2026-05-22',items:["Library gets a PADS tab — fourth tab alongside AUDIO, ICONS, BOARDS","Filter pads by CURRENT BOARD (default) or ALL BOARDS","Save any pad as a reusable template with one tap","Templates section: import a saved pad into the current board with + ADD, or remove with ✕","PAD templates are included in backup/restore — exported with full pad data, imported automatically alongside audio files"]},
