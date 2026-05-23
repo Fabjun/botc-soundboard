@@ -5223,7 +5223,13 @@ function initBoard(){
 }
 function drawScrubber(){
   const c=document.getElementById('scrub'); if(!c) return;
-  const W=c.offsetWidth; if(!W){ requestAnimationFrame(drawScrubber); return; }
+  
+  // Check if the Editor Pad container is open/visible. 
+  // If it's closed, stop immediately and do NOT loop.
+  const ep = document.getElementById('ep');
+  if(!ep || !ep.classList.contains('open')) return;
+
+  const W=c.offsetWidth; if(!W) return;
   if(c.width!==W) c.width=W;
   const H=c.height, g=c.getContext('2d');
   g.clearRect(0,0,W,H);
