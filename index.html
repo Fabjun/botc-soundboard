@@ -340,7 +340,6 @@ body.mode-play .pbtn::before{background:linear-gradient(to top,rgba(201,168,76,.
 body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.3) 0%,rgba(79,195,247,.07) 55%,transparent 100%)}
 #hint-ov{display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.88);flex-direction:column}
 #hint-ov.open{display:flex}
-#hint-ov-hdr{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
 #hint-body{flex:1;overflow-y:auto;padding:0 14px 20px}
 #hint-body .tip{border-bottom:1px solid var(--border)}
 .hint-q{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:2px 7px;border-radius:2px;cursor:pointer;line-height:1.4;flex-shrink:0}
@@ -551,8 +550,6 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 #combo-ov{position:fixed;top:var(--p-hdr-h);left:0;right:0;bottom:0;z-index:150;background:var(--night);
   display:none;flex-direction:column;overflow:hidden}
 #combo-ov.open{display:flex}
-#combo-hdr{padding:11px 13px;border-bottom:1px solid var(--border);
-  display:flex;align-items:center;gap:10px;flex-shrink:0}
 #combo-body{flex:1;overflow-y:auto;padding:10px 13px;
   display:flex;flex-direction:column;gap:0}
 .combo-step{background:var(--surface);border:1px solid var(--border);
@@ -620,6 +617,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .fs-back:active{color:var(--gold)}
 .fs-title{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));
   color:var(--gold);letter-spacing:0;flex:1;text-align:center}
+.fs-title-mode{color:var(--mode-accent)}
 #changelog-ov{position:fixed;inset:0;z-index:215;background:var(--deep);display:none;flex-direction:column}
 #changelog-ov.open{display:flex}
 .cl-entry{margin-bottom:20px}
@@ -930,9 +928,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <!-- HINTS OVERLAY -->
 <div id="hint-ov" onclick="if(event.target===this)closeHints()">
-  <div id="hint-ov-hdr">
-    <button onclick="closeHints()" style="background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);font-size:calc(20px * var(--font-scale));cursor:pointer;padding:0 4px 0 0;line-height:1;flex-shrink:0">←</button>
-    <span style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));letter-spacing:0;color:var(--gold);flex:1;text-align:center">HINTS</span>
+  <div id="hint-ov-hdr" class="fs-hdr">
+    <button class="fs-back" onclick="closeHints()">←</button>
+    <span class="fs-title">HINTS</span>
   </div>
   <div id="hint-body"></div>
 </div>
@@ -1608,9 +1606,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <!-- COMBO EDITOR OVERLAY -->
 <div id="combo-ghost"></div>
 <div id="combo-ov">
-  <div id="combo-hdr">
-    <button onclick="tryCloseComboEditor()" style="background:none;border:none;color:var(--text-dim);font-size:calc(18px * var(--font-scale));cursor:pointer;padding:0 6px;line-height:1">←</button>
-    <span style="font-family:var(--ff-label);font-size:calc(17px * var(--font-scale));letter-spacing:0;color:var(--mode-accent);flex:1;text-align:center">COMBO-PAD</span>
+  <div id="combo-hdr" class="fs-hdr">
+    <button class="fs-back" onclick="tryCloseComboEditor()">←</button>
+    <span class="fs-title fs-title-mode">COMBO-PAD</span>
     <button id="combo-del-btn" onclick="deleteCombo()" style="display:none;margin-left:auto;background:none;border:1px solid var(--blood);color:var(--blood);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:4px 8px;border-radius:2px;cursor:pointer">DELETE</button>
     <button class="hint-q" onclick="openHints(['combo'])" title="Hints">?</button>
   </div>
@@ -1689,8 +1687,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 105;
+const APP_VERSION = 106;
 const CHANGELOG=[
+  {v:106,date:'2026-05-23',items:["Overlay header family: #hint-ov-hdr and #combo-hdr CSS rules removed — both now use .fs-hdr; inline ← buttons replaced with .fs-back; inline titles replaced with .fs-title; .fs-title-mode variant added for mode-accent colored titles (combo editor)"]},
   {v:105,date:'2026-05-23',items:["Desktop-first layout: sidebar permanently visible on screens with hasSidebar:true at ≥800px viewport width — body.sidebar-pinned class drives layout, _updateSidebarPin() replaces manual sidebar-btn show/hide in updateTopBar, resize listener keeps state consistent when window is resized across the 800px breakpoint"]},
   {v:104,date:'2026-05-23',items:["topt active-state unification: .sh-act (duplicate of .al) removed; all className='topt …' assignments replaced with classList.toggle; setToptSetting() generic helper introduced — pure setters (startMode, enterStopMode, helpDensity, helpDuration) now one-liners","Dialog button family .dlg-cancel / .dlg-destruct / .dlg-positive / .dlg-reload: replaces inline styles on confirm-del, leave-warn, sw-update-modal buttons","Settings action button family .sa-btn / .sa-btn.sa-pri / .sa-btn.sa-del: replaces inline styles on EXPORT, IMPORT, AUTO-BACKUP, RE-MIGRATE, RESET buttons"]},
   {v:103,date:'2026-05-23',items:["Overlay family: all 14 overlays now use classList.add/remove('open'); inline style.display calls removed; Escape key routed through a _escStack registry — every overlay gets Escape for free on open","Inline rename family: startInlineRename() replaces 4 separate implementations (audio, board-pad, template, board); callers pass name + callbacks, function owns the UI","SCREEN_CONFIG.onShow: per-screen init logic moved from show() if-chain into config callbacks; show() is now data-driven and screen-count-independent"]},
