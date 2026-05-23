@@ -2861,12 +2861,23 @@ function play(id){
   if(ctx?.state==='suspended') ctx.resume().catch(()=>{});
   flash(id);
   const vol=(p.volume||80)/100, fi=p.fadeIn||0;
+
+  // Read trim values and calculate duration
+  const tStart = p.trimStart || 0;
+  const tEnd = p.trimEnd || 0;
+  const hasDuration = tEnd > tStart;
+  const dur = hasDuration ? (tEnd - tStart) : undefined;
+
   if(p.mode==='once'){
     const b=bufs[id][0]; if(!b) return;
     stopPad(id,true);
     const s=ctx.createBufferSource(), g=ctx.createGain();
     fadeInGain(g,vol,fi);
-    s.buffer=b; s.connect(g); _connectGainToMaster(id,g); s.start(0);
+    s.buffer=b; s.connect(g); _connectGainToMaster(id,g);
+    
+    // Start with precise trim settings
+    if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+    
     srcs[id]=[s]; gains[id]=g;
     s.onended=()=>{ _onPadStopped(id); delete srcs[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); };
     updBtn(id,true,false); _onPadStarted(id); setNP(p.name);
@@ -2879,7 +2890,11 @@ function play(id){
     gains[id]=g;
     if(lc===0){
       const s=ctx.createBufferSource();
-      s.buffer=b; s.loop=true; s.connect(g); s.start(0);
+      s.buffer=b; s.loop=true; s.connect(g);
+      
+      // Pass duration for infinite loops to enforce the calculated clip window
+      if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+      
       srcs[id]=[s];
     } else {
       srcs[id]=[null]; // mark active immediately
@@ -2887,7 +2902,10 @@ function play(id){
       (function loopOne(){
         if(!srcs[id]) return;
         const s=ctx.createBufferSource();
-        s.buffer=b; s.connect(g); s.start(0);
+        s.buffer=b; s.connect(g);
+        
+        if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+        
         srcs[id]=[s]; rem--;
         if(rem<=0){
           s.onended=()=>{ if(srcs[id]){ _onPadStopped(id); delete srcs[id]; delete gains[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); } };
@@ -5123,6 +5141,21 @@ function decodeWaveform(fi){
       peaks[i]=max;
     }
     waveforms[fi]={peaks, duration:buf.duration};
+    
+
+    const dur = buf.duration;
+    const etsInput = document.getElementById('ets');
+    const eteInput = document.getElementById('ete');
+    if(etsInput && eteInput) {
+      etsInput.max = dur;
+      eteInput.max = dur;
+      // Falls der Endwert noch auf 0 (oder dem alten Maximum) steht, setzen wir ihn visuell auf das Maximum
+      if(eteInput.value === '0' || parseFloat(eteInput.value) > dur) {
+        eteInput.value = 0;
+        document.getElementById('ete-lbl').textContent = 'Vollständig';
+      }
+    }
+
     drawScrubber();
   }).catch(()=>{ waveforms[fi]=null; });
 }
