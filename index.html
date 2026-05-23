@@ -4814,7 +4814,6 @@ function renderComboSteps(){
     if (step.stopAll) {
       actionChipHtml = `<span class="combo-chip" style="background:var(--blood); border-color:var(--blood-bright); color:#fff; font-weight:bold;">🛑 STOP ALL<button class="combo-chip-del" onclick="comboSteps[${si}].stopAll=false; renderComboSteps();" style="color:#fff;">✕</button></span>`;
     } else if (step.fadeOutAll) {
-      // Zeichnet den orangefarbenen Chip für den sanften Fade-out
       actionChipHtml = `<span class="combo-chip" style="background:var(--gold-dim); border-color:var(--gold); color:#fff; font-weight:bold;">⏳ FADE OUT ALL<button class="combo-chip-del" onclick="comboSteps[${si}].fadeOutAll=false; renderComboSteps();" style="color:#fff;">✕</button></span>`;
     }
 
@@ -4848,17 +4847,19 @@ function renderComboSteps(){
     
     const combinedContent = actionChipHtml + chips;
     const dur=comboSteps[si].dur||0;
-    
-    // Wenn ausgeblendet wird, schlagen wir im Eingabefeld standardmäßig 2.5 Sekunden vor
     const defaultPause = step.fadeOutAll ? 2.5 : 1;
     
-    const stepBody=combinedContent||`<div class="combo-pause-ui">
-      <span class="combo-pause-lbl">⏱ PAUSE</span>
-      <input class="combo-pause-inp" type="number" min="0.5" max="60" step="0.5" value="${dur||defaultPause}"
-             oninput="setStepDur(${si},+this.value)" onclick="event.stopPropagation()">
-      <span class="combo-pause-unit">sec.</span>
-      <span class="combo-pause-hint">— drag a pad here to activate</span>
-    </div>`;
+    // Die korrigierte UI-Logik: Zeigt das Zeit-Feld auch bei globalen Aktionen an
+    const stepBody = (chips === '' || step.stopAll || step.fadeOutAll) ? 
+      `<div class="combo-step-chips-area" style="display:flex; flex-wrap:wrap; gap:4px;">${combinedContent}</div>
+       <div class="combo-pause-ui" style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
+         <span class="combo-pause-lbl">⏱ DAUER / PAUSE</span>
+         <input class="combo-pause-inp" type="number" min="0.5" max="60" step="0.5" value="${dur || defaultPause}"
+                oninput="setStepDur(${si},+this.value)" onclick="event.stopPropagation()">
+         <span class="combo-pause-unit">sec.</span>
+       </div>` 
+      : combinedContent;
+
     return `<div class="combo-ins" onclick="insertComboStep(${si})">+</div>`+
            `<div class="combo-step" data-step="${si}">
       <div class="combo-step-hdr">
