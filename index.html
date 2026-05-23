@@ -2856,6 +2856,16 @@ function fadeInGain(g, targetVol, fadeIn){
     g.gain.setValueAtTime(targetVol, ctx.currentTime);
   }
 }
+
+// Helper to compute a safe playback window for a buffer and trim settings.
+function safePlayWindowForBuffer(buf, trimStart, trimEnd){
+  const tStart = Number(trimStart) || 0;
+  const tEnd = Number(trimEnd) || 0;
+  const fileDur = buf ? (Number(buf.duration) || 0) : 0;
+  const dur = (tEnd > tStart && tEnd <= fileDur) ? (tEnd - tStart) : (fileDur - tStart);
+  const hasDuration = dur > 0;
+  return { tStart, tEnd, fileDur, dur, hasDuration };
+}
 function play(id){
   const p = pads[id]; if(!p) return;
   if(!bufs[id]||!bufs[id].length) return;
@@ -2949,14 +2959,18 @@ function playNext(id,all){
     i=playPos[id];
     playPos[id]++;
   }
-  const s=ctx.createBufferSource(), g=ctx.createGain();
-  fadeInGain(g,(p.volume||80)/100,p.fadeIn||0);
-  s.buffer=all[i]; s.connect(g); _connectGainToMaster(id,g); s.start(0);
-  srcs[id]=[s]; gains[id]=g;
-  updBtn(id,true,true);
-  const fn=(p.files[i]||{}).name||'';
-  setNP(p.name+(fn?' — '+fn:''));
-  s.onended=()=>{ if(srcs[id]) playNext(id,all); };
+  const s = ctx.createBufferSource(), g = ctx.createGain();
+  fadeInGain(g, (p.volume||80)/100, p.fadeIn||0);
+  const buf = all[i];
+  s.buffer = buf; s.connect(g); _connectGainToMaster(id, g);
+  // compute safe play window for this track
+  const win = safePlayWindowForBuffer(buf, p.trimStart, p.trimEnd);
+  s.start(0, win.tStart, win.hasDuration?win.dur:undefined);
+  srcs[id] = [s]; gains[id] = g;
+  updBtn(id, true, true);
+  const fn = (p.files[i]||{}).name||'';
+  setNP(p.name + (fn ? ' — '+fn : ''));
+  s.onended = ()=>{ if(srcs[id]) playNext(id, all); };
 }
 function stopPad(id, immediate=false){
   if(pads[id]?.mode==='combo'){ stopCombo(id); return; }
@@ -2986,76 +3000,68 @@ function isInfiniteBg(p){ return p&&p.mode==='loop'&&(!p.loopCount||p.loopCount=
 // Creates a self-contained playable instance from a pad config.
 // onEnded is called when the pad finishes (not called for infinite bg loops).
 function createPadInstance(padId,volOverride,fadeOverride){
-  const p=pads[padId], padBufs=bufs[padId];
+  const p = pads[padId], padBufs = bufs[padId];
   if(!p||!padBufs||!padBufs.length) return null;
-  const g=ctx.createGain();
-  const vol=(volOverride!=null?volOverride:(p.volume||80))/100;
-  const fadeIn=fadeOverride!=null?fadeOverride:(p.fadeIn||0);
-  fadeInGain(g,vol,fadeIn);
+  const g = ctx.createGain();
+  const vol = (volOverride!=null?volOverride:(p.volume||80))/100;
+  const fadeIn = fadeOverride!=null?fadeOverride:(p.fadeIn||0);
+  fadeInGain(g, vol, fadeIn);
   g.connect(masterGain);
-  const active=[]; let stopped=false;
+  const active = []; let stopped = false;
 
-  // Safely calculate duration based on the first available buffer
-  const b = padBufs[0];
-  const tStart = p.trimStart || 0;
-  const tEnd = p.trimEnd || 0;
-  const fileDur = b ? b.duration : 0;
-  const dur = (tEnd > tStart && tEnd <= fileDur) ? (tEnd - tStart) : (fileDur - tStart);
-  const hasDuration = dur > 0;
+  // Use helper to compute the play window for the first buffer
+  const primary = padBufs[0];
+  const win = safePlayWindowForBuffer(primary, p.trimStart, p.trimEnd);
 
   function doStart(onEnded){
     if(p.mode==='once'){
-      if(!b){onEnded&&onEnded();return;}
-      const s=ctx.createBufferSource();
-      s.buffer=b; s.connect(g); active.push(s);
-      s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
-      s.start(0, tStart, dur);
+      if(!primary){ onEnded&&onEnded(); return; }
+      const s = ctx.createBufferSource();
+      s.buffer = primary; s.connect(g); active.push(s);
+      s.onended = ()=>{ if(!stopped) onEnded&&onEnded(); };
+      s.start(0, win.tStart, win.hasDuration?win.dur:undefined);
     } else if(p.mode==='loop'){
-      if(!b){onEnded&&onEnded();return;}
-      const lc=p.loopCount||0;
+      if(!primary){ onEnded&&onEnded(); return; }
+      const lc = p.loopCount||0;
       if(lc===0){
-        const s=ctx.createBufferSource();
-        s.buffer=b; s.loop=true; s.connect(g); active.push(s); 
-        if(tEnd > tStart) {
-          s.loopStart = tStart;
-          s.loopEnd = tEnd;
-        }
-        s.start(0, tStart);
+        const s = ctx.createBufferSource();
+        s.buffer = primary; s.loop = true; s.connect(g); active.push(s);
+        if(win.tEnd > win.tStart){ s.loopStart = win.tStart; s.loopEnd = win.tEnd; }
+        s.start(0, win.tStart);
       } else {
-        let rem=lc;
+        let rem = lc;
         (function loopOne(){
           if(stopped) return;
-          const s=ctx.createBufferSource(); s.buffer=b; s.connect(g); active.push(s); rem--;
-          if(rem<=0) s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
-          else s.onended=()=>{ if(!stopped){ active.splice(active.indexOf(s),1); loopOne(); } };
-          s.start(0, tStart, dur);
+          const s = ctx.createBufferSource(); s.buffer = primary; s.connect(g); active.push(s); rem--;
+          if(rem<=0) s.onended = ()=>{ if(!stopped) onEnded&&onEnded(); };
+          else s.onended = ()=>{ if(!stopped){ active.splice(active.indexOf(s),1); loopOne(); } };
+          s.start(0, win.tStart, win.hasDuration?win.dur:undefined);
         })();
       }
     } else if(p.mode==='playlist'){
-      const all=padBufs.filter(Boolean);
-      if(!all.length){onEnded&&onEnded();return;}
-      let pos=0;
+      const all = padBufs.filter(Boolean);
+      if(!all.length){ onEnded&&onEnded(); return; }
+      let pos = 0;
       (function nextTrack(){
         if(stopped) return;
-        if(pos>=all.length){onEnded&&onEnded();return;}
-        const i=p.shuffle?Math.floor(Math.random()*all.length):pos; pos++;
+        if(pos>=all.length){ onEnded&&onEnded(); return; }
+        const i = p.shuffle?Math.floor(Math.random()*all.length):pos; pos++;
         const currentBuf = all[i];
-        const s=ctx.createBufferSource(); s.buffer=currentBuf; s.connect(g); active.push(s);
-        s.onended=()=>{ if(stopped) return; active.splice(active.indexOf(s),1); nextTrack(); };
-        
-        const trackDur = currentBuf ? currentBuf.duration : 0;
-        const currentDur = (tEnd > tStart && tEnd <= trackDur) ? (tEnd - tStart) : (trackDur - tStart);
-        s.start(0, tStart, currentDur);
+        const s = ctx.createBufferSource(); s.buffer = currentBuf; s.connect(g); active.push(s);
+        s.onended = ()=>{ if(stopped) return; active.splice(active.indexOf(s),1); nextTrack(); };
+
+        const trackWin = safePlayWindowForBuffer(currentBuf, p.trimStart, p.trimEnd);
+        s.start(0, trackWin.tStart, trackWin.hasDuration?trackWin.dur:undefined);
       })();
     } else { onEnded&&onEnded(); }
   }
 
   function doStop(){
-    stopped=true;
-    [...active].forEach(s=>{try{s.onended=null;s.stop();}catch(e){}});
-    active.length=0;
+    stopped = true;
+    [...active].forEach(s=>{ try{ s.onended = null; s.stop(); }catch(e){} });
+    active.length = 0;
   }
-  return {start:doStart, stop:doStop};
+  return { start: doStart, stop: doStop };
 }
 
 function playCombo(id, onFinish=null){
