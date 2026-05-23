@@ -356,7 +356,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
   animation:breathe-gold 2.2s ease-in-out infinite}
 .pbtn.flash{background:var(--raised)}
 .pbtn .pico{font-size:calc((23px - 3px * var(--ico-density)) * var(--sym-scale) * var(--ico-scale));line-height:1;color:var(--mode-accent);position:relative;z-index:2}
-.pbtn .plbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;
+.pbtn .plbl{font-family:var(--ff-label);font-size:calc(var(--pad-sz) * 0.133 * var(--font-scale));letter-spacing:0;
   color:var(--text-dim);text-align:center;line-height:1.2;
   position:absolute;bottom:0;left:0;right:0;
   padding:2px 5px 3px;
@@ -365,10 +365,10 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
   z-index:1}
 .pbtn.playing .plbl,.pbtn.plooping .plbl{color:var(--text)}
 .pbtn .plbl-arc{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
-.pbtn .plbl-arc text{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));fill:var(--text-dim);filter:drop-shadow(0 0 2px rgba(0,0,0,.9))}
+.pbtn .plbl-arc text{font-family:var(--ff-label);font-size:calc(var(--pad-sz) * 0.133 * var(--font-scale));fill:var(--text-dim);filter:drop-shadow(0 0 2px rgba(0,0,0,.9))}
 .pbtn.playing .plbl-arc text,.pbtn.plooping .plbl-arc text{fill:var(--text)}
 .pbtn .pnum{position:absolute;top:4px;left:0;right:0;text-align:center;
-  font-size:calc(11px * var(--font-scale));
+  font-size:calc(var(--pad-sz) * 0.155 * var(--font-scale));
   color:var(--mode-accent);font-family:var(--ff-label);
   text-shadow:0 0 8px var(--mode-accent);opacity:.85;z-index:3}
 .pbtn.playing .pnum,.pbtn.plooping .pnum{color:var(--gold-dim);text-shadow:0 0 8px var(--gold)}
@@ -390,7 +390,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .pbtn .pico.pico-g3{font-size:calc((23px + 1px * var(--ico-density)) * var(--sym-scale) * var(--ico-scale))}
 .pbtn .pico.pico-g4{font-size:calc((23px + 3px * var(--ico-density)) * var(--sym-scale) * var(--ico-scale))}
 .pico-span2{grid-column:1/-1;display:flex;justify-content:center}
-@container (max-width:67px){.pbtn .pico{display:none}}
+@container (max-width:67px){.pbtn .pico,.pbtn .pico.pico-g{display:none}}
 /* Icon slot picker in PAD editor */
 .icon-slots{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
 .icon-slot{position:relative;background:var(--raised);border:1px dashed var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;min-height:54px;color:var(--text-dim);transition:border-color .15s}
@@ -1774,8 +1774,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 118;
+const APP_VERSION = 119;
 const CHANGELOG=[
+  {v:119,date:'2026-05-23',items:["Circular PAD arc label moved to bottom edge: SVG textPath sweep-flag changed from 1 to 0 — text now curves along the bottom of the circle, right-side up","Key assignment (.pnum) now larger than PAD label (.plbl): both scale proportionally with --pad-sz (pnum: pad-sz × 15.5%, plbl: pad-sz × 13.3%) so labels grow and shrink with the PAD size slider","Multi-icon groups (2/3/4 icons) now also hidden at very small PAD sizes: @container rule extended to match .pico-g override specificity","Sidebar suppressed when PAD editor is open: openEP() closes the sidebar and hides the toggle button; closeEP() restores the button state from SCREEN_CONFIG"]},
   {v:118,date:'2026-05-23',items:["Onboarding: 🎲 replaced with pixel-art dice SVG (gold, 16×16 viewBox); 📚 replaced with book-open SVG (24×24) — consistent with pixel-art icon system","Board entry in main menu: equalizer icon replaced with flame icon (matches the sigil at the top of the main menu)","Changelog: v115–v117 entries added; console.assert guards against future version/changelog drift"]},
   {v:117,date:'2026-05-23',items:["Folder system for Library audio and PAD templates: flat one-level folders stored as a 'folder' field on lib entries (Option A — tag-based, no separate records)","Sidebar FOLDERS tree below each tab's filter section: ALL node, per-folder nodes (📁 name), ＋ NEW FOLDER; inline rename and delete with confirmation","Upload auto-assignment: files uploaded while a folder is active land in that folder automatically","📁 action button on each audio entry and PAD template: folder picker dropdown with existing folders, 'Unfiled', and 'New folder…' (creates + moves in one step)","Folder chip in list: when viewing ALL, files with a folder show a clickable chip that navigates to that folder"]},
   {v:116,date:'2026-05-23',items:["Solo mode (.topt.ao) now gold: rule was removed in v85 as 'dead CSS', leaving SOLO visually unmarked — re-added with gold palette","Auto-focus search field when opening icon picker (#ico-q) or library picker (#lp-ssb-q)","Drag-and-drop enabled in GAME mode: removed early togglePad() return; onDragEnd already handles tap-vs-drag correctly so tap-to-play is fully preserved"]},
@@ -4349,7 +4350,7 @@ function renderPadLabel(p, i){
   const name=p.name||'';
   if(localStorage.getItem('pad-shape-key')==='ci'){
     return `<svg class="plbl-arc" viewBox="0 0 100 100">` +
-      `<defs><path id="ap${i}" d="M14,50 A36,36 0 0,1 86,50" fill="none"/></defs>` +
+      `<defs><path id="ap${i}" d="M14,50 A36,36 0 0,0 86,50" fill="none"/></defs>` +
       (name?`<text text-anchor="middle"><textPath href="#ap${i}" startOffset="50%">${escHtml(name)}</textPath></text>`:'') +
       `</svg>`;
   }
@@ -4502,6 +4503,8 @@ async function openEP(id){
   eLoopCount=p?.loopCount||0;
   updFB(); setMode(eMode);
   pushEsc(tryCloseEP);
+  closeSidebar();
+  document.getElementById('sidebar-btn').style.display='none';
   document.getElementById('ep').classList.add('open');
   document.getElementById('ebk').classList.add('open');
   document.querySelectorAll('#pgrid [data-id]').forEach(c=>c.classList.toggle('ed',+c.dataset.id===id));
@@ -4529,6 +4532,7 @@ function closeEP(){
   document.getElementById('key-warn').style.display='none';
   stopPreview();
   eFiles=[]; eId=null;
+  _updateSidebarPin(!!SCREEN_CONFIG[cur]?.hasSidebar);
 }
 // ── PAD TYPE PICKER ──
 function openPadTypePicker(){ pushEsc(closePadTypePicker); document.getElementById('pad-type-picker').classList.add('open'); }
