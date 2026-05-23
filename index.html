@@ -4725,7 +4725,16 @@ function openComboEditor(editId=null){
     cn.value=p.name||'';
     ck.value=p.keyLabel||p.key||''; ck.dataset.code=p.key||'';
     comboKey=p.key||''; comboKeyLabel=p.keyLabel||p.key||'';
-    comboSteps=(p.steps||[]).map(s=>({pads:[...s.pads],dur:s.dur||0,chipOpts:(s.chipOpts||[]).map(o=>o?{...o}:null)}));
+    
+    // GEÄNDERT: Jetzt nehmen wir stopAll und fadeOutAll beim Laden wieder mit in die Arbeitsliste auf!
+    comboSteps=(p.steps||[]).map(s=>({
+      pads:[...s.pads],
+      dur:s.dur||0,
+      chipOpts:(s.chipOpts||[]).map(o=>o?{...o}:null),
+      stopAll: !!s.stopAll,
+      fadeOutAll: !!s.fadeOutAll
+    }));
+    
     comboChipExpanded.clear();
   } else {
     cn.value=''; ck.value=''; ck.dataset.code='';
