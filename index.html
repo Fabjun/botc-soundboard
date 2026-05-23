@@ -700,6 +700,21 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .ico-names-btn.active{border-color:var(--gold-dim);color:var(--gold)}
 /* Icon name label (under the icon, shown when names are on) */
 .ico-cell-name{font-family:var(--ff-body);font-size:calc(9px * var(--font-scale));color:var(--text-dim);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 2px 0;display:none}
+/* ── LIB CARD SYSTEM ── */
+.lib-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+.lib-card.lib-card-active{border-color:var(--screen-accent-dim)}
+.lib-card-row{display:flex;align-items:center;gap:8px}
+.lib-card-name{flex:1;min-width:0;font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-card-sub{font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)}
+.lib-card-acts{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.lib-card-badge{font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));padding:1px 5px;border-radius:2px;flex-shrink:0;border:1px solid}
+.lca-icon{background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1}
+.lca-rename{background:none;border:none;color:var(--text-dim);font-size:calc(16px * var(--font-scale));cursor:pointer;padding:0 3px;line-height:1}
+.lca-dim{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;letter-spacing:0;flex-shrink:0}
+.lca-acc{background:none;border:1px solid var(--screen-accent-dim);color:var(--screen-accent);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;letter-spacing:0;flex-shrink:0}
+.lca-pos{background:none;border:1px solid var(--emerald);color:var(--emerald);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;letter-spacing:0;flex-shrink:0}
+.lca-del{background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;letter-spacing:0;flex-shrink:0}
+.lib-inuse-btn{background:none;border:none;color:var(--active);font-family:inherit;font-size:inherit;cursor:pointer;padding:0;line-height:1;text-decoration:underline dotted}
 /* ── HOVER STATES (mouse/trackpad only — avoids sticky touch-hover) ── */
 @media(hover:hover){
   .mopt:hover{background:var(--raised)}
@@ -711,6 +726,12 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   .pbtn:not(.empty):hover{filter:brightness(1.1)}
   .ptp-opt:hover{background:var(--raised)}
   .lib-main-tab:hover:not(.active){color:var(--text)}
+  .lca-icon:hover,.lca-rename:hover{color:var(--text)}
+  .lca-dim:hover{border-color:var(--text-dim);color:var(--text)}
+  .lca-acc:hover{filter:brightness(1.2)}
+  .lca-pos:hover{filter:brightness(1.2)}
+  .lca-del:hover{background:rgba(139,26,26,.18)}
+  .pf-tab:hover:not(.pf-act){border-color:var(--text-dim);color:var(--text)}
   .ico-names-btn:hover:not(.active){border-color:var(--text-dim);color:var(--text)}
   .hint-q:hover{color:var(--text);border-color:var(--text-dim)}
   .km-row:hover{background:rgba(79,195,247,.05)}
@@ -1645,8 +1666,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 101;
+const APP_VERSION = 102;
 const CHANGELOG=[
+  {v:102,date:'2026-05-23',items:["Unified libCard() component — all Library cards (Audio, PADs, Boards, Icons) share one HTML structure and one set of .lca-* action button classes; button families are now enforced system-wide by the generator function"]},
   {v:101,date:'2026-05-23',items:["Import file picker now accepts plain .gz files in addition to .json and .json.gz — fixes files being grayed out when the extension is .gz only"]},
   {v:100,date:'2026-05-23',items:["Library gets a sidebar (☰) — same container as Board sidebar, context-switched via renderSidebarContent(screenId)","Library Audio tab: ALL / IN USE / UNUSED filter now lives in sidebar; UPLOAD AUDIO button moved to bottom of list as dashed fbtn (same family as PAD editor upload)","Library Icons tab: UPLOAD SVG button moved to bottom of list as dashed fbtn","Library PADs tab: CURRENT BOARD / ALL BOARDS scope filter moved to sidebar","pf-tab active state now uses --screen-accent instead of --mode-accent — Board sidebar follows mode color, Library sidebar stays gold"]},
   {v:99,date:'2026-05-23',items:["Proportional icon sizing: icons scale up with count — 1 icon (20 px baseline) → 2 icons (22 px) → 3 icons (24 px) → 4 icons (26 px); each group renders at pico-g2/g3/g4 CSS class; slider remains as global multiplier on top"]},
@@ -1743,7 +1765,7 @@ const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-g
 // ════════════════════════════════════════════════════════════════════
 
 let pads = [];
-let currentBoardId = null, currentBoardName = '', renamingBoardId = null;
+let currentBoardId = null, currentBoardName = '';
 let ctx = null, db = null, masterGain = null, analyser = null, analyserData = null;
 let bufs = {}, srcs = {}, gains = {}, padAnalysers = {};
 let _playStack = []; // LIFO: last activated pad id is at the end
@@ -2143,45 +2165,66 @@ async function initBoardScreen(){
   const boards=await loadBoardsMeta();
   renderBoardList(boards);
 }
+function libCard({nameId,preHtml='',badge=null,nameHtml,nameStyle='',actions=[],subLines=[],active=false}){
+  const badgeHtml=badge?`<span class="lib-card-badge" style="color:${badge.color};border-color:${badge.color}">${badge.label}</span>`:'';
+  const actHtml=actions.map(a=>{
+    if(a.type==='preview') return `<button id="lpb-${a.hash}" class="lca-icon lib-prev-btn" onclick="toggleLibPreview('${a.hash}',this)" title="Preview">▶</button>`;
+    if(a.type==='rename') return `<button class="lca-rename" onclick="${a.onclick}" title="Rename">✎</button>`;
+    if(a.type==='dim')  return `<button class="lca-dim" onclick="${a.onclick}">${a.label}</button>`;
+    if(a.type==='acc')  return `<button class="lca-acc" onclick="${a.onclick}">${a.label}</button>`;
+    if(a.type==='pos')  return `<button class="lca-pos" onclick="${a.onclick}">${a.label}</button>`;
+    if(a.type==='del')  return `<button class="lca-del" onclick="${a.onclick}">✕</button>`;
+    if(a.type==='icon') return `<button class="lca-icon" onclick="${a.onclick}"${a.id?` id="${a.id}"`:''}${a.title?` title="${a.title}"`:''}>${a.label}</button>`;
+    return '';
+  }).join('');
+  const subHtml=subLines.map(l=>`<div class="lib-card-sub">${l}</div>`).join('');
+  return `<div class="lib-card${active?' lib-card-active':''}">
+    <div class="lib-card-row">${preHtml}${badgeHtml}<div id="${nameId}" class="lib-card-name"${nameStyle?` style="${nameStyle}"`:''}>${nameHtml}</div><div class="lib-card-acts">${actHtml}</div></div>
+    ${subHtml}</div>`;
+}
+
 function renderBoardList(boards){
   const html=boards.length
     ? boards.map(b=>{
-    const active=b.id===currentBoardId;
-    const isRenaming=renamingBoardId===b.id;
-    const nameHtml=isRenaming
-      ? `<input id="rn-${b.id}" class="fi" value="${b.name.replace(/"/g,'&quot;')}" style="font-size:calc(15px * var(--font-scale));padding:4px 8px" onkeydown="handleRenameKey(event,'${b.id}')" onblur="commitRename('${b.id}')">`
-      : `<div style="font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));color:${active?'var(--mode-accent)':'var(--text)'};letter-spacing:0">${b.name}${active?' ◈':''}</div>`;
-    const dateStr=new Date(b.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    return `<div style="background:var(--surface);border:1px solid ${active?'var(--mode-accent-dim)':'var(--border)'};border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:6px">
-      ${nameHtml}
-      <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${b.padCount} Pad${b.padCount===1?'':'s'} · ${dateStr}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button onclick="switchBoard('${b.id}')" style="background:${active?'var(--mode-accent-glow)':'var(--raised)'};border:1px solid ${active?'var(--mode-accent-dim)':'var(--border)'};color:${active?'var(--mode-accent)':'var(--text)'};font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">${active?'◈ OPEN':'→ OPEN'}</button>
-        <button onclick="startRename('${b.id}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">✎ RENAME</button>
-        <button onclick="triggerDuplicate('${b.id}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">⧉ DUPLICATE</button>
-        ${boards.length>1?`<button onclick="triggerDelete('${b.id}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer">✕ DELETE</button>`:''}
-      </div>
-    </div>`;
-  }).join('')
-  : '<p style="color:var(--text-dim);text-align:center;padding:20px">No boards yet.</p>';
+        const active=b.id===currentBoardId;
+        const dateStr=new Date(b.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+        return libCard({
+          nameId:'lnm-board-'+b.id,
+          nameHtml:escHtml(b.name)+(active?' ◈':''),
+          nameStyle:active?'color:var(--screen-accent)':'',
+          active,
+          actions:[
+            {type:active?'acc':'dim', label:active?'◈ OPEN':'→ OPEN', onclick:`switchBoard('${b.id}')`},
+            {type:'rename', onclick:`libRenameBoardStart('${b.id}')`},
+            {type:'icon', label:'⧉', title:'Duplicate', onclick:`triggerDuplicate('${b.id}')`},
+            ...(boards.length>1?[{type:'del', onclick:`triggerDelete('${b.id}')`}]:[]),
+          ],
+          subLines:[`${b.padCount} Pad${b.padCount===1?'':'s'} · ${dateStr}`],
+        });
+      }).join('')
+    : '<p style="color:var(--text-dim);text-align:center;padding:20px">No boards yet.</p>';
   for(const cid of ['board-list','lib-board-list']){
     const el=document.getElementById(cid); if(el) el.innerHTML=html;
   }
 }
-function startRename(id){
-  renamingBoardId=id;
-  loadBoardsMeta().then(renderBoardList);
-  setTimeout(()=>{ const inp=document.getElementById('rn-'+id); if(inp){ inp.focus(); inp.select(); } },50);
+function libRenameBoardStart(id){
+  const el=document.getElementById('lnm-board-'+id); if(!el) return;
+  const cur=el.textContent.replace(/\s*◈\s*$/,'').trim();
+  el.style.overflow='visible'; el.style.whiteSpace='normal';
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:5px">
+    <input id="lrn-${id}" value="${escHtml(cur)}"
+      style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));background:var(--raised);border:1px solid var(--active);color:var(--text);padding:3px 6px;border-radius:2px;box-sizing:border-box;width:100%"
+      onkeydown="if(event.key==='Enter')libRenameBoardSave('${id}');else if(event.key==='Escape')loadBoardsMeta().then(renderBoardList)">
+    <div style="display:flex;gap:6px">
+      <button onclick="libRenameBoardSave('${id}')" style="background:none;border:1px solid var(--emerald);color:var(--emerald);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 9px;border-radius:2px;cursor:pointer">✓</button>
+      <button onclick="loadBoardsMeta().then(renderBoardList)" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer">✕</button>
+    </div></div>`;
+  const inp=document.getElementById('lrn-'+id); if(inp){inp.focus();inp.select();}
 }
-function handleRenameKey(e,id){
-  if(e.key==='Enter') commitRename(id);
-  else if(e.key==='Escape'){ renamingBoardId=null; loadBoardsMeta().then(renderBoardList); }
-}
-function commitRename(id){
-  const inp=document.getElementById('rn-'+id); if(!inp) return;
+async function libRenameBoardSave(id){
+  const inp=document.getElementById('lrn-'+id); if(!inp) return;
   const name=inp.value.trim()||'Board';
-  renamingBoardId=null;
-  renameBoard(id,name);
+  await renameBoard(id,name);
   loadBoardsMeta().then(renderBoardList);
 }
 async function triggerDuplicate(id){
@@ -2785,26 +2828,27 @@ function renderLibList(entries,usedHashes){
     const usedBy=_libUsedByPads.get(h)||[];
     const date=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
     const inUseEl=inUse
-      ?`<button onclick="toggleLibUsedBy('${h}')" style="background:none;border:none;color:var(--active);font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));cursor:pointer;padding:0;line-height:1;text-decoration:underline dotted">in use (${usedBy.length})</button>`
+      ?`<button onclick="toggleLibUsedBy('${h}')" class="lib-inuse-btn">in use (${usedBy.length})</button>`
       :`<span style="color:var(--mist)">unused</span>`;
     const usedByRows=usedBy.map(u=>`<div style="display:flex;align-items:center;gap:6px;padding:2px 0">
-        <span style="font-family:var(--ff-label);font-size:calc(9px * var(--font-scale));color:${_mc(u.padMode)};border:1px solid ${_mc(u.padMode)};padding:0 3px;border-radius:2px;flex-shrink:0">${_ml(u.padMode)}</span>
-        <span style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text)">${escHtml(u.padName)}</span>
-        <span style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim)">· ${escHtml(u.boardName)}</span>
+        <span class="lib-card-badge" style="color:${_mc(u.padMode)};border-color:${_mc(u.padMode)}">${_ml(u.padMode)}</span>
+        <span class="lib-card-sub" style="color:var(--text)">${escHtml(u.padName)}</span>
+        <span class="lib-card-sub">· ${escHtml(u.boardName)}</span>
       </div>`).join('');
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div id="lnm-${h}" style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);word-break:break-all;flex:1">${escHtml(e.name)}</div>
-        <div style="display:flex;gap:4px;flex-shrink:0">
-          <button id="lpb-${h}" class="lib-prev-btn" onclick="toggleLibPreview('${h}',this)" title="Preview" style="background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">▶</button>
-          <button onclick="libRenameStart('${h}')" title="Rename" style="background:none;border:none;color:var(--text-dim);font-size:calc(16px * var(--font-scale));cursor:pointer;padding:0 3px;line-height:1">✎</button>
-          <button onclick="libDeleteFile('${h}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;padding:2px 8px;border-radius:2px;cursor:pointer">✕</button>
-        </div>
-      </div>
-      ${e.origName&&e.origName!==e.name?`<div style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim);opacity:.6;word-break:break-all">upload-name: ${escHtml(e.origName)}</div>`:''}
-      <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date} · ${inUseEl}</div>
-      ${inUse?`<div id="lub-${h}" style="display:none;border-left:2px solid var(--active);padding-left:8px;margin-top:2px">${usedByRows}</div>`:''}
-    </div>`;
+    return libCard({
+      nameId:`lnm-${h}`,
+      nameHtml:escHtml(e.name),
+      actions:[
+        {type:'preview', hash:h},
+        {type:'rename', onclick:`libRenameStart('${h}')`},
+        {type:'del', onclick:`libDeleteFile('${h}')`},
+      ],
+      subLines:[
+        ...(e.origName&&e.origName!==e.name?[`<span style="opacity:.6;word-break:break-all">upload-name: ${escHtml(e.origName)}</span>`]:[]),
+        `${fmtSize(e.size||0)} · ${date} · ${inUseEl}`,
+        ...(inUse?[`<div id="lub-${h}" style="display:none;border-left:2px solid var(--active);padding-left:8px;margin-top:2px">${usedByRows}</div>`]:[]),
+      ],
+    });
   }).join('');
   requestAnimationFrame(()=>{ const s=document.getElementById('lib-audio-section'); if(s) s.scrollTop=_libAudioScroll; });
 }
@@ -2893,8 +2937,7 @@ function libDeleteBoardPad(idx){
 }
 function libRenamePadTemplateStart(hash){
   const el=document.getElementById('ltnm-'+hash); if(!el) return;
-  const nameEl=el.querySelector('div');
-  const cur=nameEl?nameEl.textContent:'';
+  const cur=el.textContent.trim();
   el.innerHTML=`<div style="display:flex;flex-direction:column;gap:5px">
     <input id="ltpr-${hash}" value="${escHtml(cur)}"
       style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));background:var(--raised);border:1px solid var(--active);color:var(--text);padding:3px 6px;border-radius:2px;box-sizing:border-box;width:100%"
@@ -2972,28 +3015,25 @@ async function renderLibPads(){
           const keyTxt=p.key?` [${escHtml(p.keyLabel||String(p.key))}]`:'';
           const boardTxt=_libPadFilter==='all'?`<span style="color:var(--text-dim);font-size:calc(10px * var(--font-scale))"> · ${escHtml(item.boardName)}</span>`:'';
           const fh=p.mode==='combo'?getComboFirstFileHash(p.steps):(p.files?.length?p.files[0]:null);
-          const prevBtnP=fh?`<button class="lib-prev-btn" onclick="toggleLibPreview('${fh}',this)" title="Preview" style="background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">▶</button>`:'';
           const usedByCombos=p.mode!=='combo'&&item.padIdx!=null
             ?pads.filter(Boolean).filter(cp=>cp.mode==='combo'&&(cp.steps||[]).some(s=>(s.pads||[]).includes(item.padIdx)))
             :[];
-          const comboRows=usedByCombos.map(cp=>`<div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text);padding:2px 0">${escHtml(cp.name)}</div>`).join('');
-          const usedByComboEl=usedByCombos.length
-            ?`<button onclick="toggleLibUsedBy('pad-${i}')" style="background:none;border:none;color:var(--gold);font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));cursor:pointer;padding:0;line-height:1;text-decoration:underline dotted">used in ${usedByCombos.length} combo${usedByCombos.length===1?'':'s'}</button>
-             <div id="lub-pad-${i}" style="display:none;border-left:2px solid var(--gold);padding-left:8px;margin-top:2px">${comboRows}</div>`:'';
+          const comboRows=usedByCombos.map(cp=>`<div class="lib-card-sub" style="color:var(--text);padding:2px 0">${escHtml(cp.name)}</div>`).join('');
           const canEdit=item.padIdx!=null;
-          const renameBtn=canEdit?`<button onclick="libRenameBoardPadStart(${i})" title="Rename" style="background:none;border:none;color:var(--text-dim);font-size:calc(16px * var(--font-scale));cursor:pointer;padding:0 3px;line-height:1">✎</button>`:'';
-          const deleteBtn=canEdit?`<button onclick="libDeleteBoardPad(${i})" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;padding:2px 8px;border-radius:2px;cursor:pointer">✕</button>`:'';
-          return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:5px">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
-              <div id="lpn-${i}" style="flex:1;min-width:0;font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.name)}${keyTxt}${boardTxt}</div>
-              ${prevBtnP}
-              ${renameBtn}
-              <button onclick="savePadTemplate(${i})" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">SAVE</button>
-              ${deleteBtn}
-            </div>
-            ${usedByComboEl}
-          </div>`;
+          return libCard({
+            nameId:`lpn-${i}`,
+            badge:{color:mc, label:ml},
+            nameHtml:escHtml(p.name)+keyTxt+boardTxt,
+            actions:[
+              ...(fh?[{type:'preview', hash:fh}]:[]),
+              ...(canEdit?[{type:'rename', onclick:`libRenameBoardPadStart(${i})`}]:[]),
+              {type:'dim', label:'SAVE', onclick:`savePadTemplate(${i})`},
+              ...(canEdit?[{type:'del', onclick:`libDeleteBoardPad(${i})`}]:[]),
+            ],
+            subLines:[
+              ...(usedByCombos.length?[`<button onclick="toggleLibUsedBy('pad-${i}')" class="lib-inuse-btn" style="color:var(--gold)">used in ${usedByCombos.length} combo${usedByCombos.length===1?'':'s'}</button><div id="lub-pad-${i}" style="display:none;border-left:2px solid var(--gold);padding-left:8px;margin-top:2px">${comboRows}</div>`]:[]),
+            ],
+          });
         }).join('')
       : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">No pads${_libPadFilter==='current'?' in this board':' in any board'} yet.</p>`;
   }
@@ -3010,18 +3050,18 @@ async function renderLibPads(){
           const ml=modeLabel(pd.mode); const mc=modeColor(pd.mode);
           const dateStr=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
           const fhT=pd.mode==='combo'?getComboFirstFileHash(pd.steps):(pd.files?.length?pd.files[0]:null);
-          const prevBtnT=fhT?`<button class="lib-prev-btn" onclick="toggleLibPreview('${fhT}',this)" title="Preview" style="background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">▶</button>`:'';
-          return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:8px">
-            <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
-            <div id="ltnm-${e.hash}" style="flex:1;min-width:0">
-              <div style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.name)}</div>
-              <div style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim)">${dateStr}</div>
-            </div>
-            ${prevBtnT}
-            <button onclick="libRenamePadTemplateStart('${e.hash}')" title="Rename" style="background:none;border:none;color:var(--text-dim);font-size:calc(16px * var(--font-scale));cursor:pointer;padding:0 3px;line-height:1">✎</button>
-            <button onclick="importPadTemplate('${e.hash}')" style="background:none;border:1px solid var(--emerald);color:var(--emerald);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0;letter-spacing:0">+ ADD</button>
-            <button onclick="deletePadTemplate('${e.hash}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">✕</button>
-          </div>`;
+          return libCard({
+            nameId:`ltnm-${e.hash}`,
+            badge:{color:mc, label:ml},
+            nameHtml:escHtml(e.name),
+            actions:[
+              ...(fhT?[{type:'preview', hash:fhT}]:[]),
+              {type:'rename', onclick:`libRenamePadTemplateStart('${e.hash}')`},
+              {type:'pos', label:'+ ADD', onclick:`importPadTemplate('${e.hash}')`},
+              {type:'del', onclick:`deletePadTemplate('${e.hash}')`},
+            ],
+            subLines:[dateStr],
+          });
         }).join('')
       : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">No templates yet. Use SAVE on a pad above to create one.</p>`;
   }
@@ -3075,11 +3115,12 @@ async function renderLibIcons(){
       customEl.innerHTML=custom.map(e=>{
         const s=iconSvgCache[e.hash]||'';
         const thumb=s?s.replace(/width="[^"]*"/,'width="22px"').replace(/height="[^"]*"/,'height="22px"'):'?';
-        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:10px">
-          <div class="icon-prev-box" style="width:36px;height:36px">${thumb}</div>
-          <div style="flex:1;font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);word-break:break-all">${escHtml(e.name)}</div>
-          <button onclick="libDeleteIcon('${e.hash}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;letter-spacing:0">✕</button>
-        </div>`;
+        return libCard({
+          nameId:`lic-${e.hash}`,
+          preHtml:`<div class="icon-prev-box" style="width:36px;height:36px;flex-shrink:0;margin-right:2px">${thumb}</div>`,
+          nameHtml:escHtml(e.name),
+          actions:[{type:'del', onclick:`libDeleteIcon('${e.hash}')`}],
+        });
       }).join('');
     }
   }
