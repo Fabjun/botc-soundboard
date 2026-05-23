@@ -194,6 +194,16 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
   cursor:pointer;border:1px solid rgba(62,62,96,.9);color:rgba(210,200,222,.8)}
 .topt.al{background:var(--mode-accent-glow);border-color:var(--mode-accent-dim);color:var(--mode-accent)}
 .topt.ap{background:#1a2a1a;border-color:#1a5a1a;color:#81c784}
+/* Dialog action buttons — shared by all modal dialogs */
+.dlg-cancel,.dlg-destruct,.dlg-positive,.dlg-reload{flex:1;font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:10px;border-radius:2px;cursor:pointer;letter-spacing:0}
+.dlg-cancel{background:none;border:1px solid var(--border);color:var(--text-dim)}
+.dlg-destruct{background:var(--blood);border:1px solid var(--blood-bright);color:var(--blood-bright)}
+.dlg-positive{background:var(--emerald);border:1px solid var(--emerald);color:#fff}
+.dlg-reload{background:var(--gold);border:none;color:#000}
+/* Settings action buttons — full-width, used in Settings → DATA */
+.sa-btn{width:100%;font-family:var(--ff-label);font-size:calc(13px*var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;background:var(--raised);border:1px solid var(--border);color:var(--text)}
+.sa-btn.sa-pri{border-color:var(--gold-dim);color:var(--gold)}
+.sa-btn.sa-del{background:none;border-color:var(--blood);color:var(--blood-bright)}
 #scrub{display:block;width:100%;cursor:pointer;background:var(--raised)}
 #ep-snd-block{border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px}
 .snd-row{display:flex;align-items:center;gap:6px;padding:6px 8px}
@@ -354,7 +364,6 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .gc-ico{font-size:calc(13px * var(--font-scale));color:var(--text-dim);flex-shrink:0;
   font-family:var(--ff-label);letter-spacing:0;white-space:nowrap}
 .gc-row input[type=range]{flex:1;accent-color:var(--mode-accent);cursor:pointer}
-.topt.sh-act{background:var(--mode-accent-glow);border-color:var(--mode-accent-dim);color:var(--mode-accent)}
 #img-prev{width:100%;height:90px;background-size:cover;background-position:center;border-radius:3px;border:1px solid var(--border);margin-bottom:6px;display:none}
 #np{padding:5px 13px;background:rgba(30,30,53,.8);border-top:1px solid var(--border);
   font-size:calc(11px * var(--font-scale));color:var(--text-dim);font-style:italic;min-height:25px;
@@ -868,8 +877,8 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   <div style="background:var(--raised);border:1px solid var(--blood);border-radius:4px;padding:22px 20px 18px;max-width:300px;width:88%;box-sizing:border-box">
     <div id="confirm-del-msg" style="font-family:var(--ff-label);font-size:calc(15px*var(--font-scale));color:var(--text);line-height:1.5;margin-bottom:20px;white-space:pre-line"></div>
     <div style="display:flex;gap:8px">
-      <button onclick="closeConfirmDel()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:9px;border-radius:2px;cursor:pointer;letter-spacing:0">CANCEL</button>
-      <button id="confirm-del-ok" onclick="execConfirmDel()" style="flex:1;background:var(--blood);border:1px solid var(--blood-bright);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:9px;border-radius:2px;cursor:pointer;letter-spacing:0">DELETE</button>
+      <button onclick="closeConfirmDel()" class="dlg-cancel">CANCEL</button>
+      <button id="confirm-del-ok" onclick="execConfirmDel()" class="dlg-destruct">DELETE</button>
     </div>
   </div>
 </div>
@@ -880,10 +889,10 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     <div style="font-family:var(--ff-label);font-size:calc(16px*var(--font-scale));color:var(--gold);letter-spacing:1px;margin-bottom:8px">UNSAVED CHANGES</div>
     <div style="font-family:var(--ff-body);font-size:calc(13px*var(--font-scale));color:var(--text-dim);line-height:1.5;margin-bottom:20px">Leave the editor? Your changes will be lost.</div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button onclick="execLeaveWarn('save')" style="width:100%;background:var(--emerald);border:1px solid var(--emerald);color:#fff;font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:10px;border-radius:2px;cursor:pointer;letter-spacing:0">SAVE &amp; LEAVE</button>
+      <button onclick="execLeaveWarn('save')" class="dlg-positive" style="width:100%">SAVE &amp; LEAVE</button>
       <div style="display:flex;gap:8px">
-        <button onclick="execLeaveWarn('cancel')" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:9px;border-radius:2px;cursor:pointer;letter-spacing:0">CANCEL</button>
-        <button onclick="execLeaveWarn('leave')" style="flex:1;background:var(--blood);border:1px solid var(--blood-bright);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:9px;border-radius:2px;cursor:pointer;letter-spacing:0">LEAVE</button>
+        <button onclick="execLeaveWarn('cancel')" class="dlg-cancel">CANCEL</button>
+        <button onclick="execLeaveWarn('leave')" class="dlg-destruct">LEAVE</button>
       </div>
     </div>
   </div>
@@ -1085,17 +1094,17 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     <!-- DATA -->
     <div class="sg-hdr">DATA</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
-      <button onclick="doExportLibrary()" style="background:var(--raised);border:1px solid var(--gold-dim);color:var(--gold);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">⬇ EXPORT LIBRARY</button>
+      <button onclick="doExportLibrary()" class="sa-btn sa-pri">⬇ EXPORT LIBRARY</button>
       <p id="export-age" style="font-size:calc(10px * var(--font-scale));margin:0;line-height:1.6"></p>
-      <button onclick="triggerImportFile()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">⬆ IMPORT LIBRARY</button>
+      <button onclick="triggerImportFile()" class="sa-btn">⬆ IMPORT LIBRARY</button>
       <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Export saves all boards, audio files and settings as one file. On iPhone it opens the share sheet. Import merges into existing data — you choose per file and per board.</p>
       <p id="export-location-hint" style="display:none;font-size:calc(10px * var(--font-scale));color:var(--gold-dim);margin:0;line-height:1.6">ⓘ To choose the save location: open your browser's download settings and enable <strong style="color:var(--gold)">"Ask where to save each file before downloading"</strong>.</p>
-      <button id="auto-backup-btn" onclick="toggleAutoBackup()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%">AUTO-BACKUP: OFF</button>
+      <button id="auto-backup-btn" onclick="toggleAutoBackup()" class="sa-btn">AUTO-BACKUP: OFF</button>
       <p id="auto-backup-path" style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6;display:none"></p>
       <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Writes 3 rotating backup files to a folder you choose, every 10 minutes. May not work depending on browser or privacy settings. On iPhone: use Export regularly.</p>
-      <button onclick="doRemigrateAudio()" style="background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%;margin-top:4px">RE-MIGRATE AUDIO TO LIBRARY</button>
+      <button onclick="doRemigrateAudio()" class="sa-btn" style="margin-top:4px">RE-MIGRATE AUDIO TO LIBRARY</button>
       <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Run if pads lost their sounds after an update.</p>
-      <button onclick="doResetAllData()" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:6px 10px;border-radius:2px;cursor:pointer;width:100%;margin-top:4px">RESET ALL DATA</button>
+      <button onclick="doResetAllData()" class="sa-btn sa-del" style="margin-top:4px">RESET ALL DATA</button>
       <p style="font-size:calc(10px * var(--font-scale));color:var(--blood-bright);margin:0;line-height:1.6">Deletes all boards, pads, and Library files. Cannot be undone.</p>
     </div>
    </div><!-- /.cx -->
@@ -1673,8 +1682,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 103;
+const APP_VERSION = 104;
 const CHANGELOG=[
+  {v:104,date:'2026-05-23',items:["topt active-state unification: .sh-act (duplicate of .al) removed; all className='topt …' assignments replaced with classList.toggle; setToptSetting() generic helper introduced — pure setters (startMode, enterStopMode, helpDensity, helpDuration) now one-liners","Dialog button family .dlg-cancel / .dlg-destruct / .dlg-positive / .dlg-reload: replaces inline styles on confirm-del, leave-warn, sw-update-modal buttons","Settings action button family .sa-btn / .sa-btn.sa-pri / .sa-btn.sa-del: replaces inline styles on EXPORT, IMPORT, AUTO-BACKUP, RE-MIGRATE, RESET buttons"]},
   {v:103,date:'2026-05-23',items:["Overlay family: all 14 overlays now use classList.add/remove('open'); inline style.display calls removed; Escape key routed through a _escStack registry — every overlay gets Escape for free on open","Inline rename family: startInlineRename() replaces 4 separate implementations (audio, board-pad, template, board); callers pass name + callbacks, function owns the UI","SCREEN_CONFIG.onShow: per-screen init logic moved from show() if-chain into config callbacks; show() is now data-driven and screen-count-independent"]},
   {v:102,date:'2026-05-23',items:["Unified libCard() component — all Library cards (Audio, PADs, Boards, Icons) share one HTML structure and one set of .lca-* action button classes; button families are now enforced system-wide by the generator function"]},
   {v:101,date:'2026-05-23',items:["Import file picker now accepts plain .gz files in addition to .json and .json.gz — fixes files being grayed out when the extension is .gz only"]},
@@ -2314,7 +2324,7 @@ function setTheme(t){
   document.body.classList.toggle('theme-modern',t==='modern');
   ['retro','modern'].forEach(k=>{
     const el=document.getElementById('th-'+k);
-    if(el) el.className='topt'+(k===t?' al':'');
+    if(el) el.classList.toggle('al',k===t);
   });
 }
 function setFontScale(v){
@@ -2341,15 +2351,11 @@ function applyContentWidth(){
   document.documentElement.style.setProperty('--cx-max',vals[val]||'900px');
   ['compact','medium','wide','auto'].forEach(k=>{
     const el=document.getElementById('cw-'+k);
-    if(el) el.className='topt'+(k===val?' al':'');
+    if(el) el.classList.toggle('al',k===val);
   });
 }
 function initThemeSettings(){
-  const t=localStorage.getItem('theme')||'retro';
-  ['retro','modern'].forEach(k=>{
-    const el=document.getElementById('th-'+k);
-    if(el) el.className='topt'+(k===t?' al':'');
-  });
+  setTheme(localStorage.getItem('theme')||'retro');
   const fs=parseFloat(localStorage.getItem('font-scale')||'1');
   const ss=parseFloat(localStorage.getItem('sym-scale')||'1');
   const fsl=document.getElementById('font-scale-slider');
@@ -3888,7 +3894,7 @@ function setPadShape(radius,key){
   document.documentElement.style.setProperty('--pad-radius',radius);
   ['sq','rd','ci'].forEach(k=>{
     const el=document.getElementById('sh-'+k);
-    if(el) el.classList.toggle('sh-act',k===key);
+    if(el) el.classList.toggle('al',k===key);
   });
 }
 function applyGridCtrl(){
@@ -3937,26 +3943,17 @@ function applyStartMode(){
   else locked=false;
   applyModeVisuals();
 }
-function setStartMode(m){
-  localStorage.setItem('start-mode',m);
-  ['unlocked','locked','remember'].forEach(k=>{
-    const el=document.getElementById('sm-'+k);
-    if(el) el.className='topt'+(k===m?' al':'');
+function setToptSetting(storageKey,idPrefix,options,value){
+  localStorage.setItem(storageKey,String(value));
+  options.forEach(k=>{
+    const el=document.getElementById(idPrefix+k);
+    if(el) el.classList.toggle('al',String(k)===String(value));
   });
 }
-function initStartModeUI(){
-  setStartMode(localStorage.getItem('start-mode')||'unlocked');
-}
-function setEnterStopMode(m){
-  localStorage.setItem('enter-stop-mode',m);
-  ['serial','total'].forEach(k=>{
-    const el=document.getElementById('esm-'+k);
-    if(el) el.className='topt'+(k===m?' al':'');
-  });
-}
-function initEnterStopModeUI(){
-  setEnterStopMode(localStorage.getItem('enter-stop-mode')||'serial');
-}
+function setStartMode(m){ setToptSetting('start-mode','sm-',['unlocked','locked','remember'],m); }
+function initStartModeUI(){ setStartMode(localStorage.getItem('start-mode')||'unlocked'); }
+function setEnterStopMode(m){ setToptSetting('enter-stop-mode','esm-',['serial','total'],m); }
+function initEnterStopModeUI(){ setEnterStopMode(localStorage.getItem('enter-stop-mode')||'serial'); }
 function renderBoard(){
   if(locked) renderPerf(); else renderSetup();
 }
@@ -4792,7 +4789,7 @@ function cancelModeSwitch(){
 function applyMode(m){
   eMode=m;
   document.querySelectorAll('.topt').forEach(o=>{
-    o.className='topt';
+    o.classList.remove('ao','al','ap');
     if(o.dataset.m===m) o.classList.add(m==='once'?'ao':m==='loop'?'al':'ap');
   });
   const fi=document.getElementById('fi');
@@ -4815,22 +4812,22 @@ function setLoopCount(n){
   eLoopCount=n;
   const inf=document.getElementById('lc-inf');
   const val=document.getElementById('lc-val');
-  if(inf) inf.className='topt'+(n===0?' al':'');
+  if(inf) inf.classList.toggle('al',n===0);
   if(val){ val.value=n>0?n:''; val.style.borderColor=n>0?'var(--gold-dim)':'var(--border)'; }
 }
 function onLoopCountInput(el){
   const n=Math.max(1,Math.min(999,parseInt(el.value)||1));
   eLoopCount=n;
   const inf=document.getElementById('lc-inf');
-  if(inf) inf.className='topt';
+  if(inf) inf.classList.remove('al');
   el.style.borderColor='var(--gold-dim)';
 }
 function updateShuffleUI(){
   const sq=document.getElementById('sh-seq');
   const rn=document.getElementById('sh-rnd');
   if(sq&&rn){
-    sq.className='topt'+(eShuffle?'':' ap');
-    rn.className='topt'+(eShuffle?' ap':'');
+    sq.classList.toggle('ap',!eShuffle); sq.classList.toggle('al',false);
+    rn.classList.toggle('ap',eShuffle);  rn.classList.toggle('al',false);
   }
   const plBtn=document.querySelector('.topt[data-m="playlist"]');
   if(plBtn) plBtn.innerHTML='LIST '+svgI(eMode==='playlist'&&!eShuffle?'<path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/>':'<path d="M10 19H2v-2h8v2Zm12 0h-8v-2h8v2Zm-10-2h-2v-6h2v6Zm6-10h2v2h2v2h-2v2h-2v2h-2v-4h-4V9h4V5h2v2ZM8 11H2V9h6v2Z"/>');
@@ -5026,16 +5023,8 @@ function captureHelpKey(e){
   e.target.value=e.key===' '?'Space':e.key;
   e.target.dataset.code=e.code;
 }
-function setHelpDensity(d){
-  localStorage.setItem('help-info-density',d);
-  ['minimal','normal','verbose'].forEach(k=>
-    document.getElementById('hd-'+k)?.classList.toggle('sh-act',k===d));
-}
-function setHelpDuration(d){
-  localStorage.setItem('help-duration',d);
-  ['toggle','5','10','30'].forEach(k=>
-    document.getElementById('hdur-'+k)?.classList.toggle('sh-act',k===d));
-}
+function setHelpDensity(d){ setToptSetting('help-info-density','hd-',['minimal','normal','verbose'],d); }
+function setHelpDuration(d){ setToptSetting('help-duration','hdur-',['toggle','5','10','30'],d); }
 function initHelpSettings(){
   const label=localStorage.getItem('help-key-label');
   const code=localStorage.getItem('help-key-code');
@@ -5247,8 +5236,8 @@ function setPadLevel(v){
 }
 function _initPadLevelUI(){
   const on=_padLevelEnabled();
-  const a=document.getElementById('pl-on'); if(a) a.className='topt'+(on?' al':'');
-  const b=document.getElementById('pl-off'); if(b) b.className='topt'+(!on?' al':'');
+  const a=document.getElementById('pl-on'); if(a) a.classList.toggle('al',on);
+  const b=document.getElementById('pl-off'); if(b) b.classList.toggle('al',!on);
 }
 
 // ── WAKE LOCK ──
@@ -5276,8 +5265,8 @@ function _initWakeLockUI(){
   if(!row) return;
   if(!('wakeLock' in navigator)){ row.style.display='none'; return; }
   const on=localStorage.getItem('wake-lock-enabled')!=='0';
-  const a=document.getElementById('wl-on'); if(a) a.className='topt'+(on?' al':'');
-  const b=document.getElementById('wl-off'); if(b) b.className='topt'+(!on?' al':'');
+  const a=document.getElementById('wl-on'); if(a) a.classList.toggle('al',on);
+  const b=document.getElementById('wl-off'); if(b) b.classList.toggle('al',!on);
 }
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&locked) _acquireWakeLock();
@@ -5515,10 +5504,10 @@ function showSwUpdate(v){
       <div style="font-family:var(--ff-label);font-size:calc(16px*var(--font-scale));color:var(--gold);margin-bottom:10px">UPDATE AVAILABLE${v?` (v${v})`:''}</div>
       <div style="font-family:var(--ff-body);font-size:calc(12px*var(--font-scale));color:var(--text-dim);line-height:1.65;margin-bottom:18px">A new version is ready to load. Your data lives in IndexedDB and is normally preserved across updates — but as a precaution, we recommend creating a backup before reloading.</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <button id="swu-backup-btn" onclick="swuBackup()" style="background:var(--surface);border:1px solid var(--gold-dim);color:var(--gold);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:11px;border-radius:3px;cursor:pointer;letter-spacing:0">⬇ BACKUP NOW</button>
+        <button id="swu-backup-btn" onclick="swuBackup()" class="sa-btn sa-pri" style="width:100%">⬇ BACKUP NOW</button>
         <div style="display:flex;gap:8px">
-          <button onclick="document.getElementById('sw-update-modal').remove()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:11px;border-radius:3px;cursor:pointer;letter-spacing:0">LATER</button>
-          <button id="swu-reload-btn" onclick="swuConfirmReload()" style="flex:2;background:var(--gold);color:#000;border:none;font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:11px;border-radius:3px;cursor:pointer;letter-spacing:0">RELOAD</button>
+          <button onclick="document.getElementById('sw-update-modal').remove()" class="dlg-cancel">LATER</button>
+          <button id="swu-reload-btn" onclick="swuConfirmReload()" class="dlg-reload" style="flex:2">RELOAD</button>
         </div>
       </div>
     </div>`;
