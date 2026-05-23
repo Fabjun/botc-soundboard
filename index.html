@@ -1153,7 +1153,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <button class="ssb-sort-btn" id="lib-ssb-sort-btn" onclick="_libSsbSortToggle()">SORT ▾</button>
       <div class="ssb-drop" id="lib-ssb-drop">
         <div class="ssb-opt" data-s="date" data-label="Date" onclick="_libSsbSortOpt('date')">Date</div>
-        <div class="ssb-opt" data-s="edit" data-label="Latest Edit" onclick="_libSsbSortOpt('edit')">Latest Edit</div>
+        <div class="ssb-opt" data-s="edit" data-label="Edit" onclick="_libSsbSortOpt('edit')">Edit</div>
         <div class="ssb-opt" data-s="name" data-label="Name" onclick="_libSsbSortOpt('name')">Name</div>
       </div>
     </div>
@@ -1629,7 +1629,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <button class="ssb-sort-btn" id="lp-ssb-sort-btn" onclick="_lpSsbSortToggle()">SORT ▾</button>
       <div class="ssb-drop" id="lp-ssb-drop">
         <div class="ssb-opt" data-s="date" data-label="Date" onclick="_lpSsbSortOpt('date')">Date</div>
-        <div class="ssb-opt" data-s="edit" data-label="Latest Edit" onclick="_lpSsbSortOpt('edit')">Latest Edit</div>
+        <div class="ssb-opt" data-s="edit" data-label="Edit" onclick="_lpSsbSortOpt('edit')">Edit</div>
         <div class="ssb-opt" data-s="name" data-label="Name" onclick="_lpSsbSortOpt('name')">Name</div>
       </div>
     </div>
@@ -1732,8 +1732,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 109;
+const APP_VERSION = 110;
 const CHANGELOG=[
+  {v:110,date:'2026-05-23',items:["Sort option renamed: \"Latest Edit\" → \"Edit\" — direction already conveyed by ↑/↓ arrow"]},
   {v:109,date:'2026-05-23',items:["Sort dropdown redesigned: 3 toggle-able dimensions (Date, Latest Edit, Name) replace 5 separate options — clicking an inactive option activates it with default direction; clicking the active option flips direction (↑/↓); direction arrow shown inline in the active option"]},
   {v:108,date:'2026-05-23',items:["Sidebar toggle button (☰) restored on all sidebar screens — auto-pin at ≥800px removed, sidebar is always slide-in"]},
   {v:107,date:'2026-05-23',items:["Search + Sort bar (.ssb family) in all Library tabs and lib-picker — filter by name, sort by Newest/Oldest/Latest Edit/A→Z/Z→A; sort key persists per tab in localStorage","Duplicate name warning on inline rename — non-blocking gold hint when a name already exists in the same type scope (audio, template, board)","Multi-rename: Enter confirms all open renames at once; clicking outside any rename input confirms all","updatedAt timestamp written on rename for audio files, PAD templates, and boards — powers Latest Edit sort"]},
