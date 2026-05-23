@@ -26,7 +26,7 @@
   --ff-body:'Share Tech Mono',monospace;
   --ff-hero:'DotGothic16',sans-serif;
   --ff-subtitle:'VT323',monospace;
-  --font-scale:1; --sym-scale:1; --ico-scale:1;
+  --font-scale:1; --sym-scale:1; --ico-scale:1; --ico-density:1;
   /* Mode accent — used by board-internal elements (#sp) */
   --mode-accent:var(--active); --mode-accent-dim:rgba(79,195,247,.35); --mode-accent-glow:rgba(79,195,247,.2);
   /* Screen accent — set per-screen by updateTopBar(); default gold */
@@ -355,9 +355,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 /* Multi-icon grid on pad */
 .pbtn{container-type:inline-size}
 .pbtn .pico.pico-g{display:grid;grid-template-columns:1fr 1fr;gap:2px;place-items:center}
-.pbtn .pico.pico-g2{font-size:calc(22px * var(--sym-scale) * var(--ico-scale))}
-.pbtn .pico.pico-g3{font-size:calc(24px * var(--sym-scale) * var(--ico-scale))}
-.pbtn .pico.pico-g4{font-size:calc(26px * var(--sym-scale) * var(--ico-scale))}
+.pbtn .pico.pico-g2{font-size:calc((20px + 2px * var(--ico-density)) * var(--sym-scale) * var(--ico-scale))}
+.pbtn .pico.pico-g3{font-size:calc((20px + 4px * var(--ico-density)) * var(--sym-scale) * var(--ico-scale))}
+.pbtn .pico.pico-g4{font-size:calc((20px + 6px * var(--ico-density)) * var(--sym-scale) * var(--ico-scale))}
 .pico-span2{grid-column:1/-1;display:flex;justify-content:center}
 @container (max-width:67px){.pbtn .pico{display:none}}
 /* Icon slot picker in PAD editor */
@@ -877,7 +877,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <!-- MY BOARDS -->
 <div id="smb" class="screen">
-  <div style="flex:1;overflow-y:auto">
+  <div id="smb-scroll" style="flex:1;overflow-y:auto">
     <div id="board-list" class="cx" style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px"></div>
   </div>
   <div style="border-top:1px solid var(--border);flex-shrink:0">
@@ -1175,7 +1175,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
    </div>
   </div>
   <div id="lib-boards-section" style="flex:1;display:none;flex-direction:column">
-    <div style="flex:1;overflow-y:auto">
+    <div id="lib-boards-scroll" style="flex:1;overflow-y:auto">
       <div id="lib-board-list" class="cx" style="display:flex;flex-direction:column;gap:8px;padding-top:14px;padding-bottom:14px"></div>
     </div>
     <div class="screen-footer">
@@ -1725,6 +1725,10 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         <span class="gc-ico">◉ ICO</span>
         <input type="range" id="ico-scale-slider" min="0.5" max="3.0" step="0.1" value="1">
       </div>
+      <div class="gc-row">
+        <span class="gc-ico">⊞ DENS</span>
+        <input type="range" id="ico-density-slider" min="0" max="3" step="0.1" value="1">
+      </div>
       <div class="trow">
         <div class="topt" id="sh-sq" onclick="setPadShape('0px','sq')">◼ SQ</div>
         <div class="topt" id="sh-rd" onclick="setPadShape('8px','rd')">▢ RD</div>
@@ -1738,8 +1742,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 112;
+const APP_VERSION = 113;
 const CHANGELOG=[
+  {v:113,date:'2026-05-23',items:["Drag-and-drop insert highlight: both adjacent PADs glow simultaneously (_applyInsertHighlight highlights PAD[N] with insert-before and PAD[N-1] with insert-after)","Scroll preservation: all Library list re-renders (audio, pads, boards, My Boards) capture and restore scroll position — renaming no longer jumps to top","Icon density slider (⊞ DENS) in PAD Style panel: --ico-density 0-3, default 1 (current behavior) — at 0 all icons same size regardless of count; at 3 four icons are 90% larger than one"]},
   {v:112,date:'2026-05-23',items:["PAD drag-and-drop redesigned: center of a PAD = swap (full PAD glow); edge zone ~20px = insert with line indicator; hovering in the gap between PADs triggers insert via nearest-edge detection","New swapPad() function: exchanges two PADs directly without shifting others; combo step references remapped correctly"]},
   {v:111,date:'2026-05-23',items:["Push sidebar: at ≥500px the sidebar shifts screen content right instead of overlaying it — both areas interactive simultaneously; backdrop removed entirely","Dynamic sidebar button: hidden when current Library tab (BOARDS, ICONS) has no sidebar content; sidebar auto-closes on tab switch to a content-free tab","New universal classes: .sec-lbl (sub-section header), .sec-lbl-row (header + button row), .info-line (meta stats), .screen-footer (bottom action bar), .sb-tabs (sidebar tab list)","Library HTML: #lib-stats, TEMPLATES header, BUILT-IN ICONS row, Boards footer all converted to new class families"]},
   {v:110,date:'2026-05-23',items:["Sort option renamed: \"Latest Edit\" → \"Edit\" — direction already conveyed by ↑/↓ arrow"]},
@@ -1815,7 +1820,7 @@ const CHANGELOG=[
   {v:38,date:'2026-05-22',items:['Edit mode accent: blue icons/borders; Play mode accent: gold','Looping pad border pulses gold (breathe-gold animation)']},
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode'];
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
 //  grep for "// ── SECTION" to jump to any area
@@ -2353,6 +2358,8 @@ function libCard({nameId,preHtml='',badge=null,nameHtml,nameStyle='',actions=[],
 }
 
 function renderBoardList(boards){
+  const sLib=document.getElementById('lib-boards-scroll'), sSMB=document.getElementById('smb-scroll');
+  const libScroll=sLib?.scrollTop||0, smbScroll=sSMB?.scrollTop||0;
   const q=_libSsbQ.toLowerCase().trim();
   const searched=q?boards.filter(b=>b.name.toLowerCase().includes(q)):boards;
   const sorted=_sortItems(searched,_libSsbSort_k,b=>b.createdAt,b=>b.name,b=>b.updatedAt);
@@ -2379,6 +2386,7 @@ function renderBoardList(boards){
   for(const cid of ['board-list','lib-board-list']){
     const el=document.getElementById(cid); if(el) el.innerHTML=html;
   }
+  requestAnimationFrame(()=>{ if(sLib) sLib.scrollTop=libScroll; if(sSMB) sSMB.scrollTop=smbScroll; });
 }
 function libRenameBoardStart(id){
   (async()=>{
@@ -2973,6 +2981,8 @@ function fmtSize(bytes){
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function renderLibList(entries,usedHashes){
   renderSidebarContent(cur);
+  const s=document.getElementById('lib-audio-section');
+  const savedScroll=s?.scrollTop||0;
   const list=document.getElementById('lib-list');
   const stats=document.getElementById('lib-stats');
   if(!list) return;
@@ -3015,7 +3025,7 @@ function renderLibList(entries,usedHashes){
       ],
     });
   }).join('');
-  requestAnimationFrame(()=>{ const s=document.getElementById('lib-audio-section'); if(s) s.scrollTop=_libAudioScroll; });
+  requestAnimationFrame(()=>{ if(s) s.scrollTop=savedScroll; });
 }
 async function onLibUpload(inp){
   const files=Array.from(inp.files); inp.value='';
@@ -3177,6 +3187,8 @@ function setLibPadFilter(f){
   renderSidebarContent(cur);
 }
 async function renderLibPads(){
+  const sPads=document.getElementById('lib-pads-section');
+  const savedPadsScroll=sPads?.scrollTop||0;
   const modeLabel=m=>m==='combo'?'C-PAD':m==='loop'?'LOOP':m==='playlist'?'LIST':'S-PAD';
   const modeColor=m=>m==='combo'?'var(--gold)':'var(--emerald)';
   const q=_libSsbQ.toLowerCase().trim();
@@ -3255,6 +3267,7 @@ async function renderLibPads(){
         }).join('')
       : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">${q?'No matching templates.':'No templates yet. Use SAVE on a pad above to create one.'}</p>`;
   }
+  requestAnimationFrame(()=>{ if(sPads) sPads.scrollTop=savedPadsScroll; });
 }
 async function savePadTemplate(idx){
   const item=_libPadItems[idx]; if(!item) return;
@@ -4134,19 +4147,23 @@ function applyGridCtrl(){
   const sz=document.getElementById('sz-slider').value;
   const gap=document.getElementById('gap-slider').value;
   const ico=document.getElementById('ico-scale-slider').value;
+  const dens=document.getElementById('ico-density-slider').value;
   document.documentElement.style.setProperty('--pad-sz',sz+'px');
   document.documentElement.style.setProperty('--pad-gap',gap+'px');
   document.documentElement.style.setProperty('--ico-scale',ico);
+  document.documentElement.style.setProperty('--ico-density',dens);
 }
 function initGridCtrl(){
   const sz=localStorage.getItem('pad-sz')||'90';
   const gap=localStorage.getItem('pad-gap')||'8';
   const ico=localStorage.getItem('ico-scale')||'1';
+  const dens=localStorage.getItem('ico-density')||'1';
   const radius=localStorage.getItem('pad-radius')||'8px';
   const shapeKey=localStorage.getItem('pad-shape-key')||'rd';
   document.getElementById('sz-slider').value=sz;
   document.getElementById('gap-slider').value=gap;
   document.getElementById('ico-scale-slider').value=ico;
+  document.getElementById('ico-density-slider').value=dens;
   applyGridCtrl();
   setPadShape(radius,shapeKey);
   document.getElementById('sz-slider').addEventListener('input',()=>{
@@ -4157,6 +4174,9 @@ function initGridCtrl(){
   });
   document.getElementById('ico-scale-slider').addEventListener('input',()=>{
     applyGridCtrl(); localStorage.setItem('ico-scale',document.getElementById('ico-scale-slider').value);
+  });
+  document.getElementById('ico-density-slider').addEventListener('input',()=>{
+    applyGridCtrl(); localStorage.setItem('ico-density',document.getElementById('ico-density-slider').value);
   });
 }
 
@@ -5285,6 +5305,12 @@ function captureKey(e){
 
 // ── KEYBOARD ──
 // ── DRAG & DROP ──
+function _applyInsertHighlight(at){
+  const before=document.querySelector(`.pbtn[data-id="${at}"]`);
+  const after=document.querySelector(`.pbtn[data-id="${at-1}"]`);
+  if(before) before.classList.add('drag-insert-before');
+  if(after) after.classList.add('drag-insert-after');
+}
 function swapPad(a, b){
   if(a===b) return;
   stopPad(a,true); stopPad(b,true);
@@ -5360,12 +5386,12 @@ function onDragMove(e){
     const EDGE=Math.min(r.width*0.25, 22);
     if(e.clientX < r.left+EDGE){
       _dragInsertAt=tgtId;
-      if(_dragInsertAt!==dragSrc && _dragInsertAt!==dragSrc+1) tgt.classList.add('drag-insert-before');
-      else _dragInsertAt=null;
+      if(_dragInsertAt===dragSrc || _dragInsertAt===dragSrc+1) _dragInsertAt=null;
+      else _applyInsertHighlight(_dragInsertAt);
     } else if(e.clientX > r.right-EDGE){
       _dragInsertAt=tgtId+1;
-      if(_dragInsertAt!==dragSrc && _dragInsertAt!==dragSrc+1) tgt.classList.add('drag-insert-after');
-      else _dragInsertAt=null;
+      if(_dragInsertAt===dragSrc || _dragInsertAt===dragSrc+1) _dragInsertAt=null;
+      else _applyInsertHighlight(_dragInsertAt);
     } else {
       if(tgtId!==dragSrc){ _dragSwapWith=tgtId; tgt.classList.add('drag-swap'); }
     }
@@ -5383,9 +5409,8 @@ function onDragMove(e){
     if(closest && closestDist<32){
       const tgtId=+closest.pad.dataset.id;
       _dragInsertAt=closest.side==='left'?tgtId:tgtId+1;
-      if(_dragInsertAt!==dragSrc && _dragInsertAt!==dragSrc+1)
-        closest.pad.classList.add(closest.side==='left'?'drag-insert-before':'drag-insert-after');
-      else _dragInsertAt=null;
+      if(_dragInsertAt===dragSrc || _dragInsertAt===dragSrc+1) _dragInsertAt=null;
+      else _applyInsertHighlight(_dragInsertAt);
     }
   }
 }
