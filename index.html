@@ -3006,12 +3006,13 @@ function playComboStep(id,state,steps,stepIdx){
   let delayNext = 0;
 
   if (steps[stepIdx].stopAll) {
-    stopAll(id); 
+    stopAll(id, false); 
     delayNext = 200;
   }
   
   if (steps[stepIdx].fadeOutAll) {
     const customFadeTime = steps[stepIdx].dur || 2.5;
+    stopAll(id, true);
     fadeOutAll(customFadeTime);
     delayNext = (customFadeTime * 1000) + 100;
   }
@@ -3120,18 +3121,23 @@ function pauseAllAudio(){
   else ctx.suspend();
 }
 
-function stopAll(exceptComboId = null){
+function stopAll(exceptComboId = null, isFade = false){
   Object.keys(srcs).forEach(id=>{
     const pid=+id;
-    srcs[pid].forEach(s=>{try{s.onended=null;s.stop();}catch(e){}});
-    delete srcs[pid];
-    delete gains[pid];
-    delete playPos[pid];
-    _detachPadAnalyser(pid);
-    updBtn(pid,false);
+    if (!isFade) {
+      srcs[pid].forEach(s=>{try{s.onended=null;s.stop();}catch(e){}});
+      delete srcs[pid];
+      delete gains[pid];
+      delete playPos[pid];
+      _detachPadAnalyser(pid);
+      updBtn(pid,false);
+    }
   });
   _playStack = _playStack.filter(state => {
     if (exceptComboId !== null && state.id === exceptComboId) {
+      return true;
+    }
+    if (isFade) {
       return true;
     }
     state.stopped = true;
@@ -3141,7 +3147,7 @@ function stopAll(exceptComboId = null){
     finishCombo(state.id, state);
     return false;
   });
-  chkNP();
+  if (!isFade) chkNP();
 }
 
 function togglePad(id){ if(srcs[id]) stopPad(id); else play(id); }
