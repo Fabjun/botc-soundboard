@@ -1152,11 +1152,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     <div class="ssb-sort-wrap">
       <button class="ssb-sort-btn" id="lib-ssb-sort-btn" onclick="_libSsbSortToggle()">SORT ▾</button>
       <div class="ssb-drop" id="lib-ssb-drop">
-        <div class="ssb-opt" data-s="newest" onclick="_libSsbSort('newest')">Newest</div>
-        <div class="ssb-opt" data-s="oldest" onclick="_libSsbSort('oldest')">Oldest</div>
-        <div class="ssb-opt" data-s="latest-edit" onclick="_libSsbSort('latest-edit')">Latest Edit</div>
-        <div class="ssb-opt" data-s="a-z" onclick="_libSsbSort('a-z')">A → Z</div>
-        <div class="ssb-opt" data-s="z-a" onclick="_libSsbSort('z-a')">Z → A</div>
+        <div class="ssb-opt" data-s="date" data-label="Date" onclick="_libSsbSortOpt('date')">Date</div>
+        <div class="ssb-opt" data-s="edit" data-label="Latest Edit" onclick="_libSsbSortOpt('edit')">Latest Edit</div>
+        <div class="ssb-opt" data-s="name" data-label="Name" onclick="_libSsbSortOpt('name')">Name</div>
       </div>
     </div>
   </div>
@@ -1630,11 +1628,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     <div class="ssb-sort-wrap">
       <button class="ssb-sort-btn" id="lp-ssb-sort-btn" onclick="_lpSsbSortToggle()">SORT ▾</button>
       <div class="ssb-drop" id="lp-ssb-drop">
-        <div class="ssb-opt" data-s="newest" onclick="_lpSsbSort('newest')">Newest</div>
-        <div class="ssb-opt" data-s="oldest" onclick="_lpSsbSort('oldest')">Oldest</div>
-        <div class="ssb-opt" data-s="latest-edit" onclick="_lpSsbSort('latest-edit')">Latest Edit</div>
-        <div class="ssb-opt" data-s="a-z" onclick="_lpSsbSort('a-z')">A → Z</div>
-        <div class="ssb-opt" data-s="z-a" onclick="_lpSsbSort('z-a')">Z → A</div>
+        <div class="ssb-opt" data-s="date" data-label="Date" onclick="_lpSsbSortOpt('date')">Date</div>
+        <div class="ssb-opt" data-s="edit" data-label="Latest Edit" onclick="_lpSsbSortOpt('edit')">Latest Edit</div>
+        <div class="ssb-opt" data-s="name" data-label="Name" onclick="_lpSsbSortOpt('name')">Name</div>
       </div>
     </div>
   </div>
@@ -1736,8 +1732,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 108;
+const APP_VERSION = 109;
 const CHANGELOG=[
+  {v:109,date:'2026-05-23',items:["Sort dropdown redesigned: 3 toggle-able dimensions (Date, Latest Edit, Name) replace 5 separate options — clicking an inactive option activates it with default direction; clicking the active option flips direction (↑/↓); direction arrow shown inline in the active option"]},
   {v:108,date:'2026-05-23',items:["Sidebar toggle button (☰) restored on all sidebar screens — auto-pin at ≥800px removed, sidebar is always slide-in"]},
   {v:107,date:'2026-05-23',items:["Search + Sort bar (.ssb family) in all Library tabs and lib-picker — filter by name, sort by Newest/Oldest/Latest Edit/A→Z/Z→A; sort key persists per tab in localStorage","Duplicate name warning on inline rename — non-blocking gold hint when a name already exists in the same type scope (audio, template, board)","Multi-rename: Enter confirms all open renames at once; clicking outside any rename input confirms all","updatedAt timestamp written on rename for audio files, PAD templates, and boards — powers Latest Edit sort"]},
   {v:106,date:'2026-05-23',items:["Overlay header family: #hint-ov-hdr and #combo-hdr CSS rules removed — both now use .fs-hdr; inline ← buttons replaced with .fs-back; inline titles replaced with .fs-title; .fs-title-mode variant added for mode-accent colored titles (combo editor)"]},
@@ -1853,8 +1850,8 @@ let eqRAF = null;
 let eId = null, eFiles = [], eMode = 'once', eImage = null, eIcons = [null,null,null,null], eIconSlot = 0, eShuffle = false, pendingMode = null, eLoopCount = 0, appendFiles = false, fadeSub = false;
 let libMainTab = 'audio';
 let _libSsbQ = '';
-let _libSsbSort_k = localStorage.getItem('ssb-sort-audio') || 'newest';
-let _lpSort = localStorage.getItem('ssb-sort-lp') || 'newest';
+let _libSsbSort_k = (k=>k&&k.includes('-')?k:'date-desc')(localStorage.getItem('ssb-sort-audio'));
+let _lpSort = (k=>k&&k.includes('-')?k:'date-desc')(localStorage.getItem('ssb-sort-lp'));
 let _libPadFilter = 'current';
 let _libPadItems = [];
 const iconSvgCache = {};
@@ -3083,11 +3080,12 @@ function closeChangelog(){ popEsc('changelog-ov'); document.getElementById('chan
 // ── SEARCH + SORT BAR ──
 function _sortItems(items,key,added,name,updated){
   const arr=[...items];
-  if(key==='a-z') return arr.sort((a,b)=>name(a).localeCompare(name(b)));
-  if(key==='z-a') return arr.sort((a,b)=>name(b).localeCompare(name(a)));
-  if(key==='oldest') return arr.sort((a,b)=>added(a)-added(b));
-  if(key==='latest-edit') return arr.sort((a,b)=>(updated(b)||added(b))-(updated(a)||added(a)));
-  return arr.sort((a,b)=>added(b)-added(a));
+  if(key==='name-asc') return arr.sort((a,b)=>name(a).localeCompare(name(b)));
+  if(key==='name-desc') return arr.sort((a,b)=>name(b).localeCompare(name(a)));
+  if(key==='date-asc') return arr.sort((a,b)=>added(a)-added(b));
+  if(key==='edit-desc') return arr.sort((a,b)=>(updated(b)||added(b))-(updated(a)||added(a)));
+  if(key==='edit-asc') return arr.sort((a,b)=>(updated(a)||added(a))-(updated(b)||added(b)));
+  return arr.sort((a,b)=>added(b)-added(a)); // date-desc (default)
 }
 function _libSsbQuery(val){
   _libSsbQ=val;
@@ -3101,7 +3099,10 @@ function _libSsbClear(){
   _libSsbRefresh();
 }
 function _libSsbSortToggle(){ document.getElementById('lib-ssb-drop')?.classList.toggle('open'); }
-function _libSsbSort(key){
+function _libSsbSortOpt(dim){
+  const [curDim,curDir]=_libSsbSort_k.split('-');
+  const defaults={name:'asc',date:'desc',edit:'desc'};
+  const key=curDim===dim?dim+'-'+(curDir==='asc'?'desc':'asc'):dim+'-'+defaults[dim];
   _libSsbSort_k=key;
   localStorage.setItem('ssb-sort-'+libMainTab,key);
   document.getElementById('lib-ssb-drop')?.classList.remove('open');
@@ -3111,8 +3112,15 @@ function _libSsbSort(key){
 function _libSsbUpdateSortUI(){
   const btn=document.getElementById('lib-ssb-sort-btn');
   const drop=document.getElementById('lib-ssb-drop');
-  if(btn) btn.classList.toggle('active',_libSsbSort_k!=='newest');
-  if(drop) drop.querySelectorAll('.ssb-opt').forEach(o=>o.classList.toggle('active',o.dataset.s===_libSsbSort_k));
+  if(btn) btn.classList.toggle('active',_libSsbSort_k!=='date-desc');
+  if(drop){
+    const [dim,dir]=_libSsbSort_k.split('-');
+    drop.querySelectorAll('.ssb-opt').forEach(o=>{
+      const active=o.dataset.s===dim;
+      o.classList.toggle('active',active);
+      o.textContent=o.dataset.label+(active?(dir==='asc'?' ↑':' ↓'):'');
+    });
+  }
 }
 function _libSsbCount(shown,total){
   const el=document.getElementById('lib-ssb-count');
@@ -3130,7 +3138,8 @@ function setLibMainTab(tab){
   stopLibPreview();
   libMainTab=tab;
   _libSsbQ='';
-  _libSsbSort_k=localStorage.getItem('ssb-sort-'+tab)||'newest';
+  const _sk=localStorage.getItem('ssb-sort-'+tab);
+  _libSsbSort_k=(_sk&&_sk.includes('-'))?_sk:'date-desc';
   const qEl=document.getElementById('lib-ssb-q'); if(qEl) qEl.value='';
   document.getElementById('lib-ssb-clear')?.classList.remove('on');
   _libSsbUpdateSortUI();
@@ -3865,8 +3874,15 @@ function _lpSsbUpdateUI(){
   document.getElementById('lp-ssb-clear')?.classList.toggle('on',!!_lpQuery);
   const btn=document.getElementById('lp-ssb-sort-btn');
   const drop=document.getElementById('lp-ssb-drop');
-  if(btn) btn.classList.toggle('active',_lpSort!=='newest');
-  if(drop) drop.querySelectorAll('.ssb-opt').forEach(o=>o.classList.toggle('active',o.dataset.s===_lpSort));
+  if(btn) btn.classList.toggle('active',_lpSort!=='date-desc');
+  if(drop){
+    const [dim,dir]=_lpSort.split('-');
+    drop.querySelectorAll('.ssb-opt').forEach(o=>{
+      const active=o.dataset.s===dim;
+      o.classList.toggle('active',active);
+      o.textContent=o.dataset.label+(active?(dir==='asc'?' ↑':' ↓'):'');
+    });
+  }
 }
 function _lpSsbClear(){
   _lpQuery='';
@@ -3875,7 +3891,10 @@ function _lpSsbClear(){
   _lpRenderList();
 }
 function _lpSsbSortToggle(){ document.getElementById('lp-ssb-drop')?.classList.toggle('open'); }
-function _lpSsbSort(key){
+function _lpSsbSortOpt(dim){
+  const [curDim,curDir]=_lpSort.split('-');
+  const defaults={name:'asc',date:'desc',edit:'desc'};
+  const key=curDim===dim?dim+'-'+(curDir==='asc'?'desc':'asc'):dim+'-'+defaults[dim];
   _lpSort=key;
   localStorage.setItem('ssb-sort-lp',key);
   document.getElementById('lp-ssb-drop')?.classList.remove('open');
