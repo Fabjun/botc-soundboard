@@ -192,6 +192,7 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 .topt{flex:1;text-align:center;padding:7px 2px;border-radius:2px;
   font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
   cursor:pointer;border:1px solid rgba(62,62,96,.9);color:rgba(210,200,222,.8)}
+.topt.ao{background:rgba(201,168,76,.15);border-color:var(--gold-dim);color:var(--gold)}
 .topt.al{background:var(--mode-accent-glow);border-color:var(--mode-accent-dim);color:var(--mode-accent)}
 .topt.ap{background:#1a2a1a;border-color:#1a5a1a;color:#81c784}
 /* Dialog action buttons — shared by all modal dialogs */
@@ -778,7 +779,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   .btn-s:hover{background:rgba(100,95,122,.18);border-color:rgba(150,145,172,.9)}
   .btn-d:hover{background:rgba(139,26,26,.18)}
   .fbtn:hover{background:var(--raised);border-color:var(--border)}
-  .topt:hover:not(.al):not(.ap){border-color:var(--text-dim);color:var(--text)}
+  .topt:hover:not(.ao):not(.al):not(.ap){border-color:var(--text-dim);color:var(--text)}
   .pbtn:not(.empty):hover{filter:brightness(1.1)}
   .ptp-opt:hover{background:var(--raised)}
   .lib-main-tab:hover:not(.active){color:var(--text)}
@@ -1752,7 +1753,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 115;
+const APP_VERSION = 116;
 const CHANGELOG=[
   {v:114,date:'2026-05-23',items:["Icon density slider extended to −3…+3 (symmetric around 23px center): at −3 a single icon is as large as 4 icons at +3; at density=1 the sizes are identical to before (20/22/24/26px)","PAD label (.plbl) now absolutely positioned at the bottom with gradient overlay — icon always renders on top (z-index:2), label behind it (z-index:1)","Circular PAD: label rendered as SVG <textPath> along a bottom arc — text curves along the circle edge and cannot be clipped; drop-shadow filter ensures readability over icons","Key assignment (.pnum) moved to top-center with text-shadow glow; color follows mode accent; gold glow when playing"]},
   {v:113,date:'2026-05-23',items:["Drag-and-drop insert highlight: both adjacent PADs glow simultaneously (_applyInsertHighlight highlights PAD[N] with insert-before and PAD[N-1] with insert-after)","Scroll preservation: all Library list re-renders (audio, pads, boards, My Boards) capture and restore scroll position — renaming no longer jumps to top","Icon density slider (⊞ DENS) in PAD Style panel: --ico-density 0-3, default 1 (current behavior) — at 0 all icons same size regardless of count; at 3 four icons are 90% larger than one"]},
@@ -3467,6 +3468,7 @@ function openIconPicker(slot){
   _applyIconNamesClass();
   pushEsc(closeIconPicker);
   ov.classList.add('open');
+  setTimeout(()=>{ document.getElementById('ico-q')?.focus(); }, 50);
 }
 function closeIconPicker(){ popEsc('icon-picker'); document.getElementById('icon-picker')?.classList.remove('open'); }
 function renderIconGrid(filter){
@@ -4028,6 +4030,7 @@ async function openLibPicker(append=false){
   _lpSsbUpdateUI();
   _lpRenderList();
   requestAnimationFrame(()=>{ const l=document.getElementById('lp-list'); if(l) l.scrollTop=_lpScroll; });
+  setTimeout(()=>{ document.getElementById('lp-ssb-q')?.focus(); }, 50);
 }
 function closeLibPicker(){
   const l=document.getElementById('lp-list');
@@ -5371,7 +5374,6 @@ function reorderPad(fromIdx, toIdx){
 function onPadPointerDown(e, id){
   e.preventDefault();
   spawnRipple(e.currentTarget, e);
-  if(locked){ togglePad(id); return; }
   dragSrc=id; dragStartX=e.clientX; dragStartY=e.clientY; dragMoved=false;
   document.addEventListener('pointermove', onDragMove, {passive:false});
   document.addEventListener('pointerup', onDragEnd);
