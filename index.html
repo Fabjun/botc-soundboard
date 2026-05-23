@@ -3001,25 +3001,32 @@ function createPadInstance(padId,volOverride,fadeOverride){
   g.connect(masterGain);
   const active=[]; let stopped=false;
 
+  // Safely calculate duration based on the first available buffer
+  const b = padBufs[0];
   const tStart = p.trimStart || 0;
   const tEnd = p.trimEnd || 0;
-  const hasDuration = tEnd > tStart;
-  const dur = hasDuration ? (tEnd - tStart) : undefined;
+  const fileDur = b ? b.duration : 0;
+  const dur = (tEnd > tStart && tEnd <= fileDur) ? (tEnd - tStart) : (fileDur - tStart);
+  const hasDuration = dur > 0;
 
   function doStart(onEnded){
     if(p.mode==='once'){
-      const b=padBufs[0]; if(!b){onEnded&&onEnded();return;}
+      if(!b){onEnded&&onEnded();return;}
       const s=ctx.createBufferSource();
       s.buffer=b; s.connect(g); active.push(s);
       s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
-      if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+      s.start(0, tStart, dur);
     } else if(p.mode==='loop'){
-      const b=padBufs[0]; if(!b){onEnded&&onEnded();return;}
+      if(!b){onEnded&&onEnded();return;}
       const lc=p.loopCount||0;
       if(lc===0){
         const s=ctx.createBufferSource();
         s.buffer=b; s.loop=true; s.connect(g); active.push(s); 
-        if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+        if(tEnd > tStart) {
+          s.loopStart = tStart;
+          s.loopEnd = tEnd;
+        }
+        s.start(0, tStart);
       } else {
         let rem=lc;
         (function loopOne(){
@@ -3027,7 +3034,7 @@ function createPadInstance(padId,volOverride,fadeOverride){
           const s=ctx.createBufferSource(); s.buffer=b; s.connect(g); active.push(s); rem--;
           if(rem<=0) s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
           else s.onended=()=>{ if(!stopped){ active.splice(active.indexOf(s),1); loopOne(); } };
-          if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+          s.start(0, tStart, dur);
         })();
       }
     } else if(p.mode==='playlist'){
@@ -3038,9 +3045,13 @@ function createPadInstance(padId,volOverride,fadeOverride){
         if(stopped) return;
         if(pos>=all.length){onEnded&&onEnded();return;}
         const i=p.shuffle?Math.floor(Math.random()*all.length):pos; pos++;
-        const s=ctx.createBufferSource(); s.buffer=all[i]; s.connect(g); active.push(s);
+        const currentBuf = all[i];
+        const s=ctx.createBufferSource(); s.buffer=currentBuf; s.connect(g); active.push(s);
         s.onended=()=>{ if(stopped) return; active.splice(active.indexOf(s),1); nextTrack(); };
-        if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+        
+        const trackDur = currentBuf ? currentBuf.duration : 0;
+        const currentDur = (tEnd > tStart && tEnd <= trackDur) ? (tEnd - tStart) : (trackDur - tStart);
+        s.start(0, tStart, currentDur);
       })();
     } else { onEnded&&onEnded(); }
   }
