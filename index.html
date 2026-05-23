@@ -3006,7 +3006,7 @@ function playComboStep(id,state,steps,stepIdx){
   let delayNext = 0;
 
   if (steps[stepIdx].stopAll) {
-    stopAll(); 
+    stopAll(id); 
     delayNext = 200;
   }
   
@@ -3057,7 +3057,7 @@ function playComboStep(id,state,steps,stepIdx){
     }
   }
 }
-// Diese Funktion regelt alle Gains flüssig über die eingestellte Zeit gegen 0
+
 function fadeOutAll(fadeTime) {
   if (!ctx || ctx.state === 'suspended') return;
   
@@ -3120,15 +3120,28 @@ function pauseAllAudio(){
   else ctx.suspend();
 }
 
-function stopAll(){
-  if(ctx) ctx.resume().catch(()=>{});
-  stopPreview();
-  _playStack=[];
-  Object.keys(srcs).forEach(id=>stopPad(+id,true));
-  document.getElementById('nptxt').textContent='No sound active';
-  document.getElementById('nptxt').style.color='var(--text-dim)';
-  const d=document.querySelector('.npdot'); if(d) d.remove();
-  updEdgeGlow(); stopEQ();
+function stopAll(exceptComboId = null){
+  Object.keys(srcs).forEach(id=>{
+    const pid=+id;
+    srcs[pid].forEach(s=>{try{s.onended=null;s.stop();}catch(e){}});
+    delete srcs[pid];
+    delete gains[pid];
+    delete playPos[pid];
+    _detachPadAnalyser(pid);
+    updBtn(pid,false);
+  });
+  _playStack = _playStack.filter(state => {
+    if (exceptComboId !== null && state.id === exceptComboId) {
+      return true;
+    }
+    state.stopped = true;
+    if (state.pauseTimer) clearTimeout(state.pauseTimer);
+    state.currentFgInstances.forEach(inst => { try { inst.node.stop(); } catch(e) {} });
+    state.bgInstances.forEach(inst => { try { inst.node.stop(); } catch(e) {} });
+    finishCombo(state.id, state);
+    return false;
+  });
+  chkNP();
 }
 
 function togglePad(id){ if(srcs[id]) stopPad(id); else play(id); }
