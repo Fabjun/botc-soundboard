@@ -873,7 +873,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   </div>
   <div class="mopts">
     <div class="mopt mp" onclick="show('sp')">
-      <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M3 7h2v5H3zm4 0h2v13H7zm4-3h2v16h-2zm4 0h2v13h-2zM5 5h2v2H5zm4 15h2v2H9zm4-18h2v2h-2zm4 15h2v2h-2zm2-5h2v5h-2zm2-2h2v2h-2zM1 12h2v2H1z"/></svg></div>
+      <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
       <div><div class="mlbl">BOARD</div><div class="msub" id="board-subtitle">Loading…</div></div>
     </div>
     <div class="mopt" onclick="show('sli');setLibMainTab('audio')">
@@ -1774,8 +1774,12 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 117;
+const APP_VERSION = 118;
 const CHANGELOG=[
+  {v:118,date:'2026-05-23',items:["Onboarding: 🎲 replaced with pixel-art dice SVG (gold, 16×16 viewBox); 📚 replaced with book-open SVG (24×24) — consistent with pixel-art icon system","Board entry in main menu: equalizer icon replaced with flame icon (matches the sigil at the top of the main menu)","Changelog: v115–v117 entries added; console.assert guards against future version/changelog drift"]},
+  {v:117,date:'2026-05-23',items:["Folder system for Library audio and PAD templates: flat one-level folders stored as a 'folder' field on lib entries (Option A — tag-based, no separate records)","Sidebar FOLDERS tree below each tab's filter section: ALL node, per-folder nodes (📁 name), ＋ NEW FOLDER; inline rename and delete with confirmation","Upload auto-assignment: files uploaded while a folder is active land in that folder automatically","📁 action button on each audio entry and PAD template: folder picker dropdown with existing folders, 'Unfiled', and 'New folder…' (creates + moves in one step)","Folder chip in list: when viewing ALL, files with a folder show a clickable chip that navigates to that folder"]},
+  {v:116,date:'2026-05-23',items:["Solo mode (.topt.ao) now gold: rule was removed in v85 as 'dead CSS', leaving SOLO visually unmarked — re-added with gold palette","Auto-focus search field when opening icon picker (#ico-q) or library picker (#lp-ssb-q)","Drag-and-drop enabled in GAME mode: removed early togglePad() return; onDragEnd already handles tap-vs-drag correctly so tap-to-play is fully preserved"]},
+  {v:115,date:'2026-05-23',items:["UPLOAD AUDIO button moved to top of Library audio section and restyled as btn-p (gold gradient, full width)","IMPORT LIBRARY in Settings now sa-btn sa-pri (gold border/text) matching EXPORT LIBRARY style","Double × in search bar fixed: native WebKit cancel button suppressed via .ssb-input::-webkit-search-cancel-button{display:none}"]},
   {v:114,date:'2026-05-23',items:["Icon density slider extended to −3…+3 (symmetric around 23px center): at −3 a single icon is as large as 4 icons at +3; at density=1 the sizes are identical to before (20/22/24/26px)","PAD label (.plbl) now absolutely positioned at the bottom with gradient overlay — icon always renders on top (z-index:2), label behind it (z-index:1)","Circular PAD: label rendered as SVG <textPath> along a bottom arc — text curves along the circle edge and cannot be clipped; drop-shadow filter ensures readability over icons","Key assignment (.pnum) moved to top-center with text-shadow glow; color follows mode accent; gold glow when playing"]},
   {v:113,date:'2026-05-23',items:["Drag-and-drop insert highlight: both adjacent PADs glow simultaneously (_applyInsertHighlight highlights PAD[N] with insert-before and PAD[N-1] with insert-after)","Scroll preservation: all Library list re-renders (audio, pads, boards, My Boards) capture and restore scroll position — renaming no longer jumps to top","Icon density slider (⊞ DENS) in PAD Style panel: --ico-density 0-3, default 1 (current behavior) — at 0 all icons same size regardless of count; at 3 four icons are 90% larger than one"]},
   {v:112,date:'2026-05-23',items:["PAD drag-and-drop redesigned: center of a PAD = swap (full PAD glow); edge zone ~20px = insert with line indicator; hovering in the gap between PADs triggers insert via nearest-edge detection","New swapPad() function: exchanges two PADs directly without shifting others; combo step references remapped correctly"]},
@@ -1853,6 +1857,7 @@ const CHANGELOG=[
   {v:38,date:'2026-05-22',items:['Edit mode accent: blue icons/borders; Play mode accent: gold','Looping pad border pulses gold (breathe-gold animation)']},
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
+console.assert(CHANGELOG[0].v===APP_VERSION,'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
 const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode'];
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
@@ -6201,7 +6206,7 @@ initTitleGlow();
   <div class="ob-slides">
 
     <div class="ob-slide active" id="ob-s0">
-      <div class="ob-icon">🎲</div>
+      <div class="ob-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="52" height="52" style="color:var(--gold)"><path d="M7 0h1v1H7zM5 1h5v1H5zM3 2h3v1H3zM9 2h3v1H9zM1 3h3v1H1zM11 3h3v1H11zM1 4h1v1H1zM13 4h1v1H13zM1 5h3v1H1zM11 5h3v1H11zM1 6h1v1H1zM4 6h2v1H4zM9 6h2v1H9zM13 6h1v1H13zM1 7h1v1H1zM6 7h3v1H6zM13 7h1v1H13zM1 8h1v1H1zM7 8h1v1H7zM13 8h1v1H13zM1 9h1v1H1zM7 9h1v1H7zM13 9h1v1H13zM1 10h1v1H1zM7 10h1v1H7zM13 10h1v1H13zM1 11h3v1H1zM7 11h1v1H7zM11 11h3v1H11zM3 12h3v1H3zM7 12h1v1H7zM9 12h3v1H9zM5 13h5v1H5zM7 14h1v1H7z"/></svg></div>
       <div class="ob-title">SOUNDBOARD OF STORYTELLING</div>
       <div class="ob-body">Your personal audio companion for tabletop game-masters. Create immersive soundscapes — no cloud, no account, fully offline.</div>
     </div>
@@ -6218,7 +6223,7 @@ initTitleGlow();
           <div class="ob-row-text"><span class="ob-row-lbl">GAME MODE</span>Tap pads to trigger sounds live, one-handed.</div>
         </div>
         <div class="ob-row">
-          <div class="ob-row-ico">📚</div>
+          <div class="ob-row-ico" style="color:var(--gold)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="display:block"><path d="M2 3h9v2H2zM0 19h11v2H0zM13 3h9v2h-9zm0 16h11v2H13zM11 5h2v18h-2zM0 5h2v14H0zm22 0h2v14h-2zm-7 2h5v2h-5zm0 4h5v2h-5zm0 4h2v2h-2z"/></svg></div>
           <div class="ob-row-text"><span class="ob-row-lbl">LIBRARY</span>All audio lives here — pads reference it. No duplicates.</div>
         </div>
       </div>
