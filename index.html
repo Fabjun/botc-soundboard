@@ -3003,8 +3003,6 @@ function playCombo(id, onFinish=null){
 function playComboStep(id,state,steps,stepIdx){
   if(state.stopped||stepIdx>=steps.length){ finishCombo(id,state); return; }
   
-  // NEU: Wenn dieser Schritt ein globales Stop signalisiert, brechen wir sofort
-  // alle aktuell laufenden Sounds auf dem gesamten Soundboard ab.
   if (steps[stepIdx].stopAll) {
     stopAll(); 
   }
@@ -3041,17 +3039,6 @@ function playComboStep(id,state,steps,stepIdx){
       });
     }
   }
-  // Empty step (or bg-only or hard stop): wait for dur, then advance
-  if(fgRem===0){
-    const ms=(steps[stepIdx].dur||0)*1000;
-    if(ms>0){
-      state.pauseTimer=setTimeout(()=>{ if(!state.stopped) playComboStep(id,state,steps,stepIdx+1); },ms);
-    } else {
-      playComboStep(id,state,steps,stepIdx+1);
-    }
-  }
-}
-  // Empty step (or bg-only): wait for dur, then advance
   if(fgRem===0){
     const ms=(steps[stepIdx].dur||0)*1000;
     if(ms>0){
@@ -3076,7 +3063,6 @@ function stopCombo(id){
   clearTimeout(state.pauseTimer);
   state.bgInstances.forEach(i=>i.stop());
   state.currentFgInstances.forEach(i=>i.stop());
-  // propagate stop to any sub-combos running as part of this combo's steps
   const p=pads[id];
   if(p?.steps) p.steps.forEach(s=>(s.pads||[]).forEach(pid=>{ if(comboState[pid]) stopCombo(pid); }));
   delete comboState[id];
@@ -3095,6 +3081,7 @@ function pauseAllAudio(){
   if(ctx.state==='suspended') ctx.resume();
   else ctx.suspend();
 }
+
 function stopAll(){
   if(ctx) ctx.resume().catch(()=>{});
   stopPreview();
@@ -3105,11 +3092,14 @@ function stopAll(){
   const d=document.querySelector('.npdot'); if(d) d.remove();
   updEdgeGlow(); stopEQ();
 }
+
 function togglePad(id){ if(srcs[id]) stopPad(id); else play(id); }
+
 function flash(id){
   const b=document.querySelector(`[data-id="${id}"]`); if(!b) return;
   b.classList.add('flash'); setTimeout(()=>b.classList.remove('flash'),200);
 }
+
 function updBtn(id,on,loop){
   const b=document.querySelector(`[data-id="${id}"]`); if(!b) return;
   b.classList.remove('playing','plooping');
@@ -3117,6 +3107,7 @@ function updBtn(id,on,loop){
   else if(on) b.classList.add('playing');
   updEdgeGlow();
 }
+
 function chkNP(){
   if(!Object.keys(srcs).length){
     document.getElementById('nptxt').textContent='No sound active';
@@ -3125,7 +3116,6 @@ function chkNP(){
     updEdgeGlow(); stopEQ();
   }
 }
-
 // ── VISUAL EFFECTS ──
 function spawnRipple(padEl, e){
   const r=padEl.getBoundingClientRect();
