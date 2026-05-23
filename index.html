@@ -1563,6 +1563,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         </div>
       </div>
 
+<!-- ③ TRIM SECTION -->
       <div class="ep-sub-toggle" id="trim-toggle" onclick="const b=document.getElementById('ep-trim'); const open=b.style.display==='none'; b.style.display=open?'':'none'; this.querySelector('.ep-sub-arrow').style.transform=open?'rotate(90deg)':'';">
         <span class="ep-sub-arrow" style="transition:transform 0.2s">▶</span>
         <span>TRIM / BESCHNEIDEN</span>
@@ -1570,14 +1571,15 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <div class="ep-sub-body" id="ep-trim" style="display:none; padding-top:8px;">
         <div class="fg">
           <label class="fl">STARTZEIT — <span id="ets-lbl">0.0</span>s</label>
-          <input type="range" id="ets" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ets-lbl').textContent=this.value==='0'?'0.0':this.value" style="width:100%;accent-color:var(--gold)">
+          <!-- Trigger real-time scrubber canvas re-draw on slider input -->
+          <input type="range" id="ets" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ets-lbl').textContent=this.value==='0'?'0.0':this.value; drawScrubber();" style="width:100%;accent-color:var(--gold)">
         </div>
         <div class="fg" style="margin-bottom:0">
           <label class="fl">ENDZEIT / DAUER — <span id="ete-lbl">Vollständig</span></label>
-          <input type="range" id="ete" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ete-lbl').textContent=this.value==='0'?'Vollständig':(this.value+'s')" style="width:100%;accent-color:var(--gold)">
+          <!-- Trigger real-time scrubber canvas re-draw on slider input -->
+          <input type="range" id="ete" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ete-lbl').textContent=this.value==='0'?'Vollständig':(this.value+'s'); drawScrubber();" style="width:100%;accent-color:var(--gold)">
         </div>
       </div>
-    </div>
 
     <!-- ③ BEHAVIOR -->
     <div class="ep-card">
@@ -5142,17 +5144,17 @@ function decodeWaveform(fi){
     }
     waveforms[fi]={peaks, duration:buf.duration};
     
-
+    // Dynamically adjust trim sliders to match the actual file duration
     const dur = buf.duration;
     const etsInput = document.getElementById('ets');
     const eteInput = document.getElementById('ete');
     if(etsInput && eteInput) {
       etsInput.max = dur;
       eteInput.max = dur;
-      // Falls der Endwert noch auf 0 (oder dem alten Maximum) steht, setzen wir ihn visuell auf das Maximum
+      // If the end value is 0 or exceeds the new duration, visually reset to maximum
       if(eteInput.value === '0' || parseFloat(eteInput.value) > dur) {
         eteInput.value = 0;
-        document.getElementById('ete-lbl').textContent = 'Vollständig';
+        document.getElementById('ete-lbl').textContent = 'Full Audio';
       }
     }
 
@@ -5180,6 +5182,37 @@ function drawScrubber(){
       g.fillStyle=i/wf.length<=frac?'rgba(122,95,40,0.85)':'rgba(74,74,122,0.7)';
       g.fillRect(x+0.5, mid-h, Math.max(bw-1,1), h*2);
     }
+    
+    // Trim overlay mask & boundaries
+    if(dur>0){
+      const ts = parseFloat(document.getElementById('ets')?.value || 0);
+      const te = parseFloat(document.getElementById('ete')?.value || 0);
+      
+      // Calculate pixel X positions for trim start and end
+      const tsX = (ts / dur) * W;
+      const teX = (te > ts && te < dur) ? (te / dur) * W : W;
+
+      // Draw dark semi-transparent mask over excluded start region
+      if(ts > 0){
+        g.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        g.fillRect(0, 0, tsX, H);
+        
+        // Trim start boundary line
+        g.fillStyle = 'rgba(218, 165, 32, 0.8)'; // Golden/yellow boundary line
+        g.fillRect(Math.round(tsX) - 1, 0, 2, H);
+      }
+      
+      // Draw dark semi-transparent mask over excluded end region
+      if(te > ts && te < dur){
+        g.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        g.fillRect(teX, 0, W - teX, H);
+        
+        // Trim end boundary line
+        g.fillStyle = 'rgba(218, 165, 32, 0.8)'; // Golden/yellow boundary line
+        g.fillRect(Math.round(teX) - 1, 0, 2, H);
+      }
+    }
+
     // fade overlays
     if(dur>0){
       const fi=+( document.getElementById('eft')?.value||0);
