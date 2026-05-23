@@ -3002,6 +3002,13 @@ function playCombo(id, onFinish=null){
 
 function playComboStep(id,state,steps,stepIdx){
   if(state.stopped||stepIdx>=steps.length){ finishCombo(id,state); return; }
+  
+  // NEU: Wenn dieser Schritt ein globales Stop signalisiert, brechen wir sofort
+  // alle aktuell laufenden Sounds auf dem gesamten Soundboard ab.
+  if (steps[stepIdx].stopAll) {
+    stopAll(); 
+  }
+
   const rawPads=steps[stepIdx].pads||[];
   const rawOpts=steps[stepIdx].chipOpts||[];
   const validEntries=rawPads.map((pid,i)=>({pid,opt:rawOpts[i]||null}))
@@ -3034,6 +3041,16 @@ function playComboStep(id,state,steps,stepIdx){
       });
     }
   }
+  // Empty step (or bg-only or hard stop): wait for dur, then advance
+  if(fgRem===0){
+    const ms=(steps[stepIdx].dur||0)*1000;
+    if(ms>0){
+      state.pauseTimer=setTimeout(()=>{ if(!state.stopped) playComboStep(id,state,steps,stepIdx+1); },ms);
+    } else {
+      playComboStep(id,state,steps,stepIdx+1);
+    }
+  }
+}
   // Empty step (or bg-only): wait for dur, then advance
   if(fgRem===0){
     const ms=(steps[stepIdx].dur||0)*1000;
@@ -4758,6 +4775,15 @@ function toggleChipExpand(si,pi){
 function renderComboSteps(){
   const el=document.getElementById('combo-steps-list'); if(!el) return;
   el.innerHTML=comboSteps.map((step,si)=>{
+    
+    // NEU: Wenn stopAll aktiv ist, generieren wir den roten Chip vor den anderen Sounds
+    let stopChipHtml = '';
+    if (step.stopAll) {
+      stopChipHtml = `<span class="combo-chip" style="background:var(--blood); border-color:var(--blood-bright); color:#fff; font-weight:bold;">` +
+                     `🛑 STOP ALL` +
+                     `<button class="combo-chip-del" onclick="comboSteps[${si}].stopAll=false; renderComboSteps();" style="color:#fff;">✕</button></span>`;
+    }
+
     const chips=step.pads.map((padId,pi)=>{
       const p=pads[padId];
       if(!p){
@@ -4787,8 +4813,14 @@ function renderComboSteps(){
         <button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button>
       </div>${optRow}</span>`;
     }).join('');
+    
+    // NEU: Kombiniere den Stop-Chip mit eventuellen anderen Sound-Chips
+    const combinedContent = stopChipHtml + chips;
+
     const dur=comboSteps[si].dur||0;
-    const stepBody=chips||`<div class="combo-pause-ui">
+    
+    // NEU: Wenn combinedContent Text enthält (also entweder Sounds ODER der Stop-Befehl drin ist), zeigen wir keine Pause-UI
+    const stepBody=combinedContent||`<div class="combo-pause-ui">
       <span class="combo-pause-lbl">⏱ PAUSE</span>
       <input class="combo-pause-inp" type="number" min="0.5" max="60" step="0.5" value="${dur||1}"
              oninput="setStepDur(${si},+this.value)" onclick="event.stopPropagation()">
@@ -4804,7 +4836,7 @@ function renderComboSteps(){
       <div class="combo-step-body" data-step="${si}">${stepBody}</div>
     </div>`;
   }).join('')+'<div class="combo-ins" onclick="insertComboStep('+comboSteps.length+')">+</div>';
-  // attach drop listeners to step bodies
+  
   document.querySelectorAll('.combo-step-body').forEach(zone=>{
     zone.addEventListener('dragover',e=>e.preventDefault());
   });
@@ -4825,7 +4857,11 @@ function comboCycles(candidateId, editingId){
 
 function renderComboPalette(){
   const el=document.getElementById('combo-palette'); if(!el) return;
-  const items=pads.map((p,i)=>{
+  
+  // NEU: Der rote "STOP ALL"-Button als erster Eintrag in der Palette
+  let items = `<div class="cpal-item" data-action="stopAll" style="background:var(--blood); border-color:var(--blood-bright); color:#fff; font-weight:bold;">🛑 STOP ALL</div>`;
+  
+  const padItems = pads.map((p,i)=>{
     if(!p) return '';
     const lbl=(p.name||`Pad ${i+1}`).replace(/</g,'&lt;');
     if(p.mode==='combo'){
@@ -4838,7 +4874,8 @@ function renderComboPalette(){
     const bg=isInfiniteBg(p)?' <span style="color:var(--mist);font-size:calc(11px * var(--font-scale))">BG</span>':'';
     return `<div class="cpal-item" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}">${ico(p)} ${lbl}${bg}</div>`;
   }).filter(Boolean).join('');
-  el.innerHTML=items||`<span style="color:var(--text-dim);font-size:calc(11px * var(--font-scale));font-style:italic">Keine Pads vorhanden</span>`;
+  
+  el.innerHTML=items + padItems;
   initComboPaletteDrag();
 }
 
@@ -4860,11 +4897,18 @@ function initComboPaletteDrag(){
         else showComboHint('Adding this would create an infinite loop.');
         return;
       }
-      comboDragId=+item.dataset.padid;
+      
+      // NEU: Prüfen, ob es die Stop-Aktion oder ein normales Pad ist
+      if (item.dataset.action === 'stopAll') {
+        comboDragId = 'stopAll'; 
+      } else {
+        comboDragId = +item.dataset.padid;
+      }
+      
       item.classList.add('cpal-dragging');
       item.setPointerCapture(e.pointerId);
       const ghost=document.getElementById('combo-ghost');
-      ghost.textContent=item.dataset.name;
+      ghost.textContent=item.dataset.name || item.textContent; // NEU: Fallback für Text
       ghost.style.display='block';
       ghost.style.left=(e.clientX-40)+'px';
       ghost.style.top=(e.clientY-16)+'px';
@@ -4890,9 +4934,15 @@ function initComboPaletteDrag(){
         const r=zone.getBoundingClientRect();
         if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
           const si=+zone.dataset.step;
-          comboSteps[si].pads.push(comboDragId);
-          if(!comboSteps[si].chipOpts) comboSteps[si].chipOpts=[];
-          comboSteps[si].chipOpts.push(null);
+          
+          // NEU: Wenn die Stop-Aktion reingezogen wurde, setzen wir das Flag im Step
+          if (comboDragId === 'stopAll') {
+            comboSteps[si].stopAll = true;
+          } else {
+            comboSteps[si].pads.push(comboDragId);
+            if(!comboSteps[si].chipOpts) comboSteps[si].chipOpts=[];
+            comboSteps[si].chipOpts.push(null);
+          }
           renderComboSteps();
         }
       });
@@ -4935,14 +4985,19 @@ function doSaveCombo(){
   const ck=document.getElementById('ck');
   const key=ck?.dataset.code||ck?.value.trim()||'';
   const keyLabel=ck?.value.trim()||'';
-  // Release key from conflicting pad
   if(key){
     const conflict=pads.findIndex((p,i)=>p&&p.key===key&&i!==comboEditId);
     if(conflict!==-1) pads[conflict]={...pads[conflict],key:'',keyLabel:''};
   }
   const pad={id:0,name,key,keyLabel,mode:'combo',steps:comboSteps.map(s=>{
     const opts=(s.chipOpts||[]).map(o=>o&&Object.keys(o).length?{...o}:null);
-    return {pads:[...s.pads],...(s.dur>0?{dur:s.dur}:{}),...(opts.some(Boolean)?{chipOpts:opts}:{})};
+    return {
+      pads:[...s.pads],
+      // NEU: stopAll mit in das gespeicherte Objekt übernehmen
+      ...(s.stopAll ? {stopAll: true} : {}),
+      ...(s.dur>0?{dur:s.dur}:{}),
+      ...(opts.some(Boolean)?{chipOpts:opts}:{})
+    };
   }),volume:80};
   if(comboEditId!==null){
     pad.id=comboEditId; pads[comboEditId]=pad;
