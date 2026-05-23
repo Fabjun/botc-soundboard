@@ -4993,7 +4993,6 @@ function doSaveCombo(){
     const opts=(s.chipOpts||[]).map(o=>o&&Object.keys(o).length?{...o}:null);
     return {
       pads:[...s.pads],
-      // NEU: stopAll mit in das gespeicherte Objekt übernehmen
       ...(s.stopAll ? {stopAll: true} : {}),
       ...(s.dur>0?{dur:s.dur}:{}),
       ...(opts.some(Boolean)?{chipOpts:opts}:{})
