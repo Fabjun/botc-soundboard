@@ -258,6 +258,13 @@ input[type=file]{display:none}
 #sidebar-bk.open{display:block}
 #sidebar{position:fixed;top:var(--p-hdr-h);left:0;bottom:0;width:min(220px,75vw);background:var(--surface);border-right:1px solid var(--border);z-index:190;transform:translateX(-100%);transition:transform .25s ease;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:16px}
 #sidebar.open{transform:translateX(0)}
+/* Desktop: sidebar always visible on sidebar-enabled screens */
+@media(min-width:800px){
+  body.sidebar-pinned #sidebar{transform:translateX(0);transition:none}
+  body.sidebar-pinned #sidebar-bk{display:none!important}
+  body.sidebar-pinned #sidebar-btn{display:none!important}
+  body.sidebar-pinned #sp,body.sidebar-pinned #sli{padding-left:220px}
+}
 .sb-section{display:flex;flex-direction:column;gap:8px}
 .sb-lbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--text-dim);letter-spacing:1px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 body.mode-play .sidebar-style{display:none}
@@ -1682,8 +1689,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 104;
+const APP_VERSION = 105;
 const CHANGELOG=[
+  {v:105,date:'2026-05-23',items:["Desktop-first layout: sidebar permanently visible on screens with hasSidebar:true at ≥800px viewport width — body.sidebar-pinned class drives layout, _updateSidebarPin() replaces manual sidebar-btn show/hide in updateTopBar, resize listener keeps state consistent when window is resized across the 800px breakpoint"]},
   {v:104,date:'2026-05-23',items:["topt active-state unification: .sh-act (duplicate of .al) removed; all className='topt …' assignments replaced with classList.toggle; setToptSetting() generic helper introduced — pure setters (startMode, enterStopMode, helpDensity, helpDuration) now one-liners","Dialog button family .dlg-cancel / .dlg-destruct / .dlg-positive / .dlg-reload: replaces inline styles on confirm-del, leave-warn, sw-update-modal buttons","Settings action button family .sa-btn / .sa-btn.sa-pri / .sa-btn.sa-del: replaces inline styles on EXPORT, IMPORT, AUTO-BACKUP, RE-MIGRATE, RESET buttons"]},
   {v:103,date:'2026-05-23',items:["Overlay family: all 14 overlays now use classList.add/remove('open'); inline style.display calls removed; Escape key routed through a _escStack registry — every overlay gets Escape for free on open","Inline rename family: startInlineRename() replaces 4 separate implementations (audio, board-pad, template, board); callers pass name + callbacks, function owns the UI","SCREEN_CONFIG.onShow: per-screen init logic moved from show() if-chain into config callbacks; show() is now data-driven and screen-count-independent"]},
   {v:102,date:'2026-05-23',items:["Unified libCard() component — all Library cards (Audio, PADs, Boards, Icons) share one HTML structure and one set of .lca-* action button classes; button families are now enforced system-wide by the generator function"]},
@@ -2151,6 +2159,17 @@ function renderSidebarContent(screenId){
   }
   sbLib.innerHTML=html;
 }
+function _updateSidebarPin(hasSidebar){
+  const pinned=hasSidebar&&window.matchMedia('(min-width:800px)').matches;
+  document.body.classList.toggle('sidebar-pinned',pinned);
+  if(pinned) renderSidebarContent(cur);
+  document.getElementById('sidebar-btn').style.display=(hasSidebar&&!pinned)?'':'none';
+}
+let _resizeTimer;
+window.addEventListener('resize',()=>{
+  clearTimeout(_resizeTimer);
+  _resizeTimer=setTimeout(()=>{ const cfg=SCREEN_CONFIG[cur]; if(cfg) _updateSidebarPin(!!cfg.hasSidebar); },150);
+});
 function openSidebar(){ renderSidebarContent(cur); document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-bk').classList.add('open'); }
 function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-bk').classList.remove('open'); }
 function toggleSidebar(){ document.getElementById('sidebar').classList.contains('open')?closeSidebar():openSidebar(); }
@@ -3850,7 +3869,7 @@ function updateTopBar(id){
   const cfg = SCREEN_CONFIG[id];
   if(!cfg || cfg.bar === false){ bar.style.display = 'none'; return; }
   bar.style.display = 'flex';
-  document.getElementById('sidebar-btn').style.display = cfg.hasSidebar ? '' : 'none';
+  _updateSidebarPin(!!cfg.hasSidebar);
   const titleEl = document.getElementById('phdr-title');
   const msEl    = document.getElementById('mode-switch');
   if(cfg.title === null){
