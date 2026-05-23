@@ -267,6 +267,27 @@ input[type=file]{display:none}
 .sb-section{display:flex;flex-direction:column;gap:8px}
 .sb-lbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--text-dim);letter-spacing:1px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 .sb-tabs{display:flex;flex-direction:column;gap:4px}
+/* FOLDER TREE — sidebar folder navigation */
+.fld-tree{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.fld-node{display:flex;align-items:center;gap:5px;padding:5px 8px;border-radius:2px;cursor:pointer;font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--text-dim);border:1px solid transparent;user-select:none}
+.fld-node:hover{color:var(--text);background:var(--raised)}
+.fld-node.fld-act{color:var(--screen-accent);border-color:var(--screen-accent-dim);background:rgba(201,168,76,.08)}
+.fld-node-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fld-node-btns{display:none;gap:1px;flex-shrink:0}
+.fld-node:hover .fld-node-btns,.fld-node.fld-act .fld-node-btns{display:flex}
+.fld-nbtn{background:none;border:none;color:var(--text-dim);cursor:pointer;padding:0 3px;font-size:calc(11px * var(--font-scale));line-height:1}
+.fld-nbtn:hover{color:var(--text)}
+.fld-add{display:flex;align-items:center;gap:5px;padding:5px 8px;border-radius:2px;font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--text-dim);cursor:pointer;border:1px dashed var(--border);margin-top:4px}
+.fld-add:hover{color:var(--screen-accent);border-color:var(--screen-accent-dim)}
+.fld-new-row{display:flex;gap:4px;margin-top:4px;align-items:center}
+.fld-new-inp{flex:1;min-width:0;background:var(--deep);border:1px solid var(--screen-accent-dim);color:var(--text);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:4px 6px;border-radius:2px;outline:none;box-sizing:border-box}
+.fld-drop{position:fixed;z-index:500;background:var(--raised);border:1px solid var(--border);border-radius:3px;min-width:150px;display:flex;flex-direction:column;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.fld-dopt{padding:7px 12px;font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--text-dim);cursor:pointer;white-space:nowrap}
+.fld-dopt:hover{background:var(--surface);color:var(--text)}
+.fld-dopt.fld-dact{color:var(--screen-accent)}
+.fld-dsep{border-top:1px solid var(--border);margin:2px 0}
+.fld-chip{display:inline-flex;align-items:center;gap:3px;font-size:calc(10px * var(--font-scale));color:var(--text-dim);cursor:pointer;padding:1px 5px;border-radius:2px;border:1px solid transparent}
+.fld-chip:hover{border-color:var(--border);color:var(--text)}
 .sec-lbl{display:block;font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--gold-dim);letter-spacing:.5px;margin:16px 0 8px}
 .sec-lbl-row{display:flex;align-items:center;gap:8px;margin:16px 0 8px}
 .sec-lbl-row .sec-lbl{margin:0;flex:1}
@@ -1753,7 +1774,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 116;
+const APP_VERSION = 117;
 const CHANGELOG=[
   {v:114,date:'2026-05-23',items:["Icon density slider extended to −3…+3 (symmetric around 23px center): at −3 a single icon is as large as 4 icons at +3; at density=1 the sizes are identical to before (20/22/24/26px)","PAD label (.plbl) now absolutely positioned at the bottom with gradient overlay — icon always renders on top (z-index:2), label behind it (z-index:1)","Circular PAD: label rendered as SVG <textPath> along a bottom arc — text curves along the circle edge and cannot be clipped; drop-shadow filter ensures readability over icons","Key assignment (.pnum) moved to top-center with text-shadow glow; color follows mode accent; gold glow when playing"]},
   {v:113,date:'2026-05-23',items:["Drag-and-drop insert highlight: both adjacent PADs glow simultaneously (_applyInsertHighlight highlights PAD[N] with insert-before and PAD[N-1] with insert-after)","Scroll preservation: all Library list re-renders (audio, pads, boards, My Boards) capture and restore scroll position — renaming no longer jumps to top","Icon density slider (⊞ DENS) in PAD Style panel: --ico-density 0-3, default 1 (current behavior) — at 0 all icons same size regardless of count; at 3 four icons are 90% larger than one"]},
@@ -1880,6 +1901,14 @@ let _libSsbSort_k = (k=>k&&k.includes('-')?k:'date-desc')(localStorage.getItem('
 let _lpSort = (k=>k&&k.includes('-')?k:'date-desc')(localStorage.getItem('ssb-sort-lp'));
 let _libPadFilter = 'current';
 let _libPadItems = [];
+let _libAudioFolder = null;
+let _libPadsFolder = null;
+let _libAudioFolderList = [];
+let _libPadsFolderList = [];
+let _libNewFolderTab = null;
+let _libFolderRename = null;
+let _libPendingFolderMove = null;
+let _fldDropEl = null;
 const iconSvgCache = {};
 const playPos = {};
 // Combo editor state
@@ -1946,11 +1975,13 @@ function libDelete(hash){
     tx.objectStore('lib').delete(hash).onsuccess=()=>r();
   });
 }
-async function addToLib(buf,name,type=''){
+async function addToLib(buf,name,type='',folder=null){
   const hash=await computeHash(buf);
   const existing=await libGet(hash);
   if(existing) return {hash,isDuplicate:true};
-  await libPut({hash,name,origName:name,buf,size:buf.byteLength,type,added:Date.now()});
+  const entry={hash,name,origName:name,buf,size:buf.byteLength,type,added:Date.now()};
+  if(folder) entry.folder=folder;
+  await libPut(entry);
   return {hash,isDuplicate:false};
 }
 async function migrateToLibrary(){
@@ -2246,13 +2277,13 @@ function renderSidebarContent(screenId){
         <div class="pf-tab${m==='all'?' pf-act':''}" onclick="libFilter('all')">ALL</div>
         <div class="pf-tab${m==='used'?' pf-act':''}" onclick="libFilter('used')">IN USE</div>
         <div class="pf-tab${m==='unused'?' pf-act':''}" onclick="libFilter('unused')">UNUSED</div>
-      </div></div>`;
+      </div></div>${_libFolderTreeHtml('audio',_libAudioFolder,_libAudioFolderList)}`;
     } else if(tab==='pads'){
       const f=_libPadFilter||'current';
       html=`<div class="sb-section"><div class="sb-lbl">SCOPE</div><div class="sb-tabs">
         <div class="pf-tab${f==='current'?' pf-act':''}" onclick="setLibPadFilter('current')">CURRENT BOARD</div>
         <div class="pf-tab${f==='all'?' pf-act':''}" onclick="setLibPadFilter('all')">ALL BOARDS</div>
-      </div></div>`;
+      </div></div>${_libFolderTreeHtml('pads',_libPadsFolder,_libPadsFolderList)}`;
     }
     sbLib.innerHTML=html;
     hasContent=html!=='';
@@ -2267,6 +2298,143 @@ function renderSidebarContent(screenId){
 function _updateSidebarPin(hasSidebar){
   if(hasSidebar) renderSidebarContent(cur);
   else document.getElementById('sidebar-btn').style.display='none';
+}
+// ── FOLDER SYSTEM ──
+function _libFolderTreeHtml(tab, activeFolder, folderList){
+  const nodes=folderList.map(name=>{
+    const isAct=activeFolder===name;
+    const jn=JSON.stringify(name);
+    const rename=isAct?`<span class="fld-node-btns"><button class="fld-nbtn" onclick="libRenameFolder(event,'${tab}',${jn})" title="Rename">✎</button><button class="fld-nbtn" onclick="libDeleteFolder(event,'${tab}',${jn})" title="Delete" style="color:var(--blood)">✕</button></span>`:'<span class="fld-node-btns"><button class="fld-nbtn" onclick="libRenameFolder(event,\''+tab+'\','+jn+')" title="Rename">✎</button><button class="fld-nbtn" onclick="libDeleteFolder(event,\''+tab+'\','+jn+')" title="Delete" style="color:var(--blood)">✕</button></span>';
+    if(_libFolderRename&&_libFolderRename.tab===tab&&_libFolderRename.name===name){
+      return `<div class="fld-node fld-act"><div class="fld-new-row" style="flex:1;margin:0">
+        <input id="fld-ren-inp" class="fld-new-inp" value="${escHtml(name)}" maxlength="40"
+          onkeydown="if(event.key==='Enter')_libConfirmFolderRename('${tab}',${jn});if(event.key==='Escape'){_libFolderRename=null;renderSidebarContent(cur);}">
+        <button class="fld-nbtn" style="padding:2px 5px" onclick="_libConfirmFolderRename('${tab}',${jn})">✓</button>
+      </div></div>`;
+    }
+    return `<div class="fld-node${isAct?' fld-act':''}" onclick="libSetFolder('${tab}',${isAct?'null':jn})">
+      <span class="fld-node-name">📁 ${escHtml(name)}</span>
+      <span class="fld-node-btns"><button class="fld-nbtn" onclick="libRenameFolder(event,'${tab}',${jn})" title="Rename">✎</button><button class="fld-nbtn" onclick="libDeleteFolder(event,'${tab}',${jn})" title="Delete" style="color:var(--blood)">✕</button></span>
+    </div>`;
+  }).join('');
+  const newFolderHtml=_libNewFolderTab===tab
+    ?`<div class="fld-new-row">
+        <input id="fld-new-inp" class="fld-new-inp" placeholder="Folder name…" maxlength="40"
+          onkeydown="if(event.key==='Enter')_libConfirmNewFolder('${tab}');if(event.key==='Escape'){_libNewFolderTab=null;renderSidebarContent(cur);}">
+        <button class="fld-nbtn" style="padding:2px 5px" onclick="_libConfirmNewFolder('${tab}')">✓</button>
+      </div>`
+    :`<div class="fld-add" onclick="libNewFolder('${tab}')">＋ NEW FOLDER</div>`;
+  return `<div class="sb-section" style="margin-top:16px"><div class="sb-lbl">FOLDERS</div><div class="fld-tree">
+    <div class="fld-node${!activeFolder?' fld-act':''}" onclick="libSetFolder('${tab}',null)"><span class="fld-node-name">ALL</span></div>
+    ${nodes}${newFolderHtml}
+  </div></div>`;
+}
+function libSetFolder(tab, folder){
+  if(tab==='audio') _libAudioFolder=folder;
+  else if(tab==='pads') _libPadsFolder=folder;
+  if(tab==='audio') initLibScreen(); else renderLibPads();
+}
+function libNewFolder(tab){
+  _libNewFolderTab=tab;
+  renderSidebarContent(cur);
+  setTimeout(()=>document.getElementById('fld-new-inp')?.focus(), 30);
+}
+function _libConfirmNewFolder(tab){
+  const val=document.getElementById('fld-new-inp')?.value.trim();
+  _libNewFolderTab=null;
+  if(val){
+    if(tab==='audio') _libAudioFolder=val;
+    else if(tab==='pads') _libPadsFolder=val;
+    if(_libPendingFolderMove&&_libPendingFolderMove.tab===tab){
+      const {hash}=_libPendingFolderMove; _libPendingFolderMove=null;
+      libMoveToFolder(hash,tab,val); return;
+    }
+    if(tab==='audio') initLibScreen(); else renderLibPads();
+  } else { _libPendingFolderMove=null; renderSidebarContent(cur); }
+}
+function libRenameFolder(evt, tab, name){
+  evt.stopPropagation();
+  _libFolderRename={tab,name};
+  renderSidebarContent(cur);
+  setTimeout(()=>{ const inp=document.getElementById('fld-ren-inp'); if(inp){inp.focus();inp.select();} }, 30);
+}
+async function _libConfirmFolderRename(tab, oldName){
+  const newName=document.getElementById('fld-ren-inp')?.value.trim();
+  _libFolderRename=null;
+  if(!newName||newName===oldName){ renderSidebarContent(cur); return; }
+  const all=await libGetAll();
+  const isAudio=tab==='audio';
+  for(const entry of all){
+    if(entry.folder!==oldName) continue;
+    if(isAudio?(entry.type==='pad'||entry.type==='icon'):entry.type!=='pad') continue;
+    await libPut({...entry,folder:newName,updatedAt:Date.now()});
+  }
+  if(tab==='audio'&&_libAudioFolder===oldName) _libAudioFolder=newName;
+  if(tab==='pads'&&_libPadsFolder===oldName) _libPadsFolder=newName;
+  if(tab==='audio') initLibScreen(); else renderLibPads();
+}
+async function libDeleteFolder(evt, tab, name){
+  evt.stopPropagation();
+  showConfirmDel(`Delete folder "${escHtml(name)}"? All contents become unfiled.`,async()=>{
+    const all=await libGetAll();
+    const isAudio=tab==='audio';
+    for(const entry of all){
+      if(entry.folder!==name) continue;
+      if(isAudio?(entry.type==='pad'||entry.type==='icon'):entry.type!=='pad') continue;
+      const u={...entry,updatedAt:Date.now()}; delete u.folder; await libPut(u);
+    }
+    if(tab==='audio'&&_libAudioFolder===name) _libAudioFolder=null;
+    if(tab==='pads'&&_libPadsFolder===name) _libPadsFolder=null;
+    if(tab==='audio') initLibScreen(); else renderLibPads();
+  },'DELETE');
+}
+function libFolderDropdown(evt, hash, tab, currentFolder){
+  evt.stopPropagation();
+  _closeFldDrop();
+  const folders=tab==='audio'?_libAudioFolderList:_libPadsFolderList;
+  const opts=[
+    ...(currentFolder?[`<div class="fld-dopt" onclick="libMoveToFolder('${hash}','${tab}',null)">— Unfiled</div>`]:[]),
+    ...folders.filter(f=>f!==currentFolder).map(f=>`<div class="fld-dopt" onclick="libMoveToFolder('${hash}','${tab}',${JSON.stringify(f)})">📁 ${escHtml(f)}</div>`),
+    `<div class="fld-dsep"></div>`,
+    `<div class="fld-dopt" onclick="_libDropNewFolder('${hash}','${tab}')">＋ New folder…</div>`,
+  ].join('');
+  const el=document.createElement('div');
+  el.className='fld-drop'; el.innerHTML=opts;
+  el.addEventListener('click',e=>e.stopPropagation());
+  document.body.appendChild(el);
+  _fldDropEl=el;
+  const btn=evt.target.closest('button')||evt.target;
+  const r=btn.getBoundingClientRect();
+  const ew=el.offsetWidth, eh=el.offsetHeight;
+  el.style.left=Math.max(4,Math.min(r.right-ew,window.innerWidth-ew-4))+'px';
+  el.style.top=(r.bottom+4+eh>window.innerHeight?r.top-eh-4:r.bottom+4)+'px';
+}
+function _closeFldDrop(){ if(_fldDropEl){_fldDropEl.remove();_fldDropEl=null;} }
+function _libDropNewFolder(hash, tab){
+  if(!_fldDropEl) return;
+  _fldDropEl.innerHTML=`<div style="padding:8px">
+    <input id="fld-dnew-inp" class="fld-new-inp" style="width:100%;box-sizing:border-box" placeholder="Folder name…" maxlength="40"
+      onkeydown="if(event.key==='Enter')_libDropConfirmNew('${hash}','${tab}');if(event.key==='Escape')_closeFldDrop()">
+    <div style="display:flex;gap:4px;margin-top:6px">
+      <button class="lca-pos" style="flex:1" onclick="_libDropConfirmNew('${hash}','${tab}')">✓ CREATE</button>
+      <button class="lca-dim" onclick="_closeFldDrop()">✕</button>
+    </div></div>`;
+  setTimeout(()=>document.getElementById('fld-dnew-inp')?.focus(),20);
+}
+async function _libDropConfirmNew(hash, tab){
+  const val=document.getElementById('fld-dnew-inp')?.value.trim();
+  _closeFldDrop();
+  if(!val) return;
+  await libMoveToFolder(hash,tab,val);
+  if(tab==='audio') _libAudioFolder=val;
+  else _libPadsFolder=val;
+}
+async function libMoveToFolder(hash, tab, folder){
+  const entry=await libGet(hash); if(!entry) return;
+  const u={...entry,updatedAt:Date.now()};
+  if(folder) u.folder=folder; else delete u.folder;
+  await libPut(u);
+  if(tab==='audio') initLibScreen(); else renderLibPads();
 }
 let _resizeTimer;
 window.addEventListener('resize',()=>{
@@ -2361,6 +2529,7 @@ function libCard({nameId,preHtml='',badge=null,nameHtml,nameStyle='',actions=[],
     if(a.type==='pos')  return `<button class="lca-pos" onclick="${a.onclick}">${a.label}</button>`;
     if(a.type==='del')  return `<button class="lca-del" onclick="${a.onclick}">✕</button>`;
     if(a.type==='icon') return `<button class="lca-icon" onclick="${a.onclick}"${a.id?` id="${a.id}"`:''}${a.title?` title="${a.title}"`:''}>${a.label}</button>`;
+    if(a.type==='folder') return `<button class="lca-dim" onclick="${a.onclick}" title="Move to folder">📁</button>`;
     return '';
   }).join('');
   const subHtml=subLines.map(l=>`<div class="lib-card-sub">${l}</div>`).join('');
@@ -2992,6 +3161,7 @@ function fmtSize(bytes){
 }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function renderLibList(entries,usedHashes){
+  _libAudioFolderList=[...new Set(entries.map(e=>e.folder).filter(Boolean))].sort();
   renderSidebarContent(cur);
   const s=document.getElementById('lib-audio-section');
   const savedScroll=s?.scrollTop||0;
@@ -3000,13 +3170,14 @@ function renderLibList(entries,usedHashes){
   if(!list) return;
   const scopeFiltered=libFilterMode==='used'?entries.filter(e=>usedHashes.has(e.hash)):
                       libFilterMode==='unused'?entries.filter(e=>!usedHashes.has(e.hash)):entries;
+  const folderFiltered=_libAudioFolder?scopeFiltered.filter(e=>e.folder===_libAudioFolder):scopeFiltered;
   const totalSize=entries.reduce((s,e)=>s+(e.size||0),0);
   if(stats) stats.textContent=entries.length?`${entries.length} file${entries.length===1?'':'s'} · ${fmtSize(totalSize)}`:'Library is empty.';
   const q=_libSsbQ.toLowerCase().trim();
-  const searched=q?scopeFiltered.filter(e=>e.name.toLowerCase().includes(q)):scopeFiltered;
+  const searched=q?folderFiltered.filter(e=>e.name.toLowerCase().includes(q)):folderFiltered;
   const filtered=_sortItems(searched,_libSsbSort_k,e=>e.added,e=>e.name,e=>e.updatedAt);
-  _libSsbCount(filtered.length,scopeFiltered.length);
-  if(!filtered.length){ list.innerHTML=`<p style="color:var(--text-dim);text-align:center;padding:20px 0">No files${q?' matching':''}${libFilterMode!=='all'?' in this filter':''} yet.</p>`; return; }
+  _libSsbCount(filtered.length,folderFiltered.length);
+  if(!filtered.length){ list.innerHTML=`<p style="color:var(--text-dim);text-align:center;padding:20px 0">No files${q?' matching':''}${_libAudioFolder?` in "${escHtml(_libAudioFolder)}"`:libFilterMode!=='all'?' in this filter':''} yet.</p>`; return; }
   const _ml=m=>m==='combo'?'C-PAD':m==='loop'?'LOOP':m==='playlist'?'LIST':'S-PAD';
   const _mc=m=>m==='combo'?'var(--gold)':'var(--emerald)';
   list.innerHTML=filtered.map(e=>{
@@ -3022,15 +3193,19 @@ function renderLibList(entries,usedHashes){
         <span class="lib-card-sub" style="color:var(--text)">${escHtml(u.padName)}</span>
         <span class="lib-card-sub">· ${escHtml(u.boardName)}</span>
       </div>`).join('');
+    const folderChip=e.folder&&!_libAudioFolder
+      ?`<span class="fld-chip" onclick="libSetFolder('audio',${JSON.stringify(e.folder)});event.stopPropagation()">📁 ${escHtml(e.folder)}</span>`:'';
     return libCard({
       nameId:`lnm-${h}`,
       nameHtml:escHtml(e.name),
       actions:[
         {type:'preview', hash:h},
         {type:'rename', onclick:`libRenameStart('${h}')`},
+        {type:'folder', onclick:`libFolderDropdown(event,'${h}','audio',${JSON.stringify(e.folder||null)})`},
         {type:'del', onclick:`libDeleteFile('${h}')`},
       ],
       subLines:[
+        ...(folderChip?[folderChip]:[]),
         ...(e.origName&&e.origName!==e.name?[`<span style="opacity:.6;word-break:break-all">upload-name: ${escHtml(e.origName)}</span>`]:[]),
         `${fmtSize(e.size||0)} · ${date} · ${inUseEl}`,
         ...(inUse?[`<div id="lub-${h}" style="display:none;border-left:2px solid var(--active);padding-left:8px;margin-top:2px">${usedByRows}</div>`]:[]),
@@ -3044,7 +3219,7 @@ async function onLibUpload(inp){
   let dupes=0;
   for(const f of files){
     const buf=await new Promise(r=>{ const fr=new FileReader(); fr.onload=e=>r(e.target.result); fr.readAsArrayBuffer(f); });
-    const {isDuplicate}=await addToLib(buf,f.name,f.type||'');
+    const {isDuplicate}=await addToLib(buf,f.name,f.type||'',_libAudioFolder);
     if(isDuplicate) dupes++;
   }
   const added=files.length-dupes;
@@ -3252,10 +3427,13 @@ async function renderLibPads(){
   // Templates
   const all=await libGetAll();
   const templates=all.filter(e=>e.type==='pad');
-  const filteredTemplates=q?_sortItems(templates.filter(e=>e.name.toLowerCase().includes(q)),_libSsbSort_k,e=>e.added,e=>e.name,e=>e.updatedAt):_sortItems(templates,_libSsbSort_k,e=>e.added,e=>e.name,e=>e.updatedAt);
-  _libSsbCount(filteredPads.length+filteredTemplates.length,_libPadItems.length+templates.length);
+  _libPadsFolderList=[...new Set(templates.map(e=>e.folder).filter(Boolean))].sort();
+  renderSidebarContent(cur);
+  const templatesByFolder=_libPadsFolder?templates.filter(e=>e.folder===_libPadsFolder):templates;
+  const filteredTemplates=q?_sortItems(templatesByFolder.filter(e=>e.name.toLowerCase().includes(q)),_libSsbSort_k,e=>e.added,e=>e.name,e=>e.updatedAt):_sortItems(templatesByFolder,_libSsbSort_k,e=>e.added,e=>e.name,e=>e.updatedAt);
+  _libSsbCount(filteredPads.length+filteredTemplates.length,_libPadItems.length+templatesByFolder.length);
   const countEl=document.getElementById('lib-pad-tmpl-count');
-  if(countEl) countEl.textContent=filteredTemplates.length+(q&&filteredTemplates.length!==templates.length?` / ${templates.length}`:'');
+  if(countEl) countEl.textContent=filteredTemplates.length+(q&&filteredTemplates.length!==templatesByFolder.length?` / ${templatesByFolder.length}`:'');
   const tmplEl=document.getElementById('lib-pad-templates');
   if(tmplEl){
     tmplEl.innerHTML=filteredTemplates.length
@@ -3264,6 +3442,8 @@ async function renderLibPads(){
           const ml=modeLabel(pd.mode); const mc=modeColor(pd.mode);
           const dateStr=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
           const fhT=pd.mode==='combo'?getComboFirstFileHash(pd.steps):(pd.files?.length?pd.files[0]:null);
+          const folderChipT=e.folder&&!_libPadsFolder
+            ?`<span class="fld-chip" onclick="libSetFolder('pads',${JSON.stringify(e.folder)});event.stopPropagation()">📁 ${escHtml(e.folder)}</span>`:'';
           return libCard({
             nameId:`ltnm-${e.hash}`,
             badge:{color:mc, label:ml},
@@ -3271,10 +3451,11 @@ async function renderLibPads(){
             actions:[
               ...(fhT?[{type:'preview', hash:fhT}]:[]),
               {type:'rename', onclick:`libRenamePadTemplateStart('${e.hash}')`},
+              {type:'folder', onclick:`libFolderDropdown(event,'${e.hash}','pads',${JSON.stringify(e.folder||null)})`},
               {type:'pos', label:'+ ADD', onclick:`importPadTemplate('${e.hash}')`},
               {type:'del', onclick:`deletePadTemplate('${e.hash}')`},
             ],
-            subLines:[dateStr],
+            subLines:[...(folderChipT?[folderChipT]:[]),dateStr],
           });
         }).join('')
       : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">${q?'No matching templates.':'No templates yet. Use SAVE on a pad above to create one.'}</p>`;
@@ -5748,6 +5929,8 @@ function toggleLock(){
 document.addEventListener('click', e=>{
   if(!e.target.closest('.ssb-sort-wrap'))
     document.querySelectorAll('.ssb-drop.open').forEach(d=>d.classList.remove('open'));
+  if(!e.target.closest('.fld-drop') && !e.target.closest('[title="Move to folder"]'))
+    _closeFldDrop();
 });
 document.addEventListener('keydown', e=>{
   const code=e.code;
