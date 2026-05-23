@@ -1551,7 +1551,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 </div>
 
 <!-- IMPORT OVERLAY -->
-<input type="file" id="import-file-input" accept=".json,.json.gz" style="display:none" onchange="parseAndShowImport(this)">
+<input type="file" id="import-file-input" accept=".json,.json.gz,.gz,application/json,application/gzip,application/x-gzip" style="display:none" onchange="parseAndShowImport(this)">
 <div id="import-ov">
   <div class="fs-hdr">
     <button class="fs-back" onclick="closeImportOverlay()">←</button>
@@ -1645,8 +1645,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 100;
+const APP_VERSION = 101;
 const CHANGELOG=[
+  {v:101,date:'2026-05-23',items:["Import file picker now accepts plain .gz files in addition to .json and .json.gz — fixes files being grayed out when the extension is .gz only"]},
   {v:100,date:'2026-05-23',items:["Library gets a sidebar (☰) — same container as Board sidebar, context-switched via renderSidebarContent(screenId)","Library Audio tab: ALL / IN USE / UNUSED filter now lives in sidebar; UPLOAD AUDIO button moved to bottom of list as dashed fbtn (same family as PAD editor upload)","Library Icons tab: UPLOAD SVG button moved to bottom of list as dashed fbtn","Library PADs tab: CURRENT BOARD / ALL BOARDS scope filter moved to sidebar","pf-tab active state now uses --screen-accent instead of --mode-accent — Board sidebar follows mode color, Library sidebar stays gold"]},
   {v:99,date:'2026-05-23',items:["Proportional icon sizing: icons scale up with count — 1 icon (20 px baseline) → 2 icons (22 px) → 3 icons (24 px) → 4 icons (26 px); each group renders at pico-g2/g3/g4 CSS class; slider remains as global multiplier on top"]},
   {v:98,date:'2026-05-23',items:["PAD icon size slider in PAD Style (◉ ICO): scales icons inside pads independently of the global symbol scale; range 0.5×–3.0×; saved to settings and included in backup","Library PADS tab: board pads now have Rename (✎) and Delete (✕) buttons — same actions as audio files; only shown for current-board filter where edits can be persisted","Library PADS tab: PAD templates now also have a Rename button; delete with confirmation already existed"]},
