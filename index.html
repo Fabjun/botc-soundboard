@@ -2862,7 +2862,7 @@ function play(id){
   if(!bufs[id]||!bufs[id].length) return;
   if(ctx?.state==='suspended') ctx.resume().catch(()=>{});
   flash(id);
-  const vol=(p.volume||80)/100, fi=p.fadeIn||0;
+  const vol=(p.volume||80)/100, fi=p.fadeIn||0, fo=p.fadeOut||0;
 
   // Read trim values and calculate duration
   const tStart = p.trimStart || 0;
@@ -2875,6 +2875,18 @@ function play(id){
     stopPad(id,true);
     const s=ctx.createBufferSource(), g=ctx.createGain();
     fadeInGain(g,vol,fi);
+    
+    // Schedule dynamic fade-out based on the active trim window
+    if(fo > 0 && hasDuration) {
+      const startTime = ctx.currentTime;
+      const fadeOutStartTime = startTime + Math.max(0, dur - fo);
+      const endTime = startTime + dur;
+      
+      // Keep target volume until fade-out starting point, then ramp down to 0
+      g.gain.setValueAtTime(vol, fadeOutStartTime);
+      g.gain.linearRampToValueAtTime(0, endTime);
+    }
+    
     s.buffer=b; s.connect(g); _connectGainToMaster(id,g);
     
     // Start with precise trim settings
@@ -2894,7 +2906,6 @@ function play(id){
       const s=ctx.createBufferSource();
       s.buffer=b; s.loop=true; s.connect(g);
       
-      // Pass duration for infinite loops to enforce the calculated clip window
       if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
       
       srcs[id]=[s];
@@ -2905,6 +2916,16 @@ function play(id){
         if(!srcs[id]) return;
         const s=ctx.createBufferSource();
         s.buffer=b; s.connect(g);
+        
+        // Schedule fade-out for the final iteration of the loop
+        if(fo > 0 && hasDuration && rem === 0) {
+          const startTime = ctx.currentTime;
+          const fadeOutStartTime = startTime + Math.max(0, dur - fo);
+          const endTime = startTime + dur;
+          
+          g.gain.setValueAtTime(vol, fadeOutStartTime);
+          g.gain.linearRampToValueAtTime(0, endTime);
+        }
         
         if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
         
@@ -4725,8 +4746,25 @@ async function openEP(id){
   document.getElementById('efo').value=p?.fadeOut??0;
   updFadeLabel('eft'); updFadeLabel('efo');
   
-  document.getElementById('ets').value=p?.trimStart??0;
-  document.getElementById('ete').value=p?.trimEnd??0;
+  // Load saved trim values into inputs
+  const savedStart = p?.trimStart ?? 0;
+  const savedEnd = p?.trimEnd ?? 0;
+  document.getElementById('ets').value = savedStart;
+  document.getElementById('ete').value = savedEnd;
+
+  // Dynamically update trim text indicators on load
+  document.getElementById('ets-lbl').textContent = savedStart === 0 ? '0.0' : savedStart;
+  document.getElementById('ete-lbl').textContent = savedEnd === 0 ? 'Full Audio' : (savedEnd + 's');
+
+  // Automatically expand the trim accordion section if a custom trim exists
+  const hasTrim = savedStart > 0 || savedEnd > 0;
+  const trimBody = document.getElementById('ep-trim');
+  const trimToggle = document.getElementById('trim-toggle');
+  if(trimBody) trimBody.style.display = hasTrim ? '' : 'none';
+  if(trimToggle) {
+    const arrow = trimToggle.querySelector('.ep-sub-arrow');
+    if(arrow) arrow.style.transform = hasTrim ? 'rotate(90deg)' : '';
+  }
 
   const hasFades=(p?.fadeIn??0)>0||(p?.fadeOut??0)>0;
   fadeSub=hasFades;
@@ -5151,8 +5189,12 @@ function decodeWaveform(fi){
     if(etsInput && eteInput) {
       etsInput.max = dur;
       eteInput.max = dur;
-      // If the end value is 0 or exceeds the new duration, visually reset to maximum
-      if(eteInput.value === '0' || parseFloat(eteInput.value) > dur) {
+      // Keep saved end value if valid, otherwise fallback to full audio layout
+      const savedEte = p?.trimEnd ?? 0;
+      if (savedEte > 0 && savedEte <= dur) {
+        eteInput.value = savedEte;
+        document.getElementById('ete-lbl').textContent = savedEte + 's';
+      } else {
         eteInput.value = 0;
         document.getElementById('ete-lbl').textContent = 'Full Audio';
       }
@@ -5183,14 +5225,15 @@ function drawScrubber(){
       g.fillRect(x+0.5, mid-h, Math.max(bw-1,1), h*2);
     }
     
-    // Trim overlay mask & boundaries
+    // Trim overlay mask & boundaries calculation
+    let tsX = 0;
+    let teX = W;
     if(dur>0){
       const ts = parseFloat(document.getElementById('ets')?.value || 0);
       const te = parseFloat(document.getElementById('ete')?.value || 0);
       
-      // Calculate pixel X positions for trim start and end
-      const tsX = (ts / dur) * W;
-      const teX = (te > ts && te < dur) ? (te / dur) * W : W;
+      tsX = (ts / dur) * W;
+      teX = (te > ts && te < dur) ? (te / dur) * W : W;
 
       // Draw dark semi-transparent mask over excluded start region
       if(ts > 0){
@@ -5213,25 +5256,31 @@ function drawScrubber(){
       }
     }
 
-    // fade overlays
+    // Dynamic fade overlays relative to the trim window
     if(dur>0){
       const fi=+( document.getElementById('eft')?.value||0);
       const fo=+( document.getElementById('efo')?.value||0);
-      if(fi>0){
-        const fiW=Math.min(fi/dur,1)*W;
-        const grad=g.createLinearGradient(0,0,fiW,0);
-        grad.addColorStop(0,'rgba(200,50,210,0.38)');
-        grad.addColorStop(0.75,'rgba(200,50,210,0.28)');
-        grad.addColorStop(1,'rgba(200,50,210,0)');
-        g.fillStyle=grad; g.fillRect(0,0,fiW,H);
+      const activeW = teX - tsX; // Total width of the playable trim window
+
+      if(fi>0 && activeW > 0){
+        // Calculate fade-in width based on duration, capped at the active trim width
+        const fiW = Math.min((fi / dur) * W, activeW);
+        const grad = g.createLinearGradient(tsX, 0, tsX + fiW, 0);
+        grad.addColorStop(0, 'rgba(200,50,210,0.38)');
+        grad.addColorStop(0.75, 'rgba(200,50,210,0.28)');
+        grad.addColorStop(1, 'rgba(200,50,210,0)');
+        g.fillStyle = grad; 
+        g.fillRect(tsX, 0, fiW, H);
       }
-      if(fo>0){
-        const foW=Math.min(fo/dur,1)*W;
-        const grad=g.createLinearGradient(W-foW,0,W,0);
-        grad.addColorStop(0,'rgba(200,50,210,0)');
-        grad.addColorStop(0.25,'rgba(200,50,210,0.28)');
-        grad.addColorStop(1,'rgba(200,50,210,0.38)');
-        g.fillStyle=grad; g.fillRect(W-foW,0,foW,H);
+      if(fo>0 && activeW > 0){
+        // Calculate fade-out width based on duration, capped at the active trim width
+        const foW = Math.min((fo / dur) * W, activeW);
+        const grad = g.createLinearGradient(teX - foW, 0, teX, 0);
+        grad.addColorStop(0, 'rgba(200,50,210,0)');
+        grad.addColorStop(0.25, 'rgba(200,50,210,0.28)');
+        grad.addColorStop(1, 'rgba(200,50,210,0.38)');
+        g.fillStyle = grad; 
+        g.fillRect(teX - foW, 0, foW, H);
       }
     }
     if(dur>0||previewSeekPos>0){
