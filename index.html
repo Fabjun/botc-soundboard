@@ -5167,6 +5167,7 @@ function _fmtTime(s){
   const m=Math.floor(s/60), sec=Math.floor(s%60);
   return `${m}:${sec.toString().padStart(2,'0')}`;
 }
+// Ensure decodeWaveform is fully closed and self-contained
 function decodeWaveform(fi){
   const f=eFiles[fi]; if(!f||!f.data) return;
   const tmpAC=new AudioContext();
@@ -5186,12 +5187,10 @@ function decodeWaveform(fi){
     const dur = buf.duration;
     const etsInput = document.getElementById('ets');
     const eteInput = document.getElementById('ete');
-    
     if(etsInput && eteInput) {
       etsInput.max = dur;
       eteInput.max = dur;
       
-      // Fallback safely to current values if no global ID is set
       const currentStart = parseFloat(etsInput.value) || 0;
       const currentEnd = parseFloat(eteInput.value) || 0;
       
@@ -5211,9 +5210,16 @@ function decodeWaveform(fi){
         document.getElementById('ete-lbl').textContent = 'Full Audio';
       }
     }
-
     drawScrubber();
   }).catch(()=>{ waveforms[fi]=null; });
+}
+
+// Global initialization function to bootstrap the application and layout
+function initBoard(){
+  initGridCtrl();
+  if(typeof renderGrid === 'function') {
+    renderGrid(); // Safely trigger the pad rendering sequence
+  }
 }
 function drawScrubber(){
   const c=document.getElementById('scrub'); if(!c) return;
@@ -5308,6 +5314,7 @@ function drawScrubber(){
   const tEl=document.getElementById('scrub-time');
   if(tEl) tEl.textContent=dur>0?`${_fmtTime(pos)} / ${_fmtTime(dur)}`:'';
 }
+
 function startScrubRAF(){
   if(scrubRAF) return;
   const tick=()=>{
@@ -5317,6 +5324,7 @@ function startScrubRAF(){
   };
   scrubRAF=requestAnimationFrame(tick);
 }
+
 function stopScrubRAF(){
   if(scrubRAF){ cancelAnimationFrame(scrubRAF); scrubRAF=null; }
 }
@@ -5335,7 +5343,7 @@ function initScrub(){
   }
   function getMode(frac){
     const dur=getDur(); if(!dur) return 'seek';
-    // playhead always wins within ±8px hit zone
+    // Playhead always wins within ±8px hit zone
     const seekFrac=previewAudio?.duration?(previewAudio.currentTime/previewAudio.duration):previewSeekPos;
     if(Math.abs(frac-seekFrac)*(c.offsetWidth||1)<8) return 'seek';
     const fi=+(document.getElementById('eft')?.value||0);
@@ -5345,7 +5353,21 @@ function initScrub(){
     return 'seek';
   }
 
-  c.addEventListener('pointermove',e=>{
+  c.addEventListener('pointerdown', e => {
+    c.setPointerCapture(e.pointerId);
+    const frac = relFrac(e);
+    dragMode = getMode(frac);
+    
+    // Trigger update immediately on click
+    const dur = getDur();
+    if(dragMode==='seek' && dur > 0) {
+      if(previewAudio && previewAudio.duration) previewAudio.currentTime = frac * previewAudio.duration;
+      else previewSeekPos = frac;
+    }
+    drawScrubber();
+  });
+
+c.addEventListener('pointermove', e => {
     const frac=relFrac(e);
     if(!dragMode){
       const m=getMode(frac);
@@ -5362,26 +5384,17 @@ function initScrub(){
     } else if(dragMode==='seek'){
       if(previewAudio&&previewAudio.duration) previewAudio.currentTime=frac*previewAudio.duration;
       else previewSeekPos=frac;
-      drawScrubber();
     }
+    drawScrubber();
   });
 
-  c.addEventListener('pointerdown',e=>{
-    if(!eFiles.length) return;
-    const frac=relFrac(e);
-    dragMode=getMode(frac);
-    c.setPointerCapture(e.pointerId);
-    if(dragMode==='seek'){
-      if(previewAudio&&previewAudio.duration){
-        previewAudio.currentTime=frac*previewAudio.duration;
-        if(!previewAudio.paused){ previewAudio.pause(); updFB(); }
-      } else { previewSeekPos=frac; }
-      drawScrubber();
-    }
+  c.addEventListener('pointerup', e => {
+    dragMode = null;
   });
 
-  c.addEventListener('pointerup',  ()=>{ dragMode=null; });
-  c.addEventListener('pointercancel',()=>{ dragMode=null; });
+  c.addEventListener('pointercancel', e => {
+    dragMode = null;
+  });
 }
 function _cleanupPreview(){
   ++previewFadeGen;
