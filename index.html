@@ -26,7 +26,7 @@
   --ff-body:'Share Tech Mono',monospace;
   --ff-hero:'DotGothic16',sans-serif;
   --ff-subtitle:'VT323',monospace;
-  --font-scale:1; --sym-scale:1;
+  --font-scale:1; --sym-scale:1; --ico-scale:1;
   /* Mode accent — used by board-internal elements (#sp) */
   --mode-accent:var(--active); --mode-accent-dim:rgba(79,195,247,.35); --mode-accent-glow:rgba(79,195,247,.2);
   /* Screen accent — set per-screen by updateTopBar(); default gold */
@@ -309,7 +309,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 .pbtn.plooping{border-color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,.2);
   animation:breathe-gold 2.2s ease-in-out infinite}
 .pbtn.flash{background:var(--raised)}
-.pbtn .pico{font-size:calc(20px * var(--sym-scale));line-height:1;color:var(--mode-accent)}
+.pbtn .pico{font-size:calc(20px * var(--sym-scale) * var(--ico-scale));line-height:1;color:var(--mode-accent)}
 .pbtn .plbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;
   color:var(--text-dim);text-align:center;line-height:1.3}
 .pbtn.playing .plbl,.pbtn.plooping .plbl{color:var(--text)}
@@ -330,7 +330,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .pbtn.has-img .plbl,.pbtn.has-img .pnum{position:relative;z-index:1}
 /* Multi-icon grid on pad */
 .pbtn{container-type:inline-size}
-.pbtn .pico.pico-g{display:grid;grid-template-columns:1fr 1fr;gap:2px;place-items:center;font-size:calc(10px * var(--sym-scale))}
+.pbtn .pico.pico-g{display:grid;grid-template-columns:1fr 1fr;gap:2px;place-items:center;font-size:calc(10px * var(--sym-scale) * var(--ico-scale))}
 .pico-span2{grid-column:1/-1;display:flex;justify-content:center}
 @container (max-width:67px){.pbtn .pico{display:none}}
 /* Icon slot picker in PAD editor */
@@ -1633,6 +1633,10 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <span class="gc-ico">↔ GAP</span>
       <input type="range" id="gap-slider" min="2" max="48" value="8">
     </div>
+    <div class="gc-row">
+      <span class="gc-ico">◉ ICO</span>
+      <input type="range" id="ico-scale-slider" min="0.5" max="3.0" step="0.1" value="1">
+    </div>
     <div class="trow">
       <div class="topt" id="sh-sq" onclick="setPadShape('0px','sq')">◼ SQ</div>
       <div class="topt" id="sh-rd" onclick="setPadShape('8px','rd')">▢ RD</div>
@@ -1644,8 +1648,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 97;
+const APP_VERSION = 98;
 const CHANGELOG=[
+  {v:98,date:'2026-05-23',items:["PAD icon size slider in PAD Style (◉ ICO): scales icons inside pads independently of the global symbol scale; range 0.5×–3.0×; saved to settings and included in backup","Library PADS tab: board pads now have Rename (✎) and Delete (✕) buttons — same actions as audio files; only shown for current-board filter where edits can be persisted","Library PADS tab: PAD templates now also have a Rename button; delete with confirmation already existed"]},
   {v:97,date:'2026-05-23',items:["Enter stop mode toggle in Settings → CONTROLS: SERIAL (LIFO, one per press) or TOTAL (all at once)","Icons now render correctly in SETUP mode (was falling back to text emoji instead of showing selected SVG/emoji icons)","Icon group proportional scaling: 2×2 grid of 4 icons renders at the same total footprint as a single icon"]},
   {v:96,date:'2026-05-23',items:["Backup now includes switch sound (switch-sound-b64 + switch-sound-name) for seamless environment restore","Enter key now stops sounds in LIFO order — each press stops only the most recently activated sound; repeated presses peel back the stack one by one","NumpadDecimal (·) still stops everything at once","Stack is maintained across all pad modes (S-PAD, Loop, Playlist, Combo)"]},
   {v:95,date:'2026-05-23',items:["Library tab order changed: AUDIO · PADS · BOARDS · ICONS","Audio entries: original filename shown as 'upload-name: …' (was '← …')","Audio 'in use' is now a clickable button — expands inline to list all PADs that use this file, with mode badge (S-PAD/LOOP/LIST/C-PAD) and board name","Board PADs in the PADS tab: non-combo pads that are referenced by combo steps show a 'used in N combo(s)' button — expands to list those combos","Library tab active color now follows --screen-accent (always gold for Library)"]},
@@ -1706,7 +1711,7 @@ const CHANGELOG=[
   {v:38,date:'2026-05-22',items:['Edit mode accent: blue icons/borders; Play mode accent: gold','Looping pad border pulses gold (breathe-gold animation)']},
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode'];
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
 //  grep for "// ── SECTION" to jump to any area
@@ -2825,6 +2830,67 @@ async function libRenameSave(hash){
   initLibScreen();
 }
 
+function libRenameBoardPadStart(idx){
+  const item=_libPadItems[idx]; if(!item||item.padIdx==null) return;
+  const el=document.getElementById('lpn-'+idx); if(!el) return;
+  const cur=item.pad.name||'';
+  el.style.overflow='visible';
+  el.style.whiteSpace='normal';
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:5px">
+    <input id="lpr-${idx}" value="${escHtml(cur)}"
+      style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));background:var(--raised);border:1px solid var(--active);color:var(--text);padding:3px 6px;border-radius:2px;box-sizing:border-box;width:100%"
+      onkeydown="if(event.key==='Enter')libRenameBoardPadSave(${idx});else if(event.key==='Escape')renderLibPads()">
+    <div style="display:flex;gap:6px">
+      <button onclick="libRenameBoardPadSave(${idx})" style="background:none;border:1px solid var(--emerald);color:var(--emerald);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 9px;border-radius:2px;cursor:pointer">✓</button>
+      <button onclick="renderLibPads()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer">✕</button>
+    </div>
+  </div>`;
+  const inp=document.getElementById('lpr-'+idx); if(inp){ inp.focus(); inp.select(); }
+}
+async function libRenameBoardPadSave(idx){
+  const inp=document.getElementById('lpr-'+idx); if(!inp) return;
+  const newName=inp.value.trim(); if(!newName) return;
+  const item=_libPadItems[idx]; if(!item||item.padIdx==null) return;
+  pads[item.padIdx].name=newName;
+  await save();
+  showToast('PAD renamed.');
+  renderLibPads();
+}
+function libDeleteBoardPad(idx){
+  const item=_libPadItems[idx]; if(!item||item.padIdx==null) return;
+  showConfirmDel(`Delete "${item.pad.name||'this pad'}" from "${currentBoardName}"?`,async()=>{
+    pads[item.padIdx]=null;
+    await save();
+    showToast('PAD deleted.');
+    renderLibPads();
+  });
+}
+function libRenamePadTemplateStart(hash){
+  const el=document.getElementById('ltnm-'+hash); if(!el) return;
+  const nameEl=el.querySelector('div');
+  const cur=nameEl?nameEl.textContent:'';
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:5px">
+    <input id="ltpr-${hash}" value="${escHtml(cur)}"
+      style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));background:var(--raised);border:1px solid var(--active);color:var(--text);padding:3px 6px;border-radius:2px;box-sizing:border-box;width:100%"
+      onkeydown="if(event.key==='Enter')libRenamePadTemplateSave('${hash}');else if(event.key==='Escape')renderLibPads()">
+    <div style="display:flex;gap:6px">
+      <button onclick="libRenamePadTemplateSave('${hash}')" style="background:none;border:1px solid var(--emerald);color:var(--emerald);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 9px;border-radius:2px;cursor:pointer">✓</button>
+      <button onclick="renderLibPads()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer">✕</button>
+    </div>
+  </div>`;
+  const inp=document.getElementById('ltpr-'+hash); if(inp){ inp.focus(); inp.select(); }
+}
+async function libRenamePadTemplateSave(hash){
+  const inp=document.getElementById('ltpr-'+hash); if(!inp) return;
+  const newName=inp.value.trim(); if(!newName) return;
+  const entry=await libGet(hash); if(!entry) return;
+  const updated={...entry,name:newName};
+  if(updated.padData) updated.padData={...updated.padData,name:newName};
+  await libPut(updated);
+  showToast('Template renamed.');
+  renderLibPads();
+}
+
 // ── CHANGELOG ──
 function openChangelog(){
   const ov=document.getElementById('changelog-ov'); if(!ov) return;
@@ -2888,12 +2954,17 @@ async function renderLibPads(){
           const usedByComboEl=usedByCombos.length
             ?`<button onclick="toggleLibUsedBy('pad-${i}')" style="background:none;border:none;color:var(--gold);font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));cursor:pointer;padding:0;line-height:1;text-decoration:underline dotted">used in ${usedByCombos.length} combo${usedByCombos.length===1?'':'s'}</button>
              <div id="lub-pad-${i}" style="display:none;border-left:2px solid var(--gold);padding-left:8px;margin-top:2px">${comboRows}</div>`:'';
+          const canEdit=item.padIdx!=null;
+          const renameBtn=canEdit?`<button onclick="libRenameBoardPadStart(${i})" title="Rename" style="background:none;border:none;color:var(--text-dim);font-size:calc(16px * var(--font-scale));cursor:pointer;padding:0 3px;line-height:1">✎</button>`:'';
+          const deleteBtn=canEdit?`<button onclick="libDeleteBoardPad(${i})" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:0;padding:2px 8px;border-radius:2px;cursor:pointer">✕</button>`:'';
           return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:5px">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
-              <div style="flex:1;min-width:0;font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.name)}${keyTxt}${boardTxt}</div>
+              <div id="lpn-${i}" style="flex:1;min-width:0;font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.name)}${keyTxt}${boardTxt}</div>
               ${prevBtnP}
+              ${renameBtn}
               <button onclick="savePadTemplate(${i})" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">SAVE</button>
+              ${deleteBtn}
             </div>
             ${usedByComboEl}
           </div>`;
@@ -2916,11 +2987,12 @@ async function renderLibPads(){
           const prevBtnT=fhT?`<button class="lib-prev-btn" onclick="toggleLibPreview('${fhT}',this)" title="Preview" style="background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">▶</button>`:'';
           return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:8px">
             <span style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:${mc};border:1px solid ${mc};padding:1px 5px;border-radius:2px;flex-shrink:0">${ml}</span>
-            <div style="flex:1;min-width:0">
+            <div id="ltnm-${e.hash}" style="flex:1;min-width:0">
               <div style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.name)}</div>
               <div style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim)">${dateStr}</div>
             </div>
             ${prevBtnT}
+            <button onclick="libRenamePadTemplateStart('${e.hash}')" title="Rename" style="background:none;border:none;color:var(--text-dim);font-size:calc(16px * var(--font-scale));cursor:pointer;padding:0 3px;line-height:1">✎</button>
             <button onclick="importPadTemplate('${e.hash}')" style="background:none;border:1px solid var(--emerald);color:var(--emerald);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0;letter-spacing:0">+ ADD</button>
             <button onclick="deletePadTemplate('${e.hash}')" style="background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;flex-shrink:0">✕</button>
           </div>`;
@@ -3761,16 +3833,20 @@ function setPadShape(radius,key){
 function applyGridCtrl(){
   const sz=document.getElementById('sz-slider').value;
   const gap=document.getElementById('gap-slider').value;
+  const ico=document.getElementById('ico-scale-slider').value;
   document.documentElement.style.setProperty('--pad-sz',sz+'px');
   document.documentElement.style.setProperty('--pad-gap',gap+'px');
+  document.documentElement.style.setProperty('--ico-scale',ico);
 }
 function initGridCtrl(){
   const sz=localStorage.getItem('pad-sz')||'90';
   const gap=localStorage.getItem('pad-gap')||'8';
+  const ico=localStorage.getItem('ico-scale')||'1';
   const radius=localStorage.getItem('pad-radius')||'8px';
   const shapeKey=localStorage.getItem('pad-shape-key')||'rd';
   document.getElementById('sz-slider').value=sz;
   document.getElementById('gap-slider').value=gap;
+  document.getElementById('ico-scale-slider').value=ico;
   applyGridCtrl();
   setPadShape(radius,shapeKey);
   document.getElementById('sz-slider').addEventListener('input',()=>{
@@ -3778,6 +3854,9 @@ function initGridCtrl(){
   });
   document.getElementById('gap-slider').addEventListener('input',()=>{
     applyGridCtrl(); localStorage.setItem('pad-gap',document.getElementById('gap-slider').value);
+  });
+  document.getElementById('ico-scale-slider').addEventListener('input',()=>{
+    applyGridCtrl(); localStorage.setItem('ico-scale',document.getElementById('ico-scale-slider').value);
   });
 }
 
