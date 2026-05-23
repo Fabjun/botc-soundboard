@@ -3003,15 +3003,17 @@ function playCombo(id, onFinish=null){
 function playComboStep(id,state,steps,stepIdx){
   if(state.stopped||stepIdx>=steps.length){ finishCombo(id,state); return; }
   
+  let delayNext = 0;
+
   if (steps[stepIdx].stopAll) {
     stopAll(); 
+    delayNext = 200;
   }
   
-  // Wenn fadeOutAll im Schritt aktiv ist, lesen wir die Pause-Dauer aus
-  // Falls keine Pause eingetragen ist (0), nutzen wir 2.5 Sekunden als Standard
   if (steps[stepIdx].fadeOutAll) {
     const customFadeTime = steps[stepIdx].dur || 2.5;
     fadeOutAll(customFadeTime);
+    delayNext = (customFadeTime * 1000) + 100;
   }
 
   const rawPads=steps[stepIdx].pads||[];
@@ -3047,7 +3049,7 @@ function playComboStep(id,state,steps,stepIdx){
     }
   }
   if(fgRem===0){
-    const ms=(steps[stepIdx].dur||0)*1000;
+    const ms=Math.max((steps[stepIdx].dur||0)*1000, delayNext);
     if(ms>0){
       state.pauseTimer=setTimeout(()=>{ if(!state.stopped) playComboStep(id,state,steps,stepIdx+1); },ms);
     } else {
