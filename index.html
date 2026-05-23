@@ -254,19 +254,24 @@ input[type=file]{display:none}
 #sidebar-btn{background:none;border:none;color:var(--screen-accent);font-size:calc(20px * var(--font-scale));cursor:pointer;padding:2px 4px;line-height:1;flex-shrink:0}
 #phdr-menu-btn{background:none;border:1px solid var(--screen-accent-dim);color:var(--screen-accent);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer;flex-shrink:0}
 #phdr-title{font-family:var(--ff-label);color:var(--screen-accent);font-size:calc(17px * var(--font-scale));letter-spacing:0;text-align:center;flex:1;margin:0}
-#sidebar-bk{display:none;position:fixed;top:var(--p-hdr-h);left:0;right:0;bottom:0;z-index:189;background:rgba(0,0,0,.5)}
-#sidebar-bk.open{display:block}
+#sidebar-bk{display:none!important}
 #sidebar{position:fixed;top:var(--p-hdr-h);left:0;bottom:0;width:min(220px,75vw);background:var(--surface);border-right:1px solid var(--border);z-index:190;transform:translateX(-100%);transition:transform .25s ease;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:16px}
 #sidebar.open{transform:translateX(0)}
-/* Desktop: sidebar always visible on sidebar-enabled screens */
-@media(min-width:800px){
-  body.sidebar-pinned #sidebar{transform:translateX(0);transition:none}
-  body.sidebar-pinned #sidebar-bk{display:none!important}
-  body.sidebar-pinned #sidebar-btn{display:none!important}
-  body.sidebar-pinned #sp,body.sidebar-pinned #sli{padding-left:220px}
+/* Desktop (≥500px): sidebar pushes content right instead of overlaying */
+@media(min-width:500px){
+  .screen{transition:margin-left .25s ease,width .25s ease}
+  body.sidebar-open .screen.active{margin-left:min(220px,75vw);width:calc(100% - min(220px,75vw))}
 }
 .sb-section{display:flex;flex-direction:column;gap:8px}
 .sb-lbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--text-dim);letter-spacing:1px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.sb-tabs{display:flex;flex-direction:column;gap:4px}
+.sec-lbl{display:block;font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--gold-dim);letter-spacing:.5px;margin:16px 0 8px}
+.sec-lbl-row{display:flex;align-items:center;gap:8px;margin:16px 0 8px}
+.sec-lbl-row .sec-lbl{margin:0;flex:1}
+.info-line{font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-bottom:10px}
+.screen-footer{border-top:1px solid var(--border);flex-shrink:0}
+.screen-footer .cx{padding-top:10px;padding-bottom:10px}
+.screen-footer .btn-p{width:100%}
 body.mode-play .sidebar-style{display:none}
 .hdr-center{display:flex;align-items:center;gap:10px}
 /* MODE SWITCH */
@@ -1160,7 +1165,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   </div>
   <div id="lib-audio-section" style="flex:1;overflow-y:auto">
    <div class="cx" style="padding-top:14px;padding-bottom:14px">
-    <div id="lib-stats" style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-bottom:10px"></div>
+    <div class="info-line" id="lib-stats"></div>
     <div id="lib-list" style="display:flex;flex-direction:column;gap:8px"></div>
     <div style="margin-top:14px">
       <div class="fbtn" onclick="document.getElementById('lib-upload').click()">+ UPLOAD AUDIO</div>
@@ -1170,20 +1175,20 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   </div>
   <div id="lib-boards-section" style="flex:1;display:none;flex-direction:column">
     <div style="flex:1;overflow-y:auto">
-      <div id="lib-board-list" class="cx" style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px"></div>
+      <div id="lib-board-list" class="cx" style="display:flex;flex-direction:column;gap:8px;padding-top:14px;padding-bottom:14px"></div>
     </div>
-    <div style="border-top:1px solid var(--border);flex-shrink:0">
-      <div class="cx" style="padding-top:10px;padding-bottom:10px">
-        <button class="btn-p" onclick="showCreateBoard()" style="width:100%">+ NEW BOARD</button>
+    <div class="screen-footer">
+      <div class="cx">
+        <button class="btn-p" onclick="showCreateBoard()">+ NEW BOARD</button>
       </div>
     </div>
   </div>
   <div id="lib-icons-section" style="flex:1;overflow-y:auto;display:none">
    <div class="cx" style="padding-top:14px;padding-bottom:32px">
     <div id="lib-icons-custom" style="margin-bottom:14px"></div>
-    <div style="display:flex;align-items:center;margin-bottom:8px">
-      <div style="font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--gold-dim);letter-spacing:.5px;flex:1">BUILT-IN ICONS (<span id="lib-builtin-count">…</span>)</div>
-      <button class="ico-names-btn" id="lib-names-btn" onclick="toggleIconNames()">NAMES</button>
+    <div class="sec-lbl-row">
+      <span class="sec-lbl">BUILT-IN ICONS (<span id="lib-builtin-count">…</span>)</span>
+      <button class="lca-dim" id="lib-names-btn" onclick="toggleIconNames()">NAMES</button>
     </div>
     <div id="lib-icons-builtin"></div>
     <div style="margin-top:14px">
@@ -1195,7 +1200,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   <div id="lib-pads-section" style="flex:1;overflow-y:auto;display:none">
    <div class="cx" style="padding-top:14px;padding-bottom:32px">
     <div id="lib-pad-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px"></div>
-    <div style="font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--gold-dim);letter-spacing:.5px;margin-bottom:8px">TEMPLATES (<span id="lib-pad-tmpl-count">0</span>)</div>
+    <div class="sec-lbl">TEMPLATES (<span id="lib-pad-tmpl-count">0</span>)</div>
     <div id="lib-pad-templates" style="display:flex;flex-direction:column;gap:8px"></div>
    </div>
   </div>
@@ -1732,8 +1737,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 110;
+const APP_VERSION = 111;
 const CHANGELOG=[
+  {v:111,date:'2026-05-23',items:["Push sidebar: at ≥500px the sidebar shifts screen content right instead of overlaying it — both areas interactive simultaneously; backdrop removed entirely","Dynamic sidebar button: hidden when current Library tab (BOARDS, ICONS) has no sidebar content; sidebar auto-closes on tab switch to a content-free tab","New universal classes: .sec-lbl (sub-section header), .sec-lbl-row (header + button row), .info-line (meta stats), .screen-footer (bottom action bar), .sb-tabs (sidebar tab list)","Library HTML: #lib-stats, TEMPLATES header, BUILT-IN ICONS row, Boards footer all converted to new class families"]},
   {v:110,date:'2026-05-23',items:["Sort option renamed: \"Latest Edit\" → \"Edit\" — direction already conveyed by ↑/↓ arrow"]},
   {v:109,date:'2026-05-23',items:["Sort dropdown redesigned: 3 toggle-able dimensions (Date, Latest Edit, Name) replace 5 separate options — clicking an inactive option activates it with default direction; clicking the active option flips direction (↑/↓); direction arrow shown inline in the active option"]},
   {v:108,date:'2026-05-23',items:["Sidebar toggle button (☰) restored on all sidebar screens — auto-pin at ≥800px removed, sidebar is always slide-in"]},
@@ -2207,40 +2213,49 @@ document.addEventListener('fullscreenchange', _fsUpdBtn);
 function renderSidebarContent(screenId){
   const sbBoard=document.getElementById('sb-board');
   const sbLib=document.getElementById('sb-library');
-  if(!sbBoard||!sbLib) return;
+  if(!sbBoard||!sbLib) return false;
   const isLib=screenId==='sli';
   sbBoard.style.display=isLib?'none':'contents';
   sbLib.style.display=isLib?'contents':'none';
-  if(!isLib){ sbLib.innerHTML=''; return; }
-  const tab=libMainTab||'audio';
-  let html='';
-  if(tab==='audio'){
-    const m=libFilterMode||'all';
-    html=`<div class="sb-section"><div class="sb-lbl">FILTER</div><div style="display:flex;flex-direction:column;gap:4px">
-      <div class="pf-tab${m==='all'?' pf-act':''}" onclick="libFilter('all')">ALL</div>
-      <div class="pf-tab${m==='used'?' pf-act':''}" onclick="libFilter('used')">IN USE</div>
-      <div class="pf-tab${m==='unused'?' pf-act':''}" onclick="libFilter('unused')">UNUSED</div>
-    </div></div>`;
-  } else if(tab==='pads'){
-    const f=_libPadFilter||'current';
-    html=`<div class="sb-section"><div class="sb-lbl">SCOPE</div><div style="display:flex;flex-direction:column;gap:4px">
-      <div class="pf-tab${f==='current'?' pf-act':''}" onclick="setLibPadFilter('current')">CURRENT BOARD</div>
-      <div class="pf-tab${f==='all'?' pf-act':''}" onclick="setLibPadFilter('all')">ALL BOARDS</div>
-    </div></div>`;
+  let hasContent=true;
+  if(isLib){
+    const tab=libMainTab||'audio';
+    let html='';
+    if(tab==='audio'){
+      const m=libFilterMode||'all';
+      html=`<div class="sb-section"><div class="sb-lbl">FILTER</div><div class="sb-tabs">
+        <div class="pf-tab${m==='all'?' pf-act':''}" onclick="libFilter('all')">ALL</div>
+        <div class="pf-tab${m==='used'?' pf-act':''}" onclick="libFilter('used')">IN USE</div>
+        <div class="pf-tab${m==='unused'?' pf-act':''}" onclick="libFilter('unused')">UNUSED</div>
+      </div></div>`;
+    } else if(tab==='pads'){
+      const f=_libPadFilter||'current';
+      html=`<div class="sb-section"><div class="sb-lbl">SCOPE</div><div class="sb-tabs">
+        <div class="pf-tab${f==='current'?' pf-act':''}" onclick="setLibPadFilter('current')">CURRENT BOARD</div>
+        <div class="pf-tab${f==='all'?' pf-act':''}" onclick="setLibPadFilter('all')">ALL BOARDS</div>
+      </div></div>`;
+    }
+    sbLib.innerHTML=html;
+    hasContent=html!=='';
+  } else {
+    sbLib.innerHTML='';
   }
-  sbLib.innerHTML=html;
+  const btn=document.getElementById('sidebar-btn');
+  if(btn) btn.style.display=hasContent?'':'none';
+  if(!hasContent && document.getElementById('sidebar').classList.contains('open')) closeSidebar();
+  return hasContent;
 }
 function _updateSidebarPin(hasSidebar){
-  document.body.classList.remove('sidebar-pinned');
-  document.getElementById('sidebar-btn').style.display=hasSidebar?'':'none';
+  if(hasSidebar) renderSidebarContent(cur);
+  else document.getElementById('sidebar-btn').style.display='none';
 }
 let _resizeTimer;
 window.addEventListener('resize',()=>{
   clearTimeout(_resizeTimer);
   _resizeTimer=setTimeout(()=>{ const cfg=SCREEN_CONFIG[cur]; if(cfg) _updateSidebarPin(!!cfg.hasSidebar); },150);
 });
-function openSidebar(){ renderSidebarContent(cur); document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-bk').classList.add('open'); }
-function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-bk').classList.remove('open'); }
+function openSidebar(){ if(!renderSidebarContent(cur)) return; document.getElementById('sidebar').classList.add('open'); document.body.classList.add('sidebar-open'); }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.body.classList.remove('sidebar-open'); }
 function toggleSidebar(){ document.getElementById('sidebar').classList.contains('open')?closeSidebar():openSidebar(); }
 
 // ── BOARDS ──
@@ -3308,7 +3323,7 @@ async function renderLibIcons(){
   } else if(builtinEl){
     builtinEl.classList.toggle('ico-names-on',iconNamesVisible);
   }
-  document.querySelectorAll('.ico-names-btn').forEach(b=>b.classList.toggle('active',iconNamesVisible));
+  _applyIconNamesClass();
 }
 async function onLibIconUpload(inp){
   const files=Array.from(inp.files); inp.value='';
@@ -3362,6 +3377,8 @@ function _applyIconNamesClass(){
     if(el) el.classList.toggle('ico-names-on', iconNamesVisible);
   });
   document.querySelectorAll('.ico-names-btn').forEach(b=>b.classList.toggle('active', iconNamesVisible));
+  const lb=document.getElementById('lib-names-btn');
+  if(lb){ lb.classList.toggle('lca-dim',!iconNamesVisible); lb.classList.toggle('lca-acc',iconNamesVisible); }
 }
 function renderIconCell(ic, selectedId, isPicker){
   const sel = selectedId===ic.id ? ' selected' : '';
