@@ -3006,6 +3006,13 @@ function playComboStep(id,state,steps,stepIdx){
   if (steps[stepIdx].stopAll) {
     stopAll(); 
   }
+  
+  // Wenn fadeOutAll im Schritt aktiv ist, lesen wir die Pause-Dauer aus
+  // Falls keine Pause eingetragen ist (0), nutzen wir 2.5 Sekunden als Standard
+  if (steps[stepIdx].fadeOutAll) {
+    const customFadeTime = steps[stepIdx].dur || 2.5;
+    fadeOutAll(customFadeTime);
+  }
 
   const rawPads=steps[stepIdx].pads||[];
   const rawOpts=steps[stepIdx].chipOpts||[];
@@ -3048,7 +3055,36 @@ function playComboStep(id,state,steps,stepIdx){
     }
   }
 }
+// Diese Funktion regelt alle Gains flüssig über die eingestellte Zeit gegen 0
+function fadeOutAll(fadeTime) {
+  if (!ctx || ctx.state === 'suspended') return;
+  
+  Object.keys(gains).forEach(id => {
+    const g = gains[id];
+    if (g && g.gain) {
+      try {
+        g.gain.cancelScheduledValues(ctx.currentTime);
+        g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0, ctx.currentTime + fadeTime);
+      } catch(e) {}
+    }
+  });
 
+  // Sobald das Ausblenden fertig ist, beenden wir die Sounds im Hintergrund sauber
+  setTimeout(() => {
+    _playStack = [];
+    Object.keys(srcs).forEach(id => {
+      const pid = +id;
+      srcs[pid].forEach(s => { try { s.onended = null; s.stop(); } catch(e) {} });
+      delete srcs[pid];
+      delete gains[pid];
+      delete playPos[pid];
+      _detachPadAnalyser(pid);
+      updBtn(pid, false);
+    });
+    chkNP();
+  }, (fadeTime * 1000) + 50);
+}
 function finishCombo(id,state){
   clearTimeout(state.pauseTimer);
   state.bgInstances.forEach(i=>i.stop());
@@ -4765,21 +4801,18 @@ function toggleChipExpand(si,pi){
 function renderComboSteps(){
   const el=document.getElementById('combo-steps-list'); if(!el) return;
   el.innerHTML=comboSteps.map((step,si)=>{
-    
-    // NEU: Wenn stopAll aktiv ist, generieren wir den roten Chip vor den anderen Sounds
-    let stopChipHtml = '';
+    let actionChipHtml = '';
     if (step.stopAll) {
-      stopChipHtml = `<span class="combo-chip" style="background:var(--blood); border-color:var(--blood-bright); color:#fff; font-weight:bold;">` +
-                     `🛑 STOP ALL` +
-                     `<button class="combo-chip-del" onclick="comboSteps[${si}].stopAll=false; renderComboSteps();" style="color:#fff;">✕</button></span>`;
+      actionChipHtml = `<span class="combo-chip" style="background:var(--blood); border-color:var(--blood-bright); color:#fff; font-weight:bold;">🛑 STOP ALL<button class="combo-chip-del" onclick="comboSteps[${si}].stopAll=false; renderComboSteps();" style="color:#fff;">✕</button></span>`;
+    } else if (step.fadeOutAll) {
+      // Zeichnet den orangefarbenen Chip für den sanften Fade-out
+      actionChipHtml = `<span class="combo-chip" style="background:var(--gold-dim); border-color:var(--gold); color:#fff; font-weight:bold;">⏳ FADE OUT ALL<button class="combo-chip-del" onclick="comboSteps[${si}].fadeOutAll=false; renderComboSteps();" style="color:#fff;">✕</button></span>`;
     }
 
     const chips=step.pads.map((padId,pi)=>{
       const p=pads[padId];
       if(!p){
-        return `<span class="combo-chip" style="border-color:var(--blood);color:var(--blood-bright)">` +
-               `⚠ Pad ${padId+1} (deleted)` +
-               `<button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button></span>`;
+        return `<span class="combo-chip" style="border-color:var(--blood);color:var(--blood-bright)">⚠ Pad ${padId+1} (deleted)<button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button></span>`;
       }
       const isCombo=p.mode==='combo';
       const isBg=isInfiniteBg(p);
@@ -4804,15 +4837,15 @@ function renderComboSteps(){
       </div>${optRow}</span>`;
     }).join('');
     
-    // NEU: Kombiniere den Stop-Chip mit eventuellen anderen Sound-Chips
-    const combinedContent = stopChipHtml + chips;
-
+    const combinedContent = actionChipHtml + chips;
     const dur=comboSteps[si].dur||0;
     
-    // NEU: Wenn combinedContent Text enthält (also entweder Sounds ODER der Stop-Befehl drin ist), zeigen wir keine Pause-UI
+    // Wenn ausgeblendet wird, schlagen wir im Eingabefeld standardmäßig 2.5 Sekunden vor
+    const defaultPause = step.fadeOutAll ? 2.5 : 1;
+    
     const stepBody=combinedContent||`<div class="combo-pause-ui">
       <span class="combo-pause-lbl">⏱ PAUSE</span>
-      <input class="combo-pause-inp" type="number" min="0.5" max="60" step="0.5" value="${dur||1}"
+      <input class="combo-pause-inp" type="number" min="0.5" max="60" step="0.5" value="${dur||defaultPause}"
              oninput="setStepDur(${si},+this.value)" onclick="event.stopPropagation()">
       <span class="combo-pause-unit">sec.</span>
       <span class="combo-pause-hint">— drag a pad here to activate</span>
@@ -4848,8 +4881,11 @@ function comboCycles(candidateId, editingId){
 function renderComboPalette(){
   const el=document.getElementById('combo-palette'); if(!el) return;
   
-  // NEU: Der rote "STOP ALL"-Button als erster Eintrag in der Palette
-  let items = `<div class="cpal-item" data-action="stopAll" style="background:var(--blood); border-color:var(--blood-bright); color:#fff; font-weight:bold;">🛑 STOP ALL</div>`;
+  // Hier fügen wir den neuen "FADE OUT ALL"-Button direkt neben den Stop-Button ein
+  let items = `
+    <div class="cpal-item" data-action="stopAll" style="background:var(--blood); border-color:var(--blood-bright); color:#fff; font-weight:bold;">🛑 STOP ALL</div>
+    <div class="cpal-item" data-action="fadeOutAll" style="background:var(--gold-dim); border-color:var(--gold); color:#fff; font-weight:bold;">⏳ FADE OUT ALL</div>
+  `;
   
   const padItems = pads.map((p,i)=>{
     if(!p) return '';
@@ -4859,7 +4895,7 @@ function renderComboPalette(){
       const isCycle=!isSelf&&comboCycles(i,comboEditId);
       const disabled=isSelf||isCycle;
       const reason=isSelf?'self':isCycle?'cycle':'';
-      return `<div class="cpal-item${disabled?' cpal-disabled':''}" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-combo="1"${reason?` data-disabled-reason="${reason}"`:''}><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> ${lbl}</div>`;
+      return `<div class="cpal-item${disabled?' cpal-disabled':''}" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-combo="1"${reason?` data-disabled-reason="${reason}"`:''}><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M4 13h8v6h2v2h-2v-2h-2v-2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/></svg> ${lbl}</div>`;
     }
     const bg=isInfiniteBg(p)?' <span style="color:var(--mist);font-size:calc(11px * var(--font-scale))">BG</span>':'';
     return `<div class="cpal-item" data-padid="${i}" data-name="${(p.name||'').replace(/"/g,'&quot;')}">${ico(p)} ${lbl}${bg}</div>`;
@@ -4888,9 +4924,9 @@ function initComboPaletteDrag(){
         return;
       }
       
-      // NEU: Prüfen, ob es die Stop-Aktion oder ein normales Pad ist
-      if (item.dataset.action === 'stopAll') {
-        comboDragId = 'stopAll'; 
+      // Erkennt, ob ein normaler Sound oder eine der beiden globalen Aktionen gezogen wird
+      if (item.dataset.action === 'stopAll' || item.dataset.action === 'fadeOutAll') {
+        comboDragId = item.dataset.action; 
       } else {
         comboDragId = +item.dataset.padid;
       }
@@ -4898,7 +4934,7 @@ function initComboPaletteDrag(){
       item.classList.add('cpal-dragging');
       item.setPointerCapture(e.pointerId);
       const ghost=document.getElementById('combo-ghost');
-      ghost.textContent=item.dataset.name || item.textContent; // NEU: Fallback für Text
+      ghost.textContent=item.dataset.name || item.textContent;
       ghost.style.display='block';
       ghost.style.left=(e.clientX-40)+'px';
       ghost.style.top=(e.clientY-16)+'px';
@@ -4925,9 +4961,11 @@ function initComboPaletteDrag(){
         if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
           const si=+zone.dataset.step;
           
-          // NEU: Wenn die Stop-Aktion reingezogen wurde, setzen wir das Flag im Step
+          // Setzt das korrekte Flag im jeweiligen Schritt
           if (comboDragId === 'stopAll') {
             comboSteps[si].stopAll = true;
+          } else if (comboDragId === 'fadeOutAll') {
+            comboSteps[si].fadeOutAll = true;
           } else {
             comboSteps[si].pads.push(comboDragId);
             if(!comboSteps[si].chipOpts) comboSteps[si].chipOpts=[];
@@ -4983,7 +5021,9 @@ function doSaveCombo(){
     const opts=(s.chipOpts||[]).map(o=>o&&Object.keys(o).length?{...o}:null);
     return {
       pads:[...s.pads],
+      // Hier werden jetzt beide Flags sauber für die Zukunft abgespeichert
       ...(s.stopAll ? {stopAll: true} : {}),
+      ...(s.fadeOutAll ? {fadeOutAll: true} : {}),
       ...(s.dur>0?{dur:s.dur}:{}),
       ...(opts.some(Boolean)?{chipOpts:opts}:{})
     };
