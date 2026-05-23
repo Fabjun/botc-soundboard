@@ -5217,8 +5217,8 @@ function decodeWaveform(fi){
 // Global initialization function to bootstrap the application and layout
 function initBoard(){
   initGridCtrl();
-  if(typeof renderGrid === 'function') {
-    renderGrid(); // Safely trigger the pad rendering sequence
+  if(typeof renderPerf === 'function') {
+    renderPerf(); // Correctly trigger your real pad rendering sequence
   }
 }
 function drawScrubber(){
