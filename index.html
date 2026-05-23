@@ -330,7 +330,10 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .pbtn.has-img .plbl,.pbtn.has-img .pnum{position:relative;z-index:1}
 /* Multi-icon grid on pad */
 .pbtn{container-type:inline-size}
-.pbtn .pico.pico-g{display:grid;grid-template-columns:1fr 1fr;gap:2px;place-items:center;font-size:calc(10px * var(--sym-scale) * var(--ico-scale))}
+.pbtn .pico.pico-g{display:grid;grid-template-columns:1fr 1fr;gap:2px;place-items:center}
+.pbtn .pico.pico-g2{font-size:calc(22px * var(--sym-scale) * var(--ico-scale))}
+.pbtn .pico.pico-g3{font-size:calc(24px * var(--sym-scale) * var(--ico-scale))}
+.pbtn .pico.pico-g4{font-size:calc(26px * var(--sym-scale) * var(--ico-scale))}
 .pico-span2{grid-column:1/-1;display:flex;justify-content:center}
 @container (max-width:67px){.pbtn .pico{display:none}}
 /* Icon slot picker in PAD editor */
@@ -1648,8 +1651,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 98;
+const APP_VERSION = 99;
 const CHANGELOG=[
+  {v:99,date:'2026-05-23',items:["Proportional icon sizing: icons scale up with count — 1 icon (20 px baseline) → 2 icons (22 px) → 3 icons (24 px) → 4 icons (26 px); each group renders at pico-g2/g3/g4 CSS class; slider remains as global multiplier on top"]},
   {v:98,date:'2026-05-23',items:["PAD icon size slider in PAD Style (◉ ICO): scales icons inside pads independently of the global symbol scale; range 0.5×–3.0×; saved to settings and included in backup","Library PADS tab: board pads now have Rename (✎) and Delete (✕) buttons — same actions as audio files; only shown for current-board filter where edits can be persisted","Library PADS tab: PAD templates now also have a Rename button; delete with confirmation already existed"]},
   {v:97,date:'2026-05-23',items:["Enter stop mode toggle in Settings → CONTROLS: SERIAL (LIFO, one per press) or TOTAL (all at once)","Icons now render correctly in SETUP mode (was falling back to text emoji instead of showing selected SVG/emoji icons)","Icon group proportional scaling: 2×2 grid of 4 icons renders at the same total footprint as a single icon"]},
   {v:96,date:'2026-05-23',items:["Backup now includes switch sound (switch-sound-b64 + switch-sound-name) for seamless environment restore","Enter key now stops sounds in LIFO order — each press stops only the most recently activated sound; repeated presses peel back the stack one by one","NumpadDecimal (·) still stops everything at once","Stack is maintained across all pad modes (S-PAD, Loop, Playlist, Combo)"]},
@@ -4830,7 +4834,7 @@ function renderPadIconArea(p){
   let inner;
   if(svgs.length===3) inner=svgs[0]+svgs[1]+`<div class="pico-span2">${svgs[2]}</div>`;
   else inner=svgs.join('');
-  return `<div class="pico pico-g">${inner}</div>`;
+  return `<div class="pico pico-g pico-g${svgs.length}">${inner}</div>`;
 }
 function ico(p){
   if(!p) return '·';
