@@ -1793,8 +1793,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 120;
+const APP_VERSION = 121;
 const CHANGELOG=[
+  {v:121,date:'2026-05-23',items:["Folder assignments survive export/import: buildExportJson now includes the 'folder' field in serialized library entries; executeImport restores folder assignments on all import paths (replace, keep-both, add, pad templates)"]},
   {v:120,date:'2026-05-23',items:["Folder assignment bug fixed: JSON.stringify() inside onclick attributes produced unescaped double quotes that terminated the HTML attribute early — all folder handler attributes now use escHtml(JSON.stringify()) consistently","Library Picker multi-select: clicking any row toggles a checkbox (☐/☑); a sticky footer appears when ≥1 file is selected showing 'ADD N FILES' — all selected files added at once to the PAD playlist on confirm","Library Audio multi-select: each audio card has a ☐ checkbox button on the left; selecting files shows a sticky 'N SELECTED' bar at the bottom with 'MOVE TO FOLDER' (folder picker dropdown) and '✕ CLEAR'; bulk move updates all entries in parallel then re-renders once; selection clears when switching Library tabs"]},
   {v:119,date:'2026-05-23',items:["Circular PAD arc label moved to bottom edge: SVG textPath sweep-flag changed from 1 to 0 — text now curves along the bottom of the circle, right-side up","Key assignment (.pnum) now larger than PAD label (.plbl): both scale proportionally with --pad-sz (pnum: pad-sz × 15.5%, plbl: pad-sz × 13.3%) so labels grow and shrink with the PAD size slider","Multi-icon groups (2/3/4 icons) now also hidden at very small PAD sizes: @container rule extended to match .pico-g override specificity","Sidebar suppressed when PAD editor is open: openEP() closes the sidebar and hides the toggle button; closeEP() restores the button state from SCREEN_CONFIG"]},
   {v:118,date:'2026-05-23',items:["Onboarding: 🎲 replaced with pixel-art dice SVG (gold, 16×16 viewBox); 📚 replaced with book-open SVG (24×24) — consistent with pixel-art icon system","Board entry in main menu: equalizer icon replaced with flame icon (matches the sigil at the top of the main menu)","Changelog: v115–v117 entries added; console.assert guards against future version/changelog drift"]},
@@ -3901,7 +3902,7 @@ async function buildExportJson(){
   const boards=await getAllBoardsFull();
   const settings={};
   SETTINGS_KEYS.forEach(k=>{ const v=localStorage.getItem(k); if(v!==null) settings[k]=v; });
-  const library=libEntries.map(e=>({hash:e.hash,name:e.name,origName:e.origName||'',type:e.type||'',size:e.size||0,added:e.added||0,data:bufToBase64(e.buf),...(e.padData?{padData:e.padData}:{})}));
+  const library=libEntries.map(e=>({hash:e.hash,name:e.name,origName:e.origName||'',type:e.type||'',size:e.size||0,added:e.added||0,data:bufToBase64(e.buf),...(e.folder?{folder:e.folder}:{}),...(e.padData?{padData:e.padData}:{})}));
   return JSON.stringify({version:APP_VERSION,exported:new Date().toISOString(),settings,boards,library});
 }
 function _markExported(){
@@ -4068,23 +4069,24 @@ async function executeImport(){
     const choice=_importAudioChoices[e.hash];
     if(choice==='skip') continue;
     if(e.type==='pad'){
-      await libPut({hash:e.hash,type:'pad',name:e.name,added:e.added||Date.now(),padData:e.padData||{}});
+      await libPut({hash:e.hash,type:'pad',name:e.name,added:e.added||Date.now(),padData:e.padData||{},...(e.folder?{folder:e.folder}:{})});
       audioAdded++; continue;
     }
     const buf=base64ToBuf(e.data);
+    const _fld=e.folder?{folder:e.folder}:{};
     if(choice==='replace'){
       const all=await libGetAll();
       const ex=all.find(x=>x.name===e.name&&x.hash!==e.hash);
       if(ex) await libDelete(ex.hash);
-      await libPut({hash:e.hash,name:e.name,origName:e.origName||e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
+      await libPut({hash:e.hash,name:e.name,origName:e.origName||e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf,..._fld});
       audioReplaced++;
     } else if(choice==='keep-both'){
       const ext=e.name.includes('.')?'.'+e.name.split('.').pop():'';
       const base=e.name.includes('.')?e.name.slice(0,e.name.lastIndexOf('.')):e.name;
-      await libPut({hash:e.hash,name:base+'_imported'+ext,origName:e.origName||e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
+      await libPut({hash:e.hash,name:base+'_imported'+ext,origName:e.origName||e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf,..._fld});
       audioAdded++;
     } else {
-      await libPut({hash:e.hash,name:e.name,origName:e.origName||e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf});
+      await libPut({hash:e.hash,name:e.name,origName:e.origName||e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf,..._fld});
       audioAdded++;
     }
   }
