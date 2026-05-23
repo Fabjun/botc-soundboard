@@ -244,8 +244,9 @@ input[type=file]{display:none}
 #sp{background:var(--night);position:relative;overflow:hidden;padding-top:var(--p-hdr-h)}
 #sa,#sli,#smb,#st,#sab,#sk{padding-top:var(--p-hdr-h)}
 .pbtn.dragging{opacity:0.25}
-.pbtn.drag-insert-before{box-shadow:inset 3px 0 0 var(--mode-accent)!important}
-.pbtn.drag-insert-after{box-shadow:inset -3px 0 0 var(--mode-accent)!important}
+.pbtn.drag-insert-before{box-shadow:inset 4px 0 0 var(--mode-accent)!important}
+.pbtn.drag-insert-after{box-shadow:inset -4px 0 0 var(--mode-accent)!important}
+.pbtn.drag-swap{box-shadow:0 0 0 2px var(--mode-accent),0 0 14px var(--mode-accent-dim)!important}
 #sp::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse at 30% 20%,rgba(139,26,26,.08) 0%,transparent 50%)}
 .p-hdr{display:flex;justify-content:space-between;align-items:center;
@@ -1737,8 +1738,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 111;
+const APP_VERSION = 112;
 const CHANGELOG=[
+  {v:112,date:'2026-05-23',items:["PAD drag-and-drop redesigned: center of a PAD = swap (full PAD glow); edge zone ~20px = insert with line indicator; hovering in the gap between PADs triggers insert via nearest-edge detection","New swapPad() function: exchanges two PADs directly without shifting others; combo step references remapped correctly"]},
   {v:111,date:'2026-05-23',items:["Push sidebar: at ≥500px the sidebar shifts screen content right instead of overlaying it — both areas interactive simultaneously; backdrop removed entirely","Dynamic sidebar button: hidden when current Library tab (BOARDS, ICONS) has no sidebar content; sidebar auto-closes on tab switch to a content-free tab","New universal classes: .sec-lbl (sub-section header), .sec-lbl-row (header + button row), .info-line (meta stats), .screen-footer (bottom action bar), .sb-tabs (sidebar tab list)","Library HTML: #lib-stats, TEMPLATES header, BUILT-IN ICONS row, Boards footer all converted to new class families"]},
   {v:110,date:'2026-05-23',items:["Sort option renamed: \"Latest Edit\" → \"Edit\" — direction already conveyed by ↑/↓ arrow"]},
   {v:109,date:'2026-05-23',items:["Sort dropdown redesigned: 3 toggle-able dimensions (Date, Latest Edit, Name) replace 5 separate options — clicking an inactive option activates it with default direction; clicking the active option flips direction (↑/↓); direction arrow shown inline in the active option"]},
@@ -1877,7 +1879,7 @@ let locked = false;
 const klog = [];
 let dragSrc=null, dragGhost=null, dragMoved=false;
 let dragStartX=0, dragStartY=0, dragGhostW=0, dragGhostH=0;
-let _dragInsertAt=null;
+let _dragInsertAt=null, _dragSwapWith=null;
 
 // ── DB ──
 // DB name is permanently "botc" — never rename it, use version bumps for schema changes only.
@@ -5283,6 +5285,18 @@ function captureKey(e){
 
 // ── KEYBOARD ──
 // ── DRAG & DROP ──
+function swapPad(a, b){
+  if(a===b) return;
+  stopPad(a,true); stopPad(b,true);
+  const tmpPad=pads[a], tmpBuf=bufs[a];
+  pads[a]=pads[b]?{...pads[b],id:a}:null; bufs[a]=bufs[b];
+  pads[b]=tmpPad?{...tmpPad,id:b}:null; bufs[b]=tmpBuf;
+  pads.forEach(p=>{
+    if(!p||p.mode!=='combo'||!p.steps) return;
+    p.steps.forEach(step=>{ if(step.pads) step.pads=step.pads.map(pid=>pid===a?b:pid===b?a:pid); });
+  });
+  save(); renderBoard();
+}
 function reorderPad(fromIdx, toIdx){
   if(fromIdx===toIdx) return;
   for(let i=Math.min(fromIdx,toIdx);i<=Math.max(fromIdx,toIdx);i++) stopPad(i,true);
@@ -5337,17 +5351,43 @@ function onDragMove(e){
   dragGhost.style.display='none';
   const under=document.elementFromPoint(e.clientX, e.clientY);
   dragGhost.style.display='';
-  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('drag-insert-before','drag-insert-after'));
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('drag-insert-before','drag-insert-after','drag-swap'));
+  _dragInsertAt=null; _dragSwapWith=null;
   const tgt=under?.closest('.pbtn[data-id]');
   if(tgt){
     const tgtId=+tgt.dataset.id;
     const r=tgt.getBoundingClientRect();
-    const insertBefore=e.clientX < r.left+r.width/2;
-    _dragInsertAt = insertBefore ? tgtId : tgtId+1;
-    if(_dragInsertAt!==dragSrc && _dragInsertAt!==dragSrc+1)
-      tgt.classList.add(insertBefore?'drag-insert-before':'drag-insert-after');
-    else _dragInsertAt=null;
-  } else { _dragInsertAt=null; }
+    const EDGE=Math.min(r.width*0.25, 22);
+    if(e.clientX < r.left+EDGE){
+      _dragInsertAt=tgtId;
+      if(_dragInsertAt!==dragSrc && _dragInsertAt!==dragSrc+1) tgt.classList.add('drag-insert-before');
+      else _dragInsertAt=null;
+    } else if(e.clientX > r.right-EDGE){
+      _dragInsertAt=tgtId+1;
+      if(_dragInsertAt!==dragSrc && _dragInsertAt!==dragSrc+1) tgt.classList.add('drag-insert-after');
+      else _dragInsertAt=null;
+    } else {
+      if(tgtId!==dragSrc){ _dragSwapWith=tgtId; tgt.classList.add('drag-swap'); }
+    }
+  } else {
+    // Cursor in gap — find nearest PAD edge on the same row
+    let closest=null, closestDist=Infinity;
+    document.querySelectorAll('.pbtn[data-id]').forEach(p=>{
+      const r=p.getBoundingClientRect();
+      if(Math.abs(e.clientY-(r.top+r.height/2)) < r.height*0.7){
+        const dL=Math.abs(e.clientX-r.left), dR=Math.abs(e.clientX-r.right);
+        if(dL<closestDist){ closestDist=dL; closest={pad:p,side:'left'}; }
+        if(dR<closestDist){ closestDist=dR; closest={pad:p,side:'right'}; }
+      }
+    });
+    if(closest && closestDist<32){
+      const tgtId=+closest.pad.dataset.id;
+      _dragInsertAt=closest.side==='left'?tgtId:tgtId+1;
+      if(_dragInsertAt!==dragSrc && _dragInsertAt!==dragSrc+1)
+        closest.pad.classList.add(closest.side==='left'?'drag-insert-before':'drag-insert-after');
+      else _dragInsertAt=null;
+    }
+  }
 }
 function onDragEnd(e){
   document.removeEventListener('pointermove', onDragMove);
@@ -5360,10 +5400,13 @@ function onDragEnd(e){
   }
   dragGhost.style.display='none';
   dragGhost.remove(); dragGhost=null;
-  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('dragging','drag-insert-before','drag-insert-after'));
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('dragging','drag-insert-before','drag-insert-after','drag-swap'));
   const from=dragSrc; dragSrc=null;
   const ins=_dragInsertAt; _dragInsertAt=null;
-  if(ins!==null){
+  const sw=_dragSwapWith; _dragSwapWith=null;
+  if(sw!==null){
+    swapPad(from, sw);
+  } else if(ins!==null){
     const to = from < ins ? ins-1 : ins;
     if(to!==from) reorderPad(from, to);
   }
