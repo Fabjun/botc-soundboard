@@ -609,6 +609,21 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .combo-pause-hint{font-size:calc(10px * var(--font-scale));color:var(--mist);font-style:italic}
 .pf-tab{flex:1;text-align:center;padding:3px 2px;border-radius:2px;font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));cursor:pointer;border:1px solid rgba(62,62,96,.7);color:var(--text-dim);transition:background .1s,border-color .1s,color .1s}
 .pf-tab.pf-act{background:var(--screen-accent-dim);border-color:var(--screen-accent-dim);color:var(--screen-accent)}
+/* SEARCH + SORT BAR (ssb) — Library tabs and lib-picker */
+.ssb{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+.ssb-search{flex:1;position:relative;min-width:0}
+.ssb-input{width:100%;background:var(--deep);border:1px solid var(--border);color:var(--text);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:5px 26px 5px 8px;border-radius:2px;outline:none;box-sizing:border-box}
+.ssb-input:focus{border-color:var(--screen-accent-dim)}
+.ssb-clear{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:calc(14px * var(--font-scale));line-height:1;padding:0;display:none}
+.ssb-clear.on{display:block}
+.ssb-count{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--text-dim);flex-shrink:0;white-space:nowrap}
+.ssb-sort-wrap{position:relative;flex-shrink:0}
+.ssb-sort-btn{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));padding:5px 8px;border-radius:2px;cursor:pointer;letter-spacing:0}
+.ssb-sort-btn.active{border-color:var(--screen-accent-dim);color:var(--screen-accent)}
+.ssb-drop{position:absolute;right:0;top:calc(100% + 4px);background:var(--raised);border:1px solid var(--border);border-radius:2px;min-width:120px;z-index:50;display:none;flex-direction:column}
+.ssb-drop.open{display:flex}
+.ssb-opt{font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));padding:8px 12px;cursor:pointer;color:var(--text-dim);letter-spacing:0}
+.ssb-opt.active{color:var(--screen-accent)}
 /* FULLSCREEN OVERLAYS — shared header */
 .fs-hdr{display:flex;align-items:center;gap:10px;padding:11px 14px;
   border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
@@ -759,6 +774,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   .pf-tab:hover:not(.pf-act){border-color:var(--text-dim);color:var(--text)}
   .ico-names-btn:hover:not(.active){border-color:var(--text-dim);color:var(--text)}
   .hint-q:hover{color:var(--text);border-color:var(--text-dim)}
+  .ssb-sort-btn:hover{border-color:var(--text-dim);color:var(--text)}
+  .ssb-opt:hover{background:var(--surface);color:var(--text)}
+  .ssb-clear:hover{color:var(--text)}
   .km-row:hover{background:rgba(79,195,247,.05)}
   #phdr-menu-btn:hover{border-color:var(--screen-accent);filter:brightness(1.2)}
   #sidebar-btn:hover{filter:brightness(1.3)}
@@ -1123,6 +1141,24 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     <div class="lib-main-tab" id="lmt-pads" onclick="setLibMainTab('pads')">PADS</div>
     <div class="lib-main-tab" id="lmt-boards" onclick="setLibMainTab('boards')">BOARDS</div>
     <div class="lib-main-tab" id="lmt-icons" onclick="setLibMainTab('icons')">ICONS</div>
+  </div>
+  <div class="ssb" id="lib-ssb">
+    <div class="ssb-search">
+      <input class="ssb-input" id="lib-ssb-q" type="search" placeholder="Filter…"
+        oninput="_libSsbQuery(this.value)" autocomplete="off">
+      <button class="ssb-clear" id="lib-ssb-clear" onclick="_libSsbClear()" tabindex="-1">×</button>
+    </div>
+    <span class="ssb-count" id="lib-ssb-count"></span>
+    <div class="ssb-sort-wrap">
+      <button class="ssb-sort-btn" id="lib-ssb-sort-btn" onclick="_libSsbSortToggle()">SORT ▾</button>
+      <div class="ssb-drop" id="lib-ssb-drop">
+        <div class="ssb-opt" data-s="newest" onclick="_libSsbSort('newest')">Newest</div>
+        <div class="ssb-opt" data-s="oldest" onclick="_libSsbSort('oldest')">Oldest</div>
+        <div class="ssb-opt" data-s="latest-edit" onclick="_libSsbSort('latest-edit')">Latest Edit</div>
+        <div class="ssb-opt" data-s="a-z" onclick="_libSsbSort('a-z')">A → Z</div>
+        <div class="ssb-opt" data-s="z-a" onclick="_libSsbSort('z-a')">Z → A</div>
+      </div>
+    </div>
   </div>
   <div id="lib-audio-section" style="flex:1;overflow-y:auto">
    <div class="cx" style="padding-top:14px;padding-bottom:14px">
@@ -1584,10 +1620,23 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     <button class="fs-back" onclick="closeLibPicker()">←</button>
     <span class="fs-title">PICK FROM LIBRARY</span>
   </div>
-  <div style="padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;max-width:var(--cx-max);width:100%;box-sizing:border-box;margin:0 auto">
-    <input type="search" id="lp-search" class="fi" placeholder="Filter by name…"
-      oninput="_lpQuery=this.value;_lpRenderList()"
-      style="width:100%;box-sizing:border-box;font-size:calc(13px * var(--font-scale))">
+  <div class="ssb" id="lp-ssb">
+    <div class="ssb-search">
+      <input class="ssb-input" id="lp-search" type="search" placeholder="Filter…"
+        oninput="_lpQuery=this.value;_lpSsbUpdateUI();_lpRenderList()" autocomplete="off">
+      <button class="ssb-clear" id="lp-ssb-clear" onclick="_lpSsbClear()" tabindex="-1">×</button>
+    </div>
+    <span class="ssb-count" id="lp-ssb-count"></span>
+    <div class="ssb-sort-wrap">
+      <button class="ssb-sort-btn" id="lp-ssb-sort-btn" onclick="_lpSsbSortToggle()">SORT ▾</button>
+      <div class="ssb-drop" id="lp-ssb-drop">
+        <div class="ssb-opt" data-s="newest" onclick="_lpSsbSort('newest')">Newest</div>
+        <div class="ssb-opt" data-s="oldest" onclick="_lpSsbSort('oldest')">Oldest</div>
+        <div class="ssb-opt" data-s="latest-edit" onclick="_lpSsbSort('latest-edit')">Latest Edit</div>
+        <div class="ssb-opt" data-s="a-z" onclick="_lpSsbSort('a-z')">A → Z</div>
+        <div class="ssb-opt" data-s="z-a" onclick="_lpSsbSort('z-a')">Z → A</div>
+      </div>
+    </div>
   </div>
   <div id="lp-list" style="overflow-y:auto;flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:6px;max-width:var(--cx-max);width:100%;box-sizing:border-box;margin:0 auto"></div>
 </div>
@@ -1687,8 +1736,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 106;
+const APP_VERSION = 107;
 const CHANGELOG=[
+  {v:107,date:'2026-05-23',items:["Search + Sort bar (.ssb family) in all Library tabs and lib-picker — filter by name, sort by Newest/Oldest/Latest Edit/A→Z/Z→A; sort key persists per tab in localStorage","Duplicate name warning on inline rename — non-blocking gold hint when a name already exists in the same type scope (audio, template, board)","Multi-rename: Enter confirms all open renames at once; clicking outside any rename input confirms all","updatedAt timestamp written on rename for audio files, PAD templates, and boards — powers Latest Edit sort"]},
   {v:106,date:'2026-05-23',items:["Overlay header family: #hint-ov-hdr and #combo-hdr CSS rules removed — both now use .fs-hdr; inline ← buttons replaced with .fs-back; inline titles replaced with .fs-title; .fs-title-mode variant added for mode-accent colored titles (combo editor)"]},
   {v:105,date:'2026-05-23',items:["Desktop-first layout: sidebar permanently visible on screens with hasSidebar:true at ≥800px viewport width — body.sidebar-pinned class drives layout, _updateSidebarPin() replaces manual sidebar-btn show/hide in updateTopBar, resize listener keeps state consistent when window is resized across the 800px breakpoint"]},
   {v:104,date:'2026-05-23',items:["topt active-state unification: .sh-act (duplicate of .al) removed; all className='topt …' assignments replaced with classList.toggle; setToptSetting() generic helper introduced — pure setters (startMode, enterStopMode, helpDensity, helpDuration) now one-liners","Dialog button family .dlg-cancel / .dlg-destruct / .dlg-positive / .dlg-reload: replaces inline styles on confirm-del, leave-warn, sw-update-modal buttons","Settings action button family .sa-btn / .sa-btn.sa-pri / .sa-btn.sa-del: replaces inline styles on EXPORT, IMPORT, AUTO-BACKUP, RE-MIGRATE, RESET buttons"]},
@@ -1801,6 +1851,9 @@ let libBufs = {};
 let eqRAF = null;
 let eId = null, eFiles = [], eMode = 'once', eImage = null, eIcons = [null,null,null,null], eIconSlot = 0, eShuffle = false, pendingMode = null, eLoopCount = 0, appendFiles = false, fadeSub = false;
 let libMainTab = 'audio';
+let _libSsbQ = '';
+let _libSsbSort_k = localStorage.getItem('ssb-sort-audio') || 'newest';
+let _lpSort = localStorage.getItem('ssb-sort-lp') || 'newest';
 let _libPadFilter = 'current';
 let _libPadItems = [];
 const iconSvgCache = {};
@@ -1964,31 +2017,51 @@ function onMenuBtn(){
 // ── CONFIRM DELETE ──
 // ── INLINE RENAME ──
 const _renames={};
-function startInlineRename(nameId, cur, onSave, onCancel){
+function _renameOutsideHandler(e){
+  const inside=Object.keys(_renames).some(id=>{ const el=document.getElementById(id); return el&&el.contains(e.target); });
+  if(!inside) _execAllRenames();
+}
+function startInlineRename(nameId, cur, onSave, onCancel, validate){
   const el=document.getElementById(nameId); if(!el) return;
   el.style.overflow='visible'; el.style.whiteSpace='normal';
-  _renames[nameId]={save:onSave,cancel:onCancel};
+  const wasEmpty=Object.keys(_renames).length===0;
+  _renames[nameId]={save:onSave,cancel:onCancel,validate};
+  if(wasEmpty) document.addEventListener('mousedown',_renameOutsideHandler);
   const uid=nameId+'-ri';
   el.innerHTML=`<div style="display:flex;flex-direction:column;gap:5px">
     <input id="${uid}" value="${escHtml(cur)}"
       style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));background:var(--raised);border:1px solid var(--active);color:var(--text);padding:3px 6px;border-radius:2px;box-sizing:border-box;width:100%"
-      onkeydown="if(event.key==='Enter')_execRename('${nameId}');else if(event.key==='Escape')_cancelRename('${nameId}')">
+      oninput="_validateRenameInput('${nameId}',this.value)"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();_execAllRenames();}else if(event.key==='Escape')_cancelRename('${nameId}')">
+    <div id="${uid}-warn" style="font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--gold);min-height:14px"></div>
     <div style="display:flex;gap:6px">
-      <button onclick="_execRename('${nameId}')" class="lca-pos" style="padding:2px 9px">✓</button>
+      <button onclick="_execAllRenames()" class="lca-pos" style="padding:2px 9px">✓</button>
       <button onclick="_cancelRename('${nameId}')" class="lca-dim" style="padding:2px 8px">✕</button>
     </div>
   </div>`;
   const inp=document.getElementById(uid); if(inp){ inp.focus(); inp.select(); }
 }
+function _validateRenameInput(nameId, val){
+  const warn=_renames[nameId]?.validate?.(val.trim());
+  const wEl=document.getElementById(nameId+'-ri-warn');
+  if(wEl){ wEl.textContent=warn||''; }
+}
 function _execRename(nameId){
-  const inp=document.getElementById(nameId+'-ri'); if(!inp) return;
-  const v=inp.value.trim(); if(!v) return;
   const cb=_renames[nameId]; delete _renames[nameId];
+  if(Object.keys(_renames).length===0) document.removeEventListener('mousedown',_renameOutsideHandler);
+  const inp=document.getElementById(nameId+'-ri');
+  if(!inp){ if(cb?.cancel) cb.cancel(); return; }
+  const v=inp.value.trim();
+  if(!v){ if(cb?.cancel) cb.cancel(); return; }
   if(cb?.save) cb.save(v);
 }
 function _cancelRename(nameId){
   const cb=_renames[nameId]; delete _renames[nameId];
+  if(Object.keys(_renames).length===0) document.removeEventListener('mousedown',_renameOutsideHandler);
   if(cb?.cancel) cb.cancel();
+}
+function _execAllRenames(){
+  Object.keys(_renames).slice().forEach(nameId=>_execRename(nameId));
 }
 
 // ── OVERLAY ESCAPE STACK ──
@@ -2215,7 +2288,7 @@ function renameBoard(id,name){
   const tx=db.transaction('p','readwrite'), s=tx.objectStore('p');
   s.get(id).onsuccess=ev=>{
     const rec=ev.target.result; if(!rec) return;
-    rec.name=name; s.put(rec);
+    rec.name=name; rec.updatedAt=Date.now(); s.put(rec);
     if(id===currentBoardId){ currentBoardName=name; updBoardSubtitle(); }
   };
 }
@@ -2266,8 +2339,12 @@ function libCard({nameId,preHtml='',badge=null,nameHtml,nameStyle='',actions=[],
 }
 
 function renderBoardList(boards){
-  const html=boards.length
-    ? boards.map(b=>{
+  const q=_libSsbQ.toLowerCase().trim();
+  const searched=q?boards.filter(b=>b.name.toLowerCase().includes(q)):boards;
+  const sorted=_sortItems(searched,_libSsbSort_k,b=>b.createdAt,b=>b.name,b=>b.updatedAt);
+  _libSsbCount(sorted.length,boards.length);
+  const html=sorted.length
+    ? sorted.map(b=>{
         const active=b.id===currentBoardId;
         const dateStr=new Date(b.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
         return libCard({
@@ -2284,18 +2361,22 @@ function renderBoardList(boards){
           subLines:[`${b.padCount} Pad${b.padCount===1?'':'s'} · ${dateStr}`],
         });
       }).join('')
-    : '<p style="color:var(--text-dim);text-align:center;padding:20px">No boards yet.</p>';
+    : `<p style="color:var(--text-dim);text-align:center;padding:20px">${boards.length?'No boards matching.':'No boards yet.'}</p>`;
   for(const cid of ['board-list','lib-board-list']){
     const el=document.getElementById(cid); if(el) el.innerHTML=html;
   }
 }
 function libRenameBoardStart(id){
-  const el=document.getElementById('lnm-board-'+id); if(!el) return;
-  const cur=el.textContent.replace(/\s*◈\s*$/,'').trim();
-  startInlineRename('lnm-board-'+id, cur,
-    async v=>{ await renameBoard(id, v||'Board'); loadBoardsMeta().then(renderBoardList); },
-    ()=>loadBoardsMeta().then(renderBoardList)
-  );
+  (async()=>{
+    const boards=await loadBoardsMeta();
+    const el=document.getElementById('lnm-board-'+id); if(!el) return;
+    const cur=el.textContent.replace(/\s*◈\s*$/,'').trim();
+    startInlineRename('lnm-board-'+id, cur,
+      async v=>{ await renameBoard(id, v||'Board'); loadBoardsMeta().then(renderBoardList); },
+      ()=>loadBoardsMeta().then(renderBoardList),
+      v=>{ const dup=boards.find(b=>b.id!==id&&b.name===v); return dup?`"${v}" already exists.`:null; }
+    );
+  })();
 }
 async function triggerDuplicate(id){
   const newId=await duplicateBoard(id);
@@ -2881,11 +2962,15 @@ function renderLibList(entries,usedHashes){
   const list=document.getElementById('lib-list');
   const stats=document.getElementById('lib-stats');
   if(!list) return;
-  const filtered=libFilterMode==='used'?entries.filter(e=>usedHashes.has(e.hash)):
-                  libFilterMode==='unused'?entries.filter(e=>!usedHashes.has(e.hash)):entries;
+  const scopeFiltered=libFilterMode==='used'?entries.filter(e=>usedHashes.has(e.hash)):
+                      libFilterMode==='unused'?entries.filter(e=>!usedHashes.has(e.hash)):entries;
   const totalSize=entries.reduce((s,e)=>s+(e.size||0),0);
   if(stats) stats.textContent=entries.length?`${entries.length} file${entries.length===1?'':'s'} · ${fmtSize(totalSize)}`:'Library is empty.';
-  if(!filtered.length){ list.innerHTML=`<p style="color:var(--text-dim);text-align:center;padding:20px 0">No files${libFilterMode!=='all'?' in this filter':''} yet.</p>`; return; }
+  const q=_libSsbQ.toLowerCase().trim();
+  const searched=q?scopeFiltered.filter(e=>e.name.toLowerCase().includes(q)):scopeFiltered;
+  const filtered=_sortItems(searched,_libSsbSort_k,e=>e.added,e=>e.name,e=>e.updatedAt);
+  _libSsbCount(filtered.length,scopeFiltered.length);
+  if(!filtered.length){ list.innerHTML=`<p style="color:var(--text-dim);text-align:center;padding:20px 0">No files${q?' matching':''}${libFilterMode!=='all'?' in this filter':''} yet.</p>`; return; }
   const _ml=m=>m==='combo'?'C-PAD':m==='loop'?'LOOP':m==='playlist'?'LIST':'S-PAD';
   const _mc=m=>m==='combo'?'var(--gold)':'var(--emerald)';
   list.innerHTML=filtered.map(e=>{
@@ -2945,9 +3030,12 @@ async function libDeleteFile(hash){
 }
 async function libRenameStart(hash){
   const entry=await libGet(hash); if(!entry) return;
+  const all=await libGetAll();
+  const type=entry.type||'audio';
   startInlineRename('lnm-'+hash, entry.name,
-    async v=>{ await libPut({...entry,name:v}); showToast('File renamed.'); initLibScreen(); },
-    ()=>initLibScreen()
+    async v=>{ await libPut({...entry,name:v,updatedAt:Date.now()}); showToast('File renamed.'); initLibScreen(); },
+    ()=>initLibScreen(),
+    v=>{ const dup=all.find(e=>e.hash!==hash&&(e.type||'audio')===type&&e.name===v); return dup?`"${v}" already exists in Library.`:null; }
   );
 }
 
@@ -2968,11 +3056,16 @@ function libDeleteBoardPad(idx){
   });
 }
 function libRenamePadTemplateStart(hash){
-  const el=document.getElementById('ltnm-'+hash); if(!el) return;
-  startInlineRename('ltnm-'+hash, el.textContent.trim(),
-    async v=>{ const entry=await libGet(hash); if(!entry) return; const u={...entry,name:v}; if(u.padData) u.padData={...u.padData,name:v}; await libPut(u); showToast('Template renamed.'); renderLibPads(); },
-    ()=>renderLibPads()
-  );
+  (async()=>{
+    const el=document.getElementById('ltnm-'+hash); if(!el) return;
+    const all=await libGetAll();
+    const templates=all.filter(e=>e.type==='pad');
+    startInlineRename('ltnm-'+hash, el.textContent.trim(),
+      async v=>{ const entry=await libGet(hash); if(!entry) return; const u={...entry,name:v,updatedAt:Date.now()}; if(u.padData) u.padData={...u.padData,name:v}; await libPut(u); showToast('Template renamed.'); renderLibPads(); },
+      ()=>renderLibPads(),
+      v=>{ const dup=templates.find(e=>e.hash!==hash&&e.name===v); return dup?`"${v}" already exists in templates.`:null; }
+    );
+  })();
 }
 
 // ── CHANGELOG ──
@@ -2988,10 +3081,60 @@ function openChangelog(){
 }
 function closeChangelog(){ popEsc('changelog-ov'); document.getElementById('changelog-ov')?.classList.remove('open'); }
 
+// ── SEARCH + SORT BAR ──
+function _sortItems(items,key,added,name,updated){
+  const arr=[...items];
+  if(key==='a-z') return arr.sort((a,b)=>name(a).localeCompare(name(b)));
+  if(key==='z-a') return arr.sort((a,b)=>name(b).localeCompare(name(a)));
+  if(key==='oldest') return arr.sort((a,b)=>added(a)-added(b));
+  if(key==='latest-edit') return arr.sort((a,b)=>(updated(b)||added(b))-(updated(a)||added(a)));
+  return arr.sort((a,b)=>added(b)-added(a));
+}
+function _libSsbQuery(val){
+  _libSsbQ=val;
+  document.getElementById('lib-ssb-clear')?.classList.toggle('on',!!val);
+  _libSsbRefresh();
+}
+function _libSsbClear(){
+  _libSsbQ='';
+  const inp=document.getElementById('lib-ssb-q'); if(inp) inp.value='';
+  document.getElementById('lib-ssb-clear')?.classList.remove('on');
+  _libSsbRefresh();
+}
+function _libSsbSortToggle(){ document.getElementById('lib-ssb-drop')?.classList.toggle('open'); }
+function _libSsbSort(key){
+  _libSsbSort_k=key;
+  localStorage.setItem('ssb-sort-'+libMainTab,key);
+  document.getElementById('lib-ssb-drop')?.classList.remove('open');
+  _libSsbUpdateSortUI();
+  _libSsbRefresh();
+}
+function _libSsbUpdateSortUI(){
+  const btn=document.getElementById('lib-ssb-sort-btn');
+  const drop=document.getElementById('lib-ssb-drop');
+  if(btn) btn.classList.toggle('active',_libSsbSort_k!=='newest');
+  if(drop) drop.querySelectorAll('.ssb-opt').forEach(o=>o.classList.toggle('active',o.dataset.s===_libSsbSort_k));
+}
+function _libSsbCount(shown,total){
+  const el=document.getElementById('lib-ssb-count');
+  if(el) el.textContent=shown===total?`${total}`:` ${shown} / ${total}`;
+}
+function _libSsbRefresh(){
+  if(libMainTab==='audio') initLibScreen();
+  else if(libMainTab==='boards') loadBoardsMeta().then(renderBoardList);
+  else if(libMainTab==='pads') renderLibPads();
+  else if(libMainTab==='icons') renderLibIcons();
+}
+
 // ── LIBRARY TABS ──
 function setLibMainTab(tab){
   stopLibPreview();
   libMainTab=tab;
+  _libSsbQ='';
+  _libSsbSort_k=localStorage.getItem('ssb-sort-'+tab)||'newest';
+  const qEl=document.getElementById('lib-ssb-q'); if(qEl) qEl.value='';
+  document.getElementById('lib-ssb-clear')?.classList.remove('on');
+  _libSsbUpdateSortUI();
   ['audio','icons','boards','pads'].forEach(t=>{
     document.getElementById('lmt-'+t)?.classList.toggle('active',t===tab);
     const el=document.getElementById('lib-'+t+'-section');
@@ -3010,6 +3153,7 @@ function setLibPadFilter(f){
 async function renderLibPads(){
   const modeLabel=m=>m==='combo'?'C-PAD':m==='loop'?'LOOP':m==='playlist'?'LIST':'S-PAD';
   const modeColor=m=>m==='combo'?'var(--gold)':'var(--emerald)';
+  const q=_libSsbQ.toLowerCase().trim();
   // Build board pads list
   _libPadItems=[];
   if(_libPadFilter==='current'){
@@ -3022,10 +3166,12 @@ async function renderLibPads(){
       }
     }
   }
+  const filteredPads=q?_libPadItems.filter(item=>(item.pad.name||'').toLowerCase().includes(q)):_libPadItems;
   const listEl=document.getElementById('lib-pad-list');
   if(listEl){
-    listEl.innerHTML=_libPadItems.length
-      ? _libPadItems.map((item,i)=>{
+    listEl.innerHTML=filteredPads.length
+      ? filteredPads.map((item,i)=>{
+          const origIdx=_libPadItems.indexOf(item);
           const p=item.pad;
           const ml=modeLabel(p.mode); const mc=modeColor(p.mode);
           const keyTxt=p.key?` [${escHtml(p.keyLabel||String(p.key))}]`:'';
@@ -3037,31 +3183,33 @@ async function renderLibPads(){
           const comboRows=usedByCombos.map(cp=>`<div class="lib-card-sub" style="color:var(--text);padding:2px 0">${escHtml(cp.name)}</div>`).join('');
           const canEdit=item.padIdx!=null;
           return libCard({
-            nameId:`lpn-${i}`,
+            nameId:`lpn-${origIdx}`,
             badge:{color:mc, label:ml},
             nameHtml:escHtml(p.name)+keyTxt+boardTxt,
             actions:[
               ...(fh?[{type:'preview', hash:fh}]:[]),
-              ...(canEdit?[{type:'rename', onclick:`libRenameBoardPadStart(${i})`}]:[]),
-              {type:'dim', label:'SAVE', onclick:`savePadTemplate(${i})`},
-              ...(canEdit?[{type:'del', onclick:`libDeleteBoardPad(${i})`}]:[]),
+              ...(canEdit?[{type:'rename', onclick:`libRenameBoardPadStart(${origIdx})`}]:[]),
+              {type:'dim', label:'SAVE', onclick:`savePadTemplate(${origIdx})`},
+              ...(canEdit?[{type:'del', onclick:`libDeleteBoardPad(${origIdx})`}]:[]),
             ],
             subLines:[
-              ...(usedByCombos.length?[`<button onclick="toggleLibUsedBy('pad-${i}')" class="lib-inuse-btn" style="color:var(--gold)">used in ${usedByCombos.length} combo${usedByCombos.length===1?'':'s'}</button><div id="lub-pad-${i}" style="display:none;border-left:2px solid var(--gold);padding-left:8px;margin-top:2px">${comboRows}</div>`]:[]),
+              ...(usedByCombos.length?[`<button onclick="toggleLibUsedBy('pad-${origIdx}')" class="lib-inuse-btn" style="color:var(--gold)">used in ${usedByCombos.length} combo${usedByCombos.length===1?'':'s'}</button><div id="lub-pad-${origIdx}" style="display:none;border-left:2px solid var(--gold);padding-left:8px;margin-top:2px">${comboRows}</div>`]:[]),
             ],
           });
         }).join('')
-      : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">No pads${_libPadFilter==='current'?' in this board':' in any board'} yet.</p>`;
+      : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">${q?'No matching pads.':_libPadFilter==='current'?'No pads in this board.':'No pads in any board.'}</p>`;
   }
   // Templates
   const all=await libGetAll();
   const templates=all.filter(e=>e.type==='pad');
+  const filteredTemplates=q?_sortItems(templates.filter(e=>e.name.toLowerCase().includes(q)),_libSsbSort_k,e=>e.added,e=>e.name,e=>e.updatedAt):_sortItems(templates,_libSsbSort_k,e=>e.added,e=>e.name,e=>e.updatedAt);
+  _libSsbCount(filteredPads.length+filteredTemplates.length,_libPadItems.length+templates.length);
   const countEl=document.getElementById('lib-pad-tmpl-count');
-  if(countEl) countEl.textContent=templates.length;
+  if(countEl) countEl.textContent=filteredTemplates.length+(q&&filteredTemplates.length!==templates.length?` / ${templates.length}`:'');
   const tmplEl=document.getElementById('lib-pad-templates');
   if(tmplEl){
-    tmplEl.innerHTML=templates.length
-      ? templates.map(e=>{
+    tmplEl.innerHTML=filteredTemplates.length
+      ? filteredTemplates.map(e=>{
           const pd=e.padData||{};
           const ml=modeLabel(pd.mode); const mc=modeColor(pd.mode);
           const dateStr=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
@@ -3079,7 +3227,7 @@ async function renderLibPads(){
             subLines:[dateStr],
           });
         }).join('')
-      : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">No templates yet. Use SAVE on a pad above to create one.</p>`;
+      : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">${q?'No matching templates.':'No templates yet. Use SAVE on a pad above to create one.'}</p>`;
   }
 }
 async function savePadTemplate(idx){
@@ -3123,12 +3271,16 @@ function deletePadTemplate(hash){
 async function renderLibIcons(){
   const all=await libGetAll();
   const custom=all.filter(e=>e.type==='icon');
+  const q=_libSsbQ.toLowerCase().trim();
+  const searched=q?custom.filter(e=>e.name.toLowerCase().includes(q)):custom;
+  const sortedCustom=_sortItems(searched,_libSsbSort_k,e=>e.added,e=>e.name,e=>e.updatedAt);
+  _libSsbCount(sortedCustom.length,custom.length);
   const customEl=document.getElementById('lib-icons-custom');
   if(customEl){
-    if(!custom.length){
-      customEl.innerHTML=`<p style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text-dim);padding:4px 0">No custom icons yet. Upload SVG files above.</p>`;
+    if(!sortedCustom.length){
+      customEl.innerHTML=`<p style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text-dim);padding:4px 0">${q?'No matching icons.':'No custom icons yet. Upload SVG files above.'}</p>`;
     } else {
-      customEl.innerHTML=custom.map(e=>{
+      customEl.innerHTML=sortedCustom.map(e=>{
         const s=iconSvgCache[e.hash]||'';
         const thumb=s?s.replace(/width="[^"]*"/,'width="22px"').replace(/height="[^"]*"/,'height="22px"'):'?';
         return libCard({
@@ -3710,6 +3862,27 @@ async function doResetAllData(){
 let libPickerAppend=false;
 let _lpEntries=[],_lpQuery='',_lpScroll=0;
 let _lpPrev={src:null,hash:null};
+function _lpSsbUpdateUI(){
+  document.getElementById('lp-ssb-clear')?.classList.toggle('on',!!_lpQuery);
+  const btn=document.getElementById('lp-ssb-sort-btn');
+  const drop=document.getElementById('lp-ssb-drop');
+  if(btn) btn.classList.toggle('active',_lpSort!=='newest');
+  if(drop) drop.querySelectorAll('.ssb-opt').forEach(o=>o.classList.toggle('active',o.dataset.s===_lpSort));
+}
+function _lpSsbClear(){
+  _lpQuery='';
+  const inp=document.getElementById('lp-search'); if(inp) inp.value='';
+  _lpSsbUpdateUI();
+  _lpRenderList();
+}
+function _lpSsbSortToggle(){ document.getElementById('lp-ssb-drop')?.classList.toggle('open'); }
+function _lpSsbSort(key){
+  _lpSort=key;
+  localStorage.setItem('ssb-sort-lp',key);
+  document.getElementById('lp-ssb-drop')?.classList.remove('open');
+  _lpSsbUpdateUI();
+  _lpRenderList();
+}
 
 function _lpUsedPads(excludeId){
   const m=new Map();
@@ -3727,7 +3900,10 @@ function _lpRenderList(){
   if(!list) return;
   const q=_lpQuery.toLowerCase().trim();
   const usedPads=_lpUsedPads(eId);
-  const rows=q?_lpEntries.filter(e=>e.name.toLowerCase().includes(q)):_lpEntries;
+  const searched=q?_lpEntries.filter(e=>e.name.toLowerCase().includes(q)):_lpEntries;
+  const rows=_sortItems(searched,_lpSort,e=>e.added,e=>e.name,e=>e.updatedAt);
+  const countEl=document.getElementById('lp-ssb-count');
+  if(countEl) countEl.textContent=rows.length===_lpEntries.length?`${rows.length}`:` ${rows.length} / ${_lpEntries.length}`;
   if(!rows.length){
     list.innerHTML=`<p style="color:var(--text-dim);text-align:center;padding:20px 0">${_lpEntries.length?'No matches.':'Library is empty.<br>Upload audio files to the Library first.'}</p>`;
     return;
@@ -3787,6 +3963,7 @@ async function openLibPicker(append=false){
   const list=document.getElementById('lp-list');
   list.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:20px 0">Loading…</p>';
   _lpEntries=await libGetAll();
+  _lpSsbUpdateUI();
   _lpRenderList();
   requestAnimationFrame(()=>{ const l=document.getElementById('lp-list'); if(l) l.scrollTop=_lpScroll; });
 }
@@ -3847,7 +4024,7 @@ function updateMenuBackupBtns(){
 const SCREEN_CONFIG = {
   sp:  { title: null,            hasSidebar: true,  accent: 'mode', hints: ['sp'],  onShow: ()=>{ renderBoard(); if(locked) focusKB(); } },
   sa:  { title: 'SETTINGS',      hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); _initPadLevelUI(); _initWakeLockUI(); } },
-  sli: { title: 'LIBRARY',       hasSidebar: true,  accent: 'gold', hints: ['sli'], onShow: ()=>{ if(libMainTab==='boards') loadBoardsMeta().then(renderBoardList); else if(libMainTab==='pads') renderLibPads(); else initLibScreen(); } },
+  sli: { title: 'LIBRARY',       hasSidebar: true,  accent: 'gold', hints: ['sli'], onShow: ()=>{ _libSsbUpdateSortUI(); if(libMainTab==='icons') renderLibIcons(); else if(libMainTab==='boards') loadBoardsMeta().then(renderBoardList); else if(libMainTab==='pads') renderLibPads(); else initLibScreen(); } },
   st:  { title: 'TIPS & TRICKS', hasSidebar: false, accent: 'gold', hints: null    },
   sab: { title: 'ABOUT',         hasSidebar: false, accent: 'gold', hints: null    },
   smb: { title: 'MY BOARDS',     hasSidebar: false, accent: 'gold', hints: ['smb'], onShow: ()=>initBoardScreen() },
@@ -5439,6 +5616,10 @@ function toggleLock(){
   _doToggleLock();
 }
 
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.ssb-sort-wrap'))
+    document.querySelectorAll('.ssb-drop.open').forEach(d=>d.classList.remove('open'));
+});
 document.addEventListener('keydown', e=>{
   const code=e.code;
   const tag=document.activeElement?.tagName;
