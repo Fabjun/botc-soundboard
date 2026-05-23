@@ -5186,28 +5186,26 @@ function decodeWaveform(fi){
     const dur = buf.duration;
     const etsInput = document.getElementById('ets');
     const eteInput = document.getElementById('ete');
+    
     if(etsInput && eteInput) {
       etsInput.max = dur;
       eteInput.max = dur;
       
-      // Safely access the currently active pad from the global pads array using eId
-      const activePad = (typeof eId !== 'undefined' && eId !== null) ? pads[eId] : null;
+      // Fallback safely to current values if no global ID is set
+      const currentStart = parseFloat(etsInput.value) || 0;
+      const currentEnd = parseFloat(eteInput.value) || 0;
       
-      // Restore saved start value if it exists and is within bounds
-      const savedEts = activePad?.trimStart ?? 0;
-      if (savedEts > 0 && savedEts <= dur) {
-        etsInput.value = savedEts;
-        document.getElementById('ets-lbl').textContent = savedEts;
+      if (currentStart > 0 && currentStart <= dur) {
+        etsInput.value = currentStart;
+        document.getElementById('ets-lbl').textContent = currentStart;
       } else {
         etsInput.value = 0;
         document.getElementById('ets-lbl').textContent = '0.0';
       }
 
-      // Restore saved end value if it exists and is within bounds
-      const savedEte = activePad?.trimEnd ?? 0;
-      if (savedEte > 0 && savedEte <= dur) {
-        eteInput.value = savedEte;
-        document.getElementById('ete-lbl').textContent = savedEte + 's';
+      if (currentEnd > 0 && currentEnd <= dur) {
+        eteInput.value = currentEnd;
+        document.getElementById('ete-lbl').textContent = currentEnd + 's';
       } else {
         eteInput.value = 0;
         document.getElementById('ete-lbl').textContent = 'Full Audio';
