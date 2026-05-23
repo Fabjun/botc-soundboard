@@ -2857,92 +2857,86 @@ function fadeInGain(g, targetVol, fadeIn){
   }
 }
 function play(id){
-  const p=pads[id]; if(!p) return;
+  const p = pads[id]; if(!p) return;
   if(!bufs[id]||!bufs[id].length) return;
-  if(ctx?.state==='suspended') ctx.resume().catch(()=>{});
+  if(ctx?.state === 'suspended') ctx.resume().catch(()=>{});
   flash(id);
-  const vol=(p.volume||80)/100, fi=p.fadeIn||0, fo=p.fadeOut||0;
+
+  const vol = (p.volume||80)/100, fi = p.fadeIn||0, fo = p.fadeOut||0;
 
   // Read trim values and calculate duration safely
   const b = bufs[id]?.[0];
-  const tStart = p.trimStart || 0;
-  const tEnd = p.trimEnd || 0;
-  
-  // If trimmed, use trim duration. Otherwise, fallback to the buffer's actual duration.
+  const tStart = Number(p.trimStart) || 0;
+  const tEnd = Number(p.trimEnd) || 0;
   const fileDur = b ? b.duration : 0;
   const dur = (tEnd > tStart && tEnd <= fileDur) ? (tEnd - tStart) : (fileDur - tStart);
   const hasDuration = dur > 0;
 
-  if(p.mode==='once'){
+  if(p.mode === 'once'){
     if(!b) return;
     stopPad(id,true);
-    const s=ctx.createBufferSource(), g=ctx.createGain();
-    fadeInGain(g,vol,fi);
-    
-    // Schedule dynamic fade-out based on the active duration window (never NaN)
-    if(fo > 0 && hasDuration && fo < dur) {
+    const s = ctx.createBufferSource();
+    const g = ctx.createGain();
+    fadeInGain(g, vol, fi);
+    s.buffer = b; s.connect(g); _connectGainToMaster(id, g);
+
+    // Schedule dynamic fade-out only when we have a valid duration window
+    if(fo > 0 && hasDuration && fo < dur){
       const startTime = ctx.currentTime;
-      const fadeOutStartTime = startTime + (dur - fo);
+      const fadeOutStart = startTime + (dur - fo);
       const endTime = startTime + dur;
-      
-      g.gain.setValueAtTime(vol, fadeOutStartTime);
-      g.gain.linearRampToValueAtTime(0, endTime);
+      try{ g.gain.setValueAtTime(vol, fadeOutStart); g.gain.linearRampToValueAtTime(0, endTime); }catch(e){}
     }
-    
-    s.buffer=b; s.connect(g); _connectGainToMaster(id,g);
-    
-    // Start with precise trim settings
-    s.start(0, tStart, dur);
-    
-    srcs[id]=[s]; gains[id]=g;
-    s.onended=()=>{ _onPadStopped(id); delete srcs[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); };
-    updBtn(id,true,false); _onPadStarted(id); setNP(p.name);
+
+    // Start with precise trim settings (safe numbers only)
+    s.start(0, tStart, hasDuration?dur:undefined);
+    srcs[id] = [s]; gains[id] = g;
+    s.onended = ()=>{ _onPadStopped(id); delete srcs[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); };
+    updBtn(id, true, false); _onPadStarted(id); setNP(p.name);
+    return;
   }
-  else if(p.mode==='loop'){
+
+  if(p.mode === 'loop'){
     if(!b) return;
     stopPad(id,true);
-    const lc=p.loopCount||0;
-    const g=ctx.createGain(); fadeInGain(g,vol,fi); _connectGainToMaster(id,g);
-    gains[id]=g;
-    if(lc===0){
-      const s=ctx.createBufferSource();
-      s.buffer=b; s.loop=true; s.connect(g);
-      
-      // Loop seamlessly within the trimmed range if available
-      if(tEnd > tStart) {
-        s.loopStart = tStart;
-        s.loopEnd = tEnd;
-      }
+    const lc = p.loopCount||0;
+    const g = ctx.createGain(); fadeInGain(g, vol, fi); _connectGainToMaster(id, g);
+    gains[id] = g;
+
+    if(lc === 0){
+      const s = ctx.createBufferSource();
+      s.buffer = b; s.loop = true; s.connect(g);
+      if(tEnd > tStart){ s.loopStart = tStart; s.loopEnd = tEnd; }
       s.start(0, tStart);
-      srcs[id]=[s];
+      srcs[id] = [s];
     } else {
-      srcs[id]=[null]; // mark active immediately
-      let rem=lc;
+      // mark pad active immediately
+      srcs[id] = [null];
+      let rem = lc;
       (function loopOne(){
         if(!srcs[id]) return;
-        const s=ctx.createBufferSource();
-        s.buffer=b; s.connect(g);
-        
-        // Schedule fade-out safely for the final iteration of the loop
-        if(fo > 0 && hasDuration && rem === 1 && fo < dur) {
+        const s = ctx.createBufferSource(); s.buffer = b; s.connect(g);
+
+        // Fade-out for the final iteration within the trimmed window, safely
+        if(fo > 0 && hasDuration && rem === 1 && fo < dur){
           const startTime = ctx.currentTime;
-          const fadeOutStartTime = startTime + (dur - fo);
+          const fadeOutStart = startTime + (dur - fo);
           const endTime = startTime + dur;
-          
-          g.gain.setValueAtTime(vol, fadeOutStartTime);
-          g.gain.linearRampToValueAtTime(0, endTime);
+          try{ g.gain.setValueAtTime(vol, fadeOutStart); g.gain.linearRampToValueAtTime(0, endTime); }catch(e){}
         }
-        
-        s.start(0, tStart, dur);
-        srcs[id]=[s]; rem--;
-        if(rem<=0){
-          s.onended=()=>{ if(srcs[id]){ _onPadStopped(id); delete srcs[id]; delete gains[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); } };
+
+        s.start(0, tStart, hasDuration?dur:undefined);
+        srcs[id] = [s]; rem--;
+
+        if(rem <= 0){
+          s.onended = ()=>{ if(srcs[id]){ _onPadStopped(id); delete srcs[id]; delete gains[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); } };
         } else {
-          s.onended=()=>{ if(srcs[id]){ activeSources.splice(activeSources.indexOf(s),1); loopOne(); } };
+          s.onended = ()=>{ if(srcs[id]) loopOne(); };
         }
       })();
     }
-    updBtn(id,true,true); _onPadStarted(id); setNP(p.name);
+
+    updBtn(id, true, true); _onPadStarted(id); setNP(p.name);
   }
 }
 function playNext(id,all){
@@ -5233,6 +5227,13 @@ function initBoard(){
     renderPerf(); // Correctly trigger your real pad rendering sequence
   }
 }
+
+// Guarantee that initBoard is automatically triggered as soon as the DOM loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initBoard);
+} else {
+  initBoard(); // DOM is already ready, run immediately
+}
 function drawScrubber(){
   const c=document.getElementById('scrub'); if(!c) return;
   
@@ -5819,28 +5820,36 @@ function ico(p){
   return svgI('<path d="M11 22H9v-2H7v-2h2V6H7V4h2V2h2v20Zm8 0h-6v-2h6v2Zm2-2h-2v-2h2v2ZM7 18H5v-2h2v2Zm10 0h-4v-2h4v2Zm6 0h-2V6h2v12ZM5 10H3v4h2v2H1V8h4v2Zm14 6h-2V8h2v8Zm-4-2h-2v-4h2v4ZM7 8H5V6h2v2Zm10 0h-4V6h4v2Zm4-2h-2V4h2v2Zm-2-2h-6V2h6v2Z"/>');
 }
 function renderPerf(){
-  const g=document.getElementById('pgrid'); g.innerHTML='';
-  for(let i=0;i<pads.length;i++){
-    const p=pads[i]; if(p==null) continue;
-    const b=document.createElement('div');
-    b.className='pbtn';
-    b.dataset.id=i;
-    const isLoop=p.mode==='loop'||p.mode==='playlist'||p.mode==='combo';
+  const grid = document.getElementById('grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+
+  for(let i=0; i<64; i++){
+    const p = pads[i];
+    if(!p){
+      const b = document.createElement('button');
+      b.className = 'pbtn empty';
+      b.dataset.id = i;
+      b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
+      grid.appendChild(b);
+      continue;
+    }
+    const b = document.createElement('button');
+    b.className = 'pbtn';
+    b.dataset.id = i;
+    const isLoop = p.mode==='loop'||p.mode==='playlist'||p.mode==='combo';
     
-    // Check safely against activeSources or fallback to srcs if it exists
-    const isPlaying = (typeof activeSources !== 'undefined' && activeSources[i]) || 
-                      (typeof srcs !== 'undefined' && srcs && srcs[i]);
+    // Safely check against your real active sources array (srcs)
+    const isPlaying = typeof srcs !== 'undefined' && srcs && srcs[i];
                       
     if(isPlaying) b.classList.add(isLoop?'plooping':'playing');
     
     b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
     if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
     b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
-      renderPadIconArea(p)+
-      renderPadLabel(p,i);
-    g.appendChild(b);
+                `<div class="pname">${p.name||''}</div>`;
+    grid.appendChild(b);
   }
-  applyPadFilter();
 }
 
 function toggleEpFades(){
