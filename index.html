@@ -2858,31 +2858,33 @@ function fadeInGain(g, targetVol, fadeIn){
 }
 function play(id){
   const p=pads[id]; if(!p) return;
-  if(p.mode==='combo'){ playCombo(id); return; }
   if(!bufs[id]||!bufs[id].length) return;
   if(ctx?.state==='suspended') ctx.resume().catch(()=>{});
   flash(id);
   const vol=(p.volume||80)/100, fi=p.fadeIn||0, fo=p.fadeOut||0;
 
-  // Read trim values and calculate duration
+  // Read trim values and calculate duration safely
+  const b = bufs[id]?.[0];
   const tStart = p.trimStart || 0;
   const tEnd = p.trimEnd || 0;
-  const hasDuration = tEnd > tStart;
-  const dur = hasDuration ? (tEnd - tStart) : undefined;
+  
+  // If trimmed, use trim duration. Otherwise, fallback to the buffer's actual duration.
+  const fileDur = b ? b.duration : 0;
+  const dur = (tEnd > tStart && tEnd <= fileDur) ? (tEnd - tStart) : (fileDur - tStart);
+  const hasDuration = dur > 0;
 
   if(p.mode==='once'){
-    const b=bufs[id][0]; if(!b) return;
+    if(!b) return;
     stopPad(id,true);
     const s=ctx.createBufferSource(), g=ctx.createGain();
     fadeInGain(g,vol,fi);
     
-    // Schedule dynamic fade-out based on the active trim window
-    if(fo > 0 && hasDuration) {
+    // Schedule dynamic fade-out based on the active duration window (never NaN)
+    if(fo > 0 && hasDuration && fo < dur) {
       const startTime = ctx.currentTime;
-      const fadeOutStartTime = startTime + Math.max(0, dur - fo);
+      const fadeOutStartTime = startTime + (dur - fo);
       const endTime = startTime + dur;
       
-      // Keep target volume until fade-out starting point, then ramp down to 0
       g.gain.setValueAtTime(vol, fadeOutStartTime);
       g.gain.linearRampToValueAtTime(0, endTime);
     }
@@ -2890,24 +2892,28 @@ function play(id){
     s.buffer=b; s.connect(g); _connectGainToMaster(id,g);
     
     // Start with precise trim settings
-    if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+    s.start(0, tStart, dur);
     
     srcs[id]=[s]; gains[id]=g;
     s.onended=()=>{ _onPadStopped(id); delete srcs[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); };
     updBtn(id,true,false); _onPadStarted(id); setNP(p.name);
-  } else if(p.mode==='loop'){
-    if(srcs[id]){ stopPad(id); return; }
-    const b=bufs[id][0]; if(!b) return;
+  }
+  else if(p.mode==='loop'){
+    if(!b) return;
+    stopPad(id,true);
     const lc=p.loopCount||0;
-    const g=ctx.createGain();
-    fadeInGain(g,vol,fi); _connectGainToMaster(id,g);
+    const g=ctx.createGain(); fadeInGain(g,vol,fi); _connectGainToMaster(id,g);
     gains[id]=g;
     if(lc===0){
       const s=ctx.createBufferSource();
       s.buffer=b; s.loop=true; s.connect(g);
       
-      if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
-      
+      // Loop seamlessly within the trimmed range if available
+      if(tEnd > tStart) {
+        s.loopStart = tStart;
+        s.loopEnd = tEnd;
+      }
+      s.start(0, tStart);
       srcs[id]=[s];
     } else {
       srcs[id]=[null]; // mark active immediately
@@ -2917,31 +2923,26 @@ function play(id){
         const s=ctx.createBufferSource();
         s.buffer=b; s.connect(g);
         
-        // Schedule fade-out for the final iteration of the loop
-        if(fo > 0 && hasDuration && rem === 0) {
+        // Schedule fade-out safely for the final iteration of the loop
+        if(fo > 0 && hasDuration && rem === 1 && fo < dur) {
           const startTime = ctx.currentTime;
-          const fadeOutStartTime = startTime + Math.max(0, dur - fo);
+          const fadeOutStartTime = startTime + (dur - fo);
           const endTime = startTime + dur;
           
           g.gain.setValueAtTime(vol, fadeOutStartTime);
           g.gain.linearRampToValueAtTime(0, endTime);
         }
         
-        if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
-        
+        s.start(0, tStart, dur);
         srcs[id]=[s]; rem--;
         if(rem<=0){
           s.onended=()=>{ if(srcs[id]){ _onPadStopped(id); delete srcs[id]; delete gains[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); } };
         } else {
-          s.onended=()=>{ if(srcs[id]) loopOne(); };
+          s.onended=()=>{ if(srcs[id]){ activeSources.splice(activeSources.indexOf(s),1); loopOne(); } };
         }
       })();
     }
-    updBtn(id,true,lc===0); _onPadStarted(id); setNP(p.name+' ↻');
-  } else {
-    if(srcs[id]){ stopPad(id); return; }
-    const all=(bufs[id]||[]).filter(Boolean); if(!all.length) return;
-    _onPadStarted(id); playNext(id,all);
+    updBtn(id,true,true); _onPadStarted(id); setNP(p.name);
   }
 }
 function playNext(id,all){
