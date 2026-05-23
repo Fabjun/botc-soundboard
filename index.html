@@ -5808,7 +5808,13 @@ function renderPerf(){
     b.className='pbtn';
     b.dataset.id=i;
     const isLoop=p.mode==='loop'||p.mode==='playlist'||p.mode==='combo';
-    if(srcs[i]) b.classList.add(isLoop?'plooping':'playing');
+    
+    // Check safely against activeSources or fallback to srcs if it exists
+    const isPlaying = (typeof activeSources !== 'undefined' && activeSources[i]) || 
+                      (typeof srcs !== 'undefined' && srcs && srcs[i]);
+                      
+    if(isPlaying) b.classList.add(isLoop?'plooping':'playing');
+    
     b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
     if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
     b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
