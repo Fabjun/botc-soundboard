@@ -1736,8 +1736,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <script src="icons.js"></script>
 <script>
 
-const APP_VERSION = 107;
+const APP_VERSION = 108;
 const CHANGELOG=[
+  {v:108,date:'2026-05-23',items:["Sidebar toggle button (☰) restored on all sidebar screens — auto-pin at ≥800px removed, sidebar is always slide-in"]},
   {v:107,date:'2026-05-23',items:["Search + Sort bar (.ssb family) in all Library tabs and lib-picker — filter by name, sort by Newest/Oldest/Latest Edit/A→Z/Z→A; sort key persists per tab in localStorage","Duplicate name warning on inline rename — non-blocking gold hint when a name already exists in the same type scope (audio, template, board)","Multi-rename: Enter confirms all open renames at once; clicking outside any rename input confirms all","updatedAt timestamp written on rename for audio files, PAD templates, and boards — powers Latest Edit sort"]},
   {v:106,date:'2026-05-23',items:["Overlay header family: #hint-ov-hdr and #combo-hdr CSS rules removed — both now use .fs-hdr; inline ← buttons replaced with .fs-back; inline titles replaced with .fs-title; .fs-title-mode variant added for mode-accent colored titles (combo editor)"]},
   {v:105,date:'2026-05-23',items:["Desktop-first layout: sidebar permanently visible on screens with hasSidebar:true at ≥800px viewport width — body.sidebar-pinned class drives layout, _updateSidebarPin() replaces manual sidebar-btn show/hide in updateTopBar, resize listener keeps state consistent when window is resized across the 800px breakpoint"]},
@@ -2232,10 +2233,8 @@ function renderSidebarContent(screenId){
   sbLib.innerHTML=html;
 }
 function _updateSidebarPin(hasSidebar){
-  const pinned=hasSidebar&&window.matchMedia('(min-width:800px)').matches;
-  document.body.classList.toggle('sidebar-pinned',pinned);
-  if(pinned) renderSidebarContent(cur);
-  document.getElementById('sidebar-btn').style.display=(hasSidebar&&!pinned)?'':'none';
+  document.body.classList.remove('sidebar-pinned');
+  document.getElementById('sidebar-btn').style.display=hasSidebar?'':'none';
 }
 let _resizeTimer;
 window.addEventListener('resize',()=>{
