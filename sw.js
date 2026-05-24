@@ -1,5 +1,5 @@
 // Cache name — bump whenever any cached asset changes.
-const VERSION = 138;
+const VERSION = 139;
 const CACHE = `storyteller-v${VERSION}`;
 
 // All assets required for offline-first operation.
@@ -41,10 +41,15 @@ self.addEventListener('fetch', e => {
       if (cached) return cached;
 
       // Not in cache — try network, cache the response if successful
+      // Audio files are already stored in IndexedDB; don't double-cache them in Cache Storage.
       return fetch(e.request).then(response => {
         if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+          const ct = response.headers.get('Content-Type') || '';
+          const isAudio = ct.startsWith('audio/') || ct.startsWith('video/');
+          if (!isAudio) {
+            const clone = response.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+          }
         }
         return response;
       }).catch(() => {

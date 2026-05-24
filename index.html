@@ -1863,8 +1863,21 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 138;
+const APP_VERSION = 139;
 const CHANGELOG=[
+  {v:139,date:'2026-05-24',items:[
+    "A1: libPut now rejects with a real Error instead of undefined — callers get actionable IDB error messages; libDelete logs IDB errors to console instead of silently swallowing them",
+    "A3: playNext() guards against null ctx and stale srcs[] at function entry — prevents crash when onended callback fires after page is backgrounded",
+    "A5+D1: AudioContext leak fixed in addToLib and decodeWaveform — on decode error the temporary AudioContext is now always closed via try/finally (.finally on promise chain); browsers limit open contexts to ~6",
+    "C1: _ensureLibBuf(hash) helper centralises all on-demand audio loading — an in-flight promise map (_libBufLoading) coalesces concurrent decode requests for the same hash, preventing double-decode race that corrupted _libBufBytes LRU counter; replaces 5 duplicate inline decode blocks in play(), playNext(), and three combo createPadInstance paths",
+    "I1/J1: p.keyLabel, p.key and p.name are now escaped with escHtml() before being written to innerHTML in renderSetup(), renderPadLabel() and the locked-mode grid — prevents XSS from imported backup files with crafted pad/key names",
+    "I4/K1: play() now shows a toast when audio cannot be loaded instead of failing silently — 'Could not load audio for ...' appears on decode error so the user knows why the button did nothing",
+    "G1: Keymap empty-state string changed from German 'Keine Tasten belegt.' to English 'No keys assigned.'",
+    "H1: _connectGainToMaster() caches the pad's DOM element in the padAnalysers entry; _padLevelTick() RAF loop uses pa.el directly instead of calling document.querySelector() per-pad per-frame — eliminates N×60 DOM queries/sec under active playback",
+    "J3: doAutoBackup() uses _autoBackupFailCount; auto-backup is only permanently disabled after 3 consecutive failures; transient errors show 'attempt N/3' toast and retry on schedule instead of immediately stopping",
+    "F2: SW fetch handler skips caching responses whose Content-Type starts with 'audio/' or 'video/' — audio is already stored in IndexedDB, double-caching in Cache Storage wasted potentially GBs",
+    "F3: SW_UPDATED message handler logs a console.warn when SW version !== APP_VERSION to surface mismatched deploys during development"
+  ]},
   {v:138,date:'2026-05-24',items:["Key-press never stops a running sound: keyboard shortcuts now call playFromKey() instead of togglePad(); playFromKey() returns immediately if the pad is already active (srcs[id] set), so an accidental key re-press during a game cannot cut off a running sound; tap/click on the pad still calls togglePad() and retains full stop/start toggle behavior"]},
   {v:137,date:'2026-05-24',items:["Fix PAD editor audio preview: openLibPicker contained a debug wrapper that permanently replaced window.updFB with a broken stub (only called initScrub + drawScrubber) the first time closeLibPicker ran; after that, every updFB() call skipped rebuilding btnEl.innerHTML, so the play button in the PAD editor lost its onclick handler after any lib-picker interaction; removed the entire 'iPhone-Rettungsring' block"]},
   {v:136,date:'2026-05-24',items:["Dismiss button on hint banners: both the export-hint and backup-hint banners now have a small × button on the left edge; tapping it hides the banner for the current session (_exportHintDismissed / _backupHintDismissed flags prevent checkExportHint/checkBackupHint from re-showing it)"]},
@@ -2094,7 +2107,7 @@ function libPut(e){
   return new Promise((r,j)=>{
     const tx=db.transaction('lib','readwrite');
     tx.objectStore('lib').put(e).onsuccess=()=>r();
-    tx.onerror=()=>j();
+    tx.onerror=ev=>j(new Error(ev.target?.error?.message??'libPut failed'));
   });
 }
 function libGet(hash){
@@ -2111,10 +2124,26 @@ function libGetAll(){
     req.onsuccess=e=>r(e.target.result||[]);
   });
 }
+// In-flight map: prevents concurrent decodes for the same hash from racing
+const _libBufLoading = {};
+async function _ensureLibBuf(hash){
+  if(libBufs[hash]) return;
+  if(!_libBufLoading[hash]){
+    _libBufLoading[hash] = libGet(hash).then(entry=>{
+      if(!entry?.buf) throw new Error('Audio not in library: '+hash.slice(0,8));
+      if(!ctx) throw new Error('AudioContext not ready');
+      return ctx.decodeAudioData(entry.buf.slice(0));
+    }).then(buf=>{
+      libBufs[hash]=buf; _lruBufSet(hash);
+    }).finally(()=>{ delete _libBufLoading[hash]; });
+  }
+  await _libBufLoading[hash];
+}
+
 function libDelete(hash){
   return new Promise(r=>{
     const tx=db.transaction('lib','readwrite');
-    tx.onerror=()=>r();
+    tx.onerror=e=>{ console.error('libDelete failed:',e.target?.error); r(); };
     tx.objectStore('lib').delete(hash).onsuccess=()=>r();
   });
 }
@@ -2125,13 +2154,17 @@ async function addToLib(buf,name,type='',folder=null){
   const entry={hash,name,origName:name,buf,size:buf.byteLength,type,added:Date.now()};
   if(folder) entry.folder=folder;
   if(type!=='icon'){
+    let _ac=null;
     try{
-      const ac=ctx||new(window.AudioContext||window.webkitAudioContext)();
-      const decoded=await ac.decodeAudioData(buf.slice(0));
+      _ac=ctx||new(window.AudioContext||window.webkitAudioContext)();
+      const decoded=await _ac.decodeAudioData(buf.slice(0));
       entry.duration=decoded.duration;
       entry.peaks=_computePeaks(decoded);
-      if(!ctx) ac.close();
-    } catch(e){}
+    } catch(e){
+      console.warn('addToLib: audio decode failed (duration/peaks unavailable):',e);
+    } finally{
+      if(_ac&&_ac!==ctx) _ac.close();
+    }
   }
   await libPut(entry);
   return {hash,isDuplicate:false};
@@ -2974,14 +3007,12 @@ async function play(id){
       const hash = typeof p.files[0]==='string' ? p.files[0] : null; 
       if(!hash) return;
       
-      if(!libBufs[hash]){
-        const entry = await libGet(hash); 
-        if(!entry?.buf) return;
-        libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash);
-      }
+      await _ensureLibBuf(hash);
+      if(!libBufs[hash]) return;
       bufs[id][0] = libBufs[hash];
     } catch (err) {
-      console.error(`Failed to load single audio on demand for pad ${id}:`, err);
+      console.error(`Failed to load audio for pad ${id}:`, err);
+      showToast(`Could not load audio for "${pads[id]?.name||'pad'}".`);
       return;
     } finally {
       if(btn) btn.classList.remove('loading-audio');
@@ -3041,6 +3072,7 @@ async function play(id){
   }
 }
 async function playNext(id, allHashes){
+  if(!ctx||!srcs[id]) return;
   const p=pads[id]; if(!p) return;
   let i;
   if(p.shuffle){
@@ -3059,11 +3091,7 @@ async function playNext(id, allHashes){
 
   let buf=null;
   try{
-    if(!libBufs[hash]){
-      const entry=await libGet(hash);
-      if(!entry?.buf) throw new Error('Track not in DB');
-      libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash);
-    }
+    await _ensureLibBuf(hash);
     buf=libBufs[hash];
   } catch(e){
     console.warn('On-demand playlist decode failed:',hash,e);
@@ -3137,10 +3165,7 @@ function createPadInstance(padId,volOverride,fadeOverride){
           const hash=typeof p.files?.[0]==='string'?p.files[0]:null;
           if(!hash){ onEnded&&onEnded(); return; }
           try{
-            if(!libBufs[hash]){
-              const entry=await libGet(hash);
-              if(entry?.buf){ libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash); }
-            }
+            await _ensureLibBuf(hash);
             b=libBufs[hash];
             if(!bufs[padId]) bufs[padId]=[];
             bufs[padId][0]=b;
@@ -3159,10 +3184,7 @@ function createPadInstance(padId,volOverride,fadeOverride){
           const hash=typeof p.files?.[0]==='string'?p.files[0]:null;
           if(!hash){ onEnded&&onEnded(); return; }
           try{
-            if(!libBufs[hash]){
-              const entry=await libGet(hash);
-              if(entry?.buf){ libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash); }
-            }
+            await _ensureLibBuf(hash);
             b=libBufs[hash];
             if(!bufs[padId]) bufs[padId]=[];
             bufs[padId][0]=b;
@@ -3197,12 +3219,7 @@ function createPadInstance(padId,volOverride,fadeOverride){
         if(!hash){ nextTrack(); return; }
         let buf=null;
         try{
-          if(!libBufs[hash]){
-            const entry = await libGet(hash);
-            if(entry?.buf){
-              libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash);
-            }
-          }
+          await _ensureLibBuf(hash);
           buf=libBufs[hash];
         } catch(e){
           console.warn('Combo playlist decode failed:',e);
@@ -4449,7 +4466,7 @@ async function executeImport(){
 }
 
 // ── AUTO-BACKUP ──
-let _autoBackupDirHandle=null, _autoBackupIdx=0, _autoBackupTimer=null;
+let _autoBackupDirHandle=null, _autoBackupIdx=0, _autoBackupTimer=null, _autoBackupFailCount=0;
 function hasFileSystemAccess(){ return 'showDirectoryPicker' in window; }
 async function _persistAutoBackupHandle(handle){
   if(!db) return;
@@ -4495,7 +4512,16 @@ async function doAutoBackup(){
     const fh=await _autoBackupDirHandle.getFileHandle(`botc-autobackup-${_autoBackupIdx+1}.json`,{create:true});
     const w=await fh.createWritable(); await w.write(json); await w.close();
     _markExported();
-  } catch(e){ stopAutoBackup(); showToast('Auto-backup failed — please re-enable in Settings.'); }
+    _autoBackupFailCount=0;
+  } catch(e){
+    _autoBackupFailCount++;
+    if(_autoBackupFailCount>=3){
+      stopAutoBackup();
+      showToast('Auto-backup failed 3 times — disabled. Re-enable in Settings.',6000);
+    } else {
+      showToast(`Auto-backup failed (attempt ${_autoBackupFailCount}/3) — will retry.`);
+    }
+  }
 }
 function updateAutoBackupBtn(){
   const active=!!_autoBackupDirHandle;
@@ -4831,7 +4857,7 @@ function renderPadLabel(p, i){
       (name?`<text text-anchor="middle"><textPath href="#ap${i}" startOffset="50%">${escHtml(name)}</textPath></text>`:'') +
       `</svg>`;
   }
-  return `<div class="plbl">${name}</div>`;
+  return `<div class="plbl">${escHtml(name)}</div>`;
 }
 function applyGridCtrl(){
   const sz=document.getElementById('sz-slider').value;
@@ -4935,7 +4961,7 @@ function renderSetup(){
     b.className='pbtn'+(i===eId?' ed':'');
     b.dataset.id=i;
     if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
-    b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
+    b.innerHTML=`<div class="pnum">${escHtml(p.keyLabel||p.key||'')}</div>`+
                 renderPadIconArea(p)+
                 renderPadLabel(p,i);
     b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
@@ -5379,7 +5405,6 @@ function decodeWaveform(fi){
   const f=eFiles[fi]; if(!f||!f.data) return;
   const tmpAC=new AudioContext();
   tmpAC.decodeAudioData(f.data.slice(0)).then(buf=>{
-    tmpAC.close();
     const data=buf.getChannelData(0);
     const N=300, step=Math.max(1,Math.floor(data.length/N));
     const peaks=new Float32Array(N);
@@ -5405,7 +5430,7 @@ function decodeWaveform(fi){
     }
 
     drawScrubber();
-  }).catch(()=>{ waveforms[fi]=null; });
+  }).catch(()=>{ waveforms[fi]=null; }).finally(()=>{ tmpAC.close(); });
 }
 function drawScrubber(){
   const c=document.getElementById('scrub'); if(!c) return;
@@ -5954,7 +5979,7 @@ function renderPerf(){
     if(srcs[i]) b.classList.add(isLoop?'plooping':'playing');
     b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
     if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
-    b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
+    b.innerHTML=`<div class="pnum">${escHtml(p.keyLabel||p.key||'')}</div>`+
       renderPadIconArea(p)+
       renderPadLabel(p,i);
     g.appendChild(b);
@@ -6011,7 +6036,7 @@ function renderKeymap(){
   rows.sort((a,b)=>(a.p.keyLabel||a.p.key||'').localeCompare(b.p.keyLabel||b.p.key||''));
   let html='';
   if(!rows.length){
-    html='<div style="padding:16px 14px;color:var(--text-dim);font-size:calc(12px * var(--font-scale))">Keine Tasten belegt.</div>';
+    html='<div style="padding:16px 14px;color:var(--text-dim);font-size:calc(12px * var(--font-scale))">No keys assigned.</div>';
   } else {
     for(const{p,i}of rows){
       const label=p.keyLabel||p.key||'?';
@@ -6289,16 +6314,16 @@ function _connectGainToMaster(id,g){
     if(padAnalysers[id]){ try{padAnalysers[id].analyser.disconnect();}catch(e){} delete padAnalysers[id]; }
     const a=ctx.createAnalyser(); a.fftSize=64;
     g.connect(a); a.connect(masterGain);
-    padAnalysers[id]={analyser:a,data:new Uint8Array(a.frequencyBinCount)};
+    const el=document.querySelector(`#pgrid .pbtn[data-id="${id}"]`);
+    padAnalysers[id]={analyser:a,data:new Uint8Array(a.frequencyBinCount),el};
     _ensurePadLevelRAF();
   } else { g.connect(masterGain); }
 }
 function _detachPadAnalyser(id){
   const pa=padAnalysers[id]; if(!pa) return;
   try{pa.analyser.disconnect();}catch(e){}
+  if(pa.el) pa.el.style.setProperty('--plevel','0');
   delete padAnalysers[id];
-  const el=document.querySelector(`#pgrid .pbtn[data-id="${id}"]`);
-  if(el) el.style.setProperty('--plevel','0');
 }
 function _ensurePadLevelRAF(){
   if(!_padLevelRAF) _padLevelRAF=requestAnimationFrame(_padLevelTick);
@@ -6317,8 +6342,7 @@ function _padLevelTick(){
     let sum=0;
     for(let i=0;i<pa.data.length;i++){ const v=(pa.data[i]-128)/128; sum+=v*v; }
     const level=Math.min(1,Math.sqrt(sum/pa.data.length)*4.5);
-    const el=document.querySelector(`#pgrid .pbtn[data-id="${id}"]`);
-    if(el) el.style.setProperty('--plevel',level.toFixed(3));
+    if(pa.el) pa.el.style.setProperty('--plevel',level.toFixed(3));
   }
   _padLevelRAF=requestAnimationFrame(_padLevelTick);
 }
@@ -6747,7 +6771,10 @@ function swuConfirmReload(){
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
   navigator.serviceWorker.addEventListener('message', e=>{
-    if(e.data?.type==='SW_UPDATED') showSwUpdate(e.data.version);
+    if(e.data?.type==='SW_UPDATED'){
+      if(e.data.version!==APP_VERSION) console.warn(`SW version mismatch: SW=${e.data.version}, App=${APP_VERSION}`);
+      showSwUpdate(e.data.version);
+    }
   });
 }
 
