@@ -1863,8 +1863,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 131;
+const APP_VERSION = 132;
 const CHANGELOG=[
+  {v:132,date:'2026-05-24',items:["Fix LRU buffer cache: _lruBufDelete had a recursive self-call instead of 'delete libBufs[hash]' — a leftover from replace_all on an earlier refactor — so the cache was never actually evicted; also switched from count-based limit (LRU_BUF_MAX=20) to size-based limit (LRU_BUF_MAX_BYTES=150MB); _bufDecodedBytes() computes buf.length×numberOfChannels×4; _libBufBytes tracks total decoded RAM; eviction now fires when decoded bytes exceed 150MB rather than when entry count exceeds 20 — prevents ~1.4GB RAM spike from 20 large files"]},
   {v:131,date:'2026-05-24',items:["Waveform miniature in Library: at upload time _computePeaks() samples 30 peak values from the decoded AudioBuffer (one per segment, channel 0) and stores them as entry.peaks in IndexedDB; _peaksToSvg() renders a 200×32 SVG bar chart; audio library cards show the waveform as a subtle absolutely-positioned background overlay (opacity 0.1, pointer-events:none); .lib-card gets position:relative;overflow:hidden; existing entries without peaks silently show no waveform; waveHtml parameter added to libCard()"]},
   {v:130,date:'2026-05-24',items:["Pad volume quick-slider: 500ms long press on a currently-playing PAD in GAME mode opens a mini volume slider (#pv-ov) positioned above or below the pad; range input 0–100%, gain updated in real-time via g.gain.setTargetAtTime(); on close the new volume is saved back to pads[id].volume and save() is called; _pvTimer/_pvId globals; timer cancelled on movement >8px or pointerup like the SETUP long-press"]},
   {v:129,date:'2026-05-24',items:["Quick-rename on long press: 500ms long press on any occupied PAD in SETUP mode opens a centered RENAME PAD overlay (#qr-ov) instead of opening the full editor; timer is cancelled if movement exceeds 8px (drag takes over) or on pointerup; Enter saves, Escape cancels; Escape routed through the _escStack like all other overlays; _qrTimer / _qrId globals added"]},
@@ -2000,19 +2001,29 @@ function _onPadStarted(id){ _playStack=_playStack.filter(x=>x!==id); _playStack.
 function _onPadStopped(id){ _playStack=_playStack.filter(x=>x!==id); }
 let _padLevelRAF = null;
 let libBufs = {};
-const LRU_BUF_MAX = 20; // max decoded AudioBuffers held in RAM simultaneously
+const LRU_BUF_MAX_BYTES = 150 * 1024 * 1024; // 150 MB decoded audio limit
 let _libBufLru = []; // access-ordered list of hashes, most-recent last
+let _libBufBytes = 0; // total decoded bytes currently held in libBufs
+function _bufDecodedBytes(buf){ return buf ? buf.length * buf.numberOfChannels * 4 : 0; }
 function _lruBufSet(hash){
-  _libBufLru = _libBufLru.filter(h=>h!==hash);
+  // libBufs[hash] must already be set before calling this
+  if(_libBufLru.includes(hash)){
+    _libBufLru = _libBufLru.filter(h=>h!==hash);
+    _libBufLru.push(hash);
+    return;
+  }
   _libBufLru.push(hash);
-  while(_libBufLru.length > LRU_BUF_MAX){
+  _libBufBytes += _bufDecodedBytes(libBufs[hash]);
+  while(_libBufBytes > LRU_BUF_MAX_BYTES && _libBufLru.length > 1){
     const evict = _libBufLru.shift();
+    _libBufBytes -= _bufDecodedBytes(libBufs[evict]);
     delete libBufs[evict];
   }
 }
 function _lruBufDelete(hash){
+  _libBufBytes -= _bufDecodedBytes(libBufs[hash]);
   _libBufLru = _libBufLru.filter(h=>h!==hash);
-  _lruBufDelete(hash);
+  delete libBufs[hash];
 }
 let eqRAF = null;
 let eId = null, eFiles = [], eMode = 'once', eImage = null, eIcons = [null,null,null,null], eIconSlot = 0, eShuffle = false, pendingMode = null, eLoopCount = 0, appendFiles = false, fadeSub = false;
