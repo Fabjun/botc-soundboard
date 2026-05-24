@@ -6731,6 +6731,18 @@ initTitleGlow();
 </div>
 
 <!-- In-page error panel (captures uncaught errors, rejections, and console.errors) -->
+<!-- Dev restore helper: paste exported JSON to restore boards (temporary) -->
+<div id="dev-restore" style="position:fixed;left:12px;bottom:12px;width:360px;background:rgba(10,10,20,0.96);color:#fff;border:1px solid rgba(255,255,255,0.04);border-radius:8px;font-family:var(--ff-body);font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:9999;padding:8px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+    <strong style="color:var(--gold)">DEV Restore</strong>
+    <button id="dev-restore-close" style="background:none;border:1px solid rgba(255,255,255,0.06);color:var(--text);padding:4px 8px;border-radius:4px;cursor:pointer">Close</button>
+  </div>
+  <textarea id="dev-restore-input" placeholder="Paste exported JSON here" style="width:100%;height:90px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--text);padding:6px;resize:vertical"></textarea>
+  <div style="display:flex;gap:8px;margin-top:6px">
+    <button id="dev-restore-do" style="flex:1;padding:6px;border-radius:4px;border:1px solid rgba(255,255,255,0.06);background:var(--gold);color:#000;cursor:pointer">Restore</button>
+    <button id="dev-restore-sample" style="padding:6px;border-radius:4px;border:1px solid rgba(255,255,255,0.06);background:none;color:var(--text);cursor:pointer">Show Info</button>
+  </div>
+</div>
 <div id="inpage-errors" style="position:fixed;right:12px;bottom:12px;width:360px;max-height:50vh;background:rgba(20,20,30,0.96);color:#fff;border:1px solid rgba(255,255,255,0.06);border-radius:8px;font-family:var(--ff-body);font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:9999;overflow:hidden;display:flex;flex-direction:column">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)">
     <div style="display:flex;gap:8px;align-items:center">
@@ -6799,6 +6811,40 @@ initTitleGlow();
     panel.style.display='none';
     // expose for manual use
     window._inpageErrors = { push, clear: ()=>{ msgs.length=0; render(); } };
+  })();
+</script>
+
+<script>
+  // Dev restore logic — temporary helper
+  (function(){
+    const box=document.getElementById('dev-restore'); if(!box) return;
+    const inp=document.getElementById('dev-restore-input');
+    const btn=document.getElementById('dev-restore-do');
+    const btnInfo=document.getElementById('dev-restore-sample');
+    const btnClose=document.getElementById('dev-restore-close');
+
+    btnClose.addEventListener('click',()=>box.style.display='none');
+    btnInfo.addEventListener('click',()=>{
+      alert('Paste an exported library/board JSON (from Settings → DATA → Export) and click Restore. This will write entries into the app IndexedDB and reload.');
+    });
+
+    btn.addEventListener('click',async()=>{
+      const txt=inp.value.trim(); if(!txt){ alert('Paste JSON first'); return; }
+      let obj;
+      try{ obj = JSON.parse(txt); }catch(e){ alert('Invalid JSON: '+e.message); return; }
+      if(!obj || typeof obj!=='object'){ alert('Invalid export format'); return; }
+      try{
+        if(typeof openDB==='function') await openDB();
+        if(!window.db){ alert('Database not open'); return; }
+        const items = obj.p || obj.boards || [];
+        if(!items.length){ if(obj.p) items = obj.p; else { alert('No boards found in JSON'); return; } }
+        const tx = db.transaction('p','readwrite');
+        const store = tx.objectStore('p');
+        for(const it of items){ if(it && it.id) store.put(it); }
+        tx.oncomplete = ()=>{ alert('Restore complete — reloading'); location.reload(); };
+        tx.onerror = (e)=>{ alert('Restore failed'); console.error(e); };
+      }catch(e){ alert('Restore error: '+e.message); console.error(e); }
+    });
   })();
 </script>
 </body>
