@@ -1863,8 +1863,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 137;
+const APP_VERSION = 138;
 const CHANGELOG=[
+  {v:138,date:'2026-05-24',items:["Key-press never stops a running sound: keyboard shortcuts now call playFromKey() instead of togglePad(); playFromKey() returns immediately if the pad is already active (srcs[id] set), so an accidental key re-press during a game cannot cut off a running sound; tap/click on the pad still calls togglePad() and retains full stop/start toggle behavior"]},
   {v:137,date:'2026-05-24',items:["Fix PAD editor audio preview: openLibPicker contained a debug wrapper that permanently replaced window.updFB with a broken stub (only called initScrub + drawScrubber) the first time closeLibPicker ran; after that, every updFB() call skipped rebuilding btnEl.innerHTML, so the play button in the PAD editor lost its onclick handler after any lib-picker interaction; removed the entire 'iPhone-Rettungsring' block"]},
   {v:136,date:'2026-05-24',items:["Dismiss button on hint banners: both the export-hint and backup-hint banners now have a small × button on the left edge; tapping it hides the banner for the current session (_exportHintDismissed / _backupHintDismissed flags prevent checkExportHint/checkBackupHint from re-showing it)"]},
   {v:135,date:'2026-05-24',items:["Bug fixes — stopPad: chkNP() was missing from the immediate (non-fade) path so 'No sound active' and edge-glow stayed stale after stopping a single pad","stopAll: _playStack.filter treated numeric pad IDs as combo-state objects, throwing TypeError on state.currentFgInstances.forEach whenever any regular pad was playing; audio stopped correctly but combo cleanup and chkNP were skipped; replaced broken filter with Object.keys(comboState) loop + _playStack=[]","Pad volume quick-slider: stored volume in 0–1 fraction format but app uses 0–100 integers; opening slider showed 100% regardless of actual volume; saving reduced gain to ~1% on next play; fixed init to use pads[id].volume??80 and save as integer v (not v/100)","importPadTemplate: volume:pd.volume??1 defaulted to 1 in 0–100 scale (~1% gain); changed to pd.volume so undefined is preserved and play() falls back to its own 80 default","closeQuickRename / closePadVolSlider: both opened with pushEsc but closed without popEsc, leaking stale Escape handlers that accumulated on repeated use; fixed by calling popEsc before removing the open class"]},
@@ -3388,6 +3389,7 @@ function stopAll(exceptComboId = null, isFade = false){
 }
 
 function togglePad(id){ if(srcs[id]) stopPad(id); else play(id); }
+function playFromKey(id){ if(srcs[id]) return; play(id); }
 
 function flash(id){
   const b=document.querySelector(`[data-id="${id}"]`); if(!b) return;
@@ -6639,7 +6641,7 @@ document.addEventListener('keydown', e=>{
     e.preventDefault();
     if(cur==='sp'){
       const id=pads.findIndex(p=>p&&p.key===code);
-      if(id!==-1) togglePad(id);
+      if(id!==-1) playFromKey(id);
     }
     return;
   }
@@ -6672,7 +6674,7 @@ document.addEventListener('keydown', e=>{
     if(id!==-1){
       const loaded=(bufs[id]||[]).filter(Boolean).length;
       dbg.textContent=`▶ ${code} → pad[${id}] "${pads[id].name}" | bufs:${loaded}`;
-      togglePad(id);
+      playFromKey(id);
     } else {
       dbg.textContent=`? ${code} → no match | configured: [${cfgKeys}]`;
     }
