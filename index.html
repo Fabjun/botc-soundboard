@@ -1866,8 +1866,15 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 141;
+const APP_VERSION = 142;
 const CHANGELOG=[
+  {v:142,date:'2026-05-24',items:[
+    "Fix playlist PAD crash on iPhone: openEP loaded all N audio files from IDB into JS heap (N × 5-8 MB) then fired N parallel decodeAudioData calls (each 50-100 MB PCM) — peak RAM was 1.5-3 GB, causing iOS Safari tab-kill and page reload; fix: store only {name,hash,size} in eFiles (no raw buf), populate waveforms[] from stored entry.peaks/duration (set at upload in v131) so no decode is needed; only call decodeWaveform for files without stored peaks, and only for one file at a time; same fix applied to pickMultiFromLib",
+    "Fix playlist PAD silent failure (v139 regression): playNext() guard 'if(!ctx||!srcs[id]) return' also blocked the initial call from play() where srcs[id] is undefined; fix: play() now creates ctx, sets srcs[id]=[{}] as a loading sentinel, and calls updBtn before playNext — the sentinel makes the guard pass; stopPad already handles {} safely via try/catch",
+    "Fix playlist RAM spike at track boundary: srcs[id]=[s] kept a reference to the old AudioBufferSourceNode's 50-100 MB PCM buffer while the next track was being decoded; fix: s.onended now sets s.buffer=null immediately after _lruBufDelete, releasing the PCM reference before the next decode starts; also added post-await guard in playNext to abort if stopPad was called during loading",
+    "Fix _ensureLibBuf: pass entry.buf directly to decodeAudioData (no .slice copy) — decodeAudioData detaches and frees the input ArrayBuffer immediately, saving 5-8 MB per decode",
+    "decodeWaveform is now async and lazy-loads audio data from IDB on demand; previewFile is now async and lazy-loads audio data on demand — neither holds N files in memory simultaneously; waveform for a file without stored peaks is decoded only when that file is first previewed"
+  ]},
   {v:141,date:'2026-05-24',items:[
     "Combo editor drag-and-drop: pad chips can now be dragged between steps — pointer-capture drag removes the chip from its source step and appends it to the target step; a chip dragged onto its own step is a no-op; empty steps remain after removal (intentional)",
     "Combo editor step reorder: the step header (entire STEP N bar) is now a drag handle — dragging over another step shows a top/bottom drop-indicator line (before/after half-height threshold); release reorders comboSteps[] and re-renders",
@@ -2143,7 +2150,7 @@ async function _ensureLibBuf(hash){
     _libBufLoading[hash] = libGet(hash).then(entry=>{
       if(!entry?.buf) throw new Error('Audio not in library: '+hash.slice(0,8));
       if(!ctx) throw new Error('AudioContext not ready');
-      return ctx.decodeAudioData(entry.buf.slice(0));
+      return ctx.decodeAudioData(entry.buf); // detaches entry.buf immediately, saving a redundant 5-8 MB copy
     }).then(buf=>{
       libBufs[hash]=buf; _lruBufSet(hash);
     }).finally(()=>{ delete _libBufLoading[hash]; });
@@ -3001,6 +3008,10 @@ async function play(id){
   if(isPlaylist){
     if(!p.files || !p.files.length) return;
     if(srcs[id]){ stopPad(id); return; }
+    if(!ctx) ctx = new(window.AudioContext||window.webkitAudioContext)();
+    if(ctx.state==='suspended') ctx.resume().catch(()=>{});
+    srcs[id]=[{}]; // sentinel: makes guard in playNext pass; stopPad can clear it during load
+    updBtn(id,true,false);
     _onPadStarted(id);
     playNext(id, p.files);
     return;
@@ -3103,6 +3114,7 @@ async function playNext(id, allHashes){
   let buf=null;
   try{
     await _ensureLibBuf(hash);
+    if(!srcs[id]){ if(btn) btn.classList.remove('loading-audio'); return; } // stopped during load
     buf=libBufs[hash];
   } catch(e){
     console.warn('On-demand playlist decode failed:',hash,e);
@@ -3121,8 +3133,8 @@ async function playNext(id, allHashes){
   srcs[id]=[s]; gains[id]=g;
   updBtn(id,true,true);
   setNP(p.name+' — '+(hash.substring(0,8)+'…'));
-  // Evict buffer after playback to keep RAM flat, then load next track
-  s.onended=()=>{ if(srcs[id]){ _lruBufDelete(hash); playNext(id,allHashes); } };
+  // Null s.buffer immediately when track ends to release the ~60MB PCM before next decode
+  s.onended=()=>{ if(srcs[id]){ _lruBufDelete(hash); s.buffer=null; playNext(id,allHashes); } };
 }
 function stopPad(id, immediate=false){
   if(pads[id]?.mode==='combo'){ stopCombo(id); return; }
@@ -4740,9 +4752,13 @@ async function pickMultiFromLib(){
   if(!libPickerAppend){ stopPreview(); waveforms=[]; eFiles=[]; }
   for(const hash of hashes){
     const entry=await libGet(hash); if(!entry) continue;
-    eFiles.push({name:entry.name,data:entry.buf,hash});
-    decodeWaveform(eFiles.length-1);
+    eFiles.push({name:entry.name, hash, size:entry.size||0}); // no raw buf in memory
+    const fi=eFiles.length-1;
+    if(entry.peaks && entry.duration!=null) waveforms[fi]={peaks:entry.peaks, duration:entry.duration};
   }
+  // Decode waveform only for the last added file if it lacks stored peaks
+  const lastFi=eFiles.length-1;
+  if(!waveforms[lastFi]) decodeWaveform(lastFi);
   updFB();
   if(isFirst){
     const nameEl=document.getElementById('en');
@@ -5032,14 +5048,20 @@ async function openEP(id){
       for(const f of p.files){
         if(typeof f==='string'){
           const entry=await libGet(f);
-          if(entry) eFiles.push({name:entry.name,data:entry.buf,hash:f});
+          if(entry){
+            eFiles.push({name:entry.name, hash:f, size:entry.size||0}); // no raw buf in memory
+            const fi=eFiles.length-1;
+            // Use stored peaks/duration from IDB — no decode needed for these files
+            if(entry.peaks && entry.duration!=null){
+              waveforms[fi]={peaks:entry.peaks, duration:entry.duration};
+            }
+          }
         } else if(f?.data){
-          eFiles.push({name:f.name,data:f.data});
+          eFiles.push({name:f.name, data:f.data}); // local upload, already in memory
         }
       }
-      if(eFiles.length > 0) {
-        eFiles.forEach((_,i)=>decodeWaveform(i));
-      }
+      // Decode waveform only for the first file if stored peaks are missing (old files)
+      if(eFiles.length>0 && !waveforms[0]) decodeWaveform(0);
       updFB();
     } catch (editorAudioError) {
       console.error("Editor waveform load failed:", editorAudioError);
@@ -5530,10 +5552,18 @@ function _fmtTime(s){
   const m=Math.floor(s/60), sec=Math.floor(s%60);
   return `${m}:${sec.toString().padStart(2,'0')}`;
 }
-function decodeWaveform(fi){
-  const f=eFiles[fi]; if(!f||!f.data) return;
+async function decodeWaveform(fi){
+  const f=eFiles[fi]; if(!f) return;
+  if(waveforms[fi]){ drawScrubber(); return; } // peaks already set (from IDB or prior decode)
+  let rawBuf=f.data;
+  if(!rawBuf){
+    if(!f.hash) return;
+    const entry=await libGet(f.hash);
+    if(!entry?.buf) return;
+    rawBuf=entry.buf;
+  }
   const tmpAC=new AudioContext();
-  tmpAC.decodeAudioData(f.data.slice(0)).then(buf=>{
+  tmpAC.decodeAudioData(rawBuf.slice(0)).then(buf=>{
     const data=buf.getChannelData(0);
     const N=300, step=Math.max(1,Math.floor(data.length/N));
     const peaks=new Float32Array(N);
@@ -5543,18 +5573,17 @@ function decodeWaveform(fi){
       peaks[i]=max;
     }
     waveforms[fi]={peaks, duration:buf.duration};
-    
 
-    const dur = buf.duration;
-    const etsInput = document.getElementById('ets');
-    const eteInput = document.getElementById('ete');
-    if(etsInput && eteInput) {
-      etsInput.max = dur;
-      eteInput.max = dur;
+    const dur=buf.duration;
+    const etsInput=document.getElementById('ets');
+    const eteInput=document.getElementById('ete');
+    if(etsInput && eteInput){
+      etsInput.max=dur;
+      eteInput.max=dur;
       // Reset trim-end to 0 (= full) when unset or when loaded file is shorter than previous value
-      if(eteInput.value === '0' || parseFloat(eteInput.value) > dur) {
-        eteInput.value = 0;
-        document.getElementById('ete-lbl').textContent = 'Full';
+      if(eteInput.value==='0' || parseFloat(eteInput.value)>dur){
+        eteInput.value=0;
+        document.getElementById('ete-lbl').textContent='Full';
       }
     }
 
@@ -5728,14 +5757,23 @@ function liveVol(){
   const lbl=document.getElementById('ev-lbl'); if(lbl) lbl.textContent=v;
   drawScrubber();
 }
-function previewFile(i){
+async function previewFile(i){
   if(previewAudio){ try{previewAudio.pause();}catch(e){} }
   const seekFrac=previewSeekPos;
   _cleanupPreview();
-  const f=eFiles[i]; if(!f||!f.data) return;
+  const f=eFiles[i]; if(!f) return;
+  let data=f.data;
+  if(!data){
+    if(!f.hash) return;
+    const entry=await libGet(f.hash);
+    if(!entry?.buf) return;
+    data=entry.buf;
+  }
+  // Trigger waveform decode for this file if not yet done
+  if(!waveforms[i]) decodeWaveform(i);
   const ext=(f.name.split('.').pop()||'').toLowerCase();
   const mime={mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',m4a:'audio/mp4',aac:'audio/aac',flac:'audio/flac'}[ext]||'audio/*';
-  previewURL=URL.createObjectURL(new Blob([f.data],{type:mime}));
+  previewURL=URL.createObjectURL(new Blob([data],{type:mime}));
   previewAudio=new Audio(previewURL);
   const fi=+document.getElementById('eft').value;
   previewFileIdx=i;
@@ -5912,7 +5950,7 @@ function updFB(){
   filesEl.innerHTML=eFiles.map((f,i)=>{
     const active=previewFileIdx===i;
     const dur=waveforms[i]?.duration;
-    const sz=f.data?.byteLength;
+    const sz=f.data?.byteLength ?? f.size; // f.size set for library files, f.data.byteLength for local uploads
     const meta=[dur?_fmtTime(dur):'',sz?_fmtSize(sz):''].filter(Boolean).join(' · ');
     const playBtn=isPlaylist?`<button class="pvbtn" onclick="previewFile(${i})">▶</button>`:'';
     return `<div class="snd-row${active?' snd-row-act':''}">
