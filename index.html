@@ -2849,7 +2849,23 @@ async function play(id){
   const p=pads[id]; if(!p) return;
   if(p.mode==='combo'){ playCombo(id); return; }
 
-  // --- DATABASE AUDIO ON DEMAND ENGINE ---
+  // ── SONDERFALL PLAYLIST / CHAIN MODUS (Echtes fortlaufendes On-Demand) ──
+  // Wenn das Pad eine Playlist/Kette ist, laden wir hier beim ersten Klick NICHT alle Songs vorab!
+  const isPlaylist = p.mode !== 'once' && p.mode !== 'loop';
+  
+  if (isPlaylist) {
+    if(!p.files || !p.files.length) return;
+    if(srcs[id]){ stopPad(id); return; } // Falls sie schon läuft, stoppen
+    
+    _onPadStarted(id);
+    
+    // Wir übergeben der playNext-Funktion nicht mehr die fertigen Buffer,
+    // sondern nur noch die Hashes (Dateinamen) der Songs!
+    playNext(id, p.files); 
+    return; 
+  }
+
+  // ── STANDARD MODUS (Für "once" und "loop" - lädt nur den einen Song) ──
   if(!bufs[id] || !bufs[id].length || !bufs[id][0]){
     if(!p.files || !p.files.length) return;
     
@@ -2860,40 +2876,27 @@ async function play(id){
       if(!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
       bufs[id] = [];
       
-      // Gehe durch die zugewiesenen Files des Pads (meistens eins, oder bei Playlists mehrere)
-      await Promise.all(p.files.map(async (f, fi) => {
-        const hash = typeof f === 'string' ? f : null; 
-        if(!hash) return;
-        
-        // Falls der Sound noch nicht im globalen Bibliotheks-Speicher ist, hole ihn aus IndexedDB
-        if(!libBufs[hash]){
-          const entry = await libGet(hash); 
-          if(!entry?.buf) return;
-          try { 
-            libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0)); 
-          } catch(e) { 
-            console.warn("On-demand decode failed for hash: " + hash, e); 
-            return; 
-          }
-        }
-        if(!bufs[id]) bufs[id] = [];
-        bufs[id][fi] = libBufs[hash];
-      }));
+      const hash = typeof p.files[0]==='string' ? p.files[0] : null; 
+      if(!hash) return;
+      
+      if(!libBufs[hash]){
+        const entry = await libGet(hash); 
+        if(!entry?.buf) return;
+        libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0)); 
+      }
+      bufs[id][0] = libBufs[hash];
     } catch (err) {
-      console.error(`Failed to load audio from DB on demand for pad ${id}:`, err);
-      if(btn) btn.classList.remove('loading-audio');
+      console.error(`Failed to load single audio on demand for pad ${id}:`, err);
       return;
     } finally {
       if(btn) btn.classList.remove('loading-audio');
     }
   }
-  // ----------------------------------------
 
   if(ctx?.state==='suspended') ctx.resume().catch(()=>{});
   flash(id);
   const vol=(p.volume||80)/100, fi=p.fadeIn||0;
 
-  // Read trim values and calculate duration
   const tStart = p.trimStart || 0;
   const tEnd = p.trimEnd || 0;
   const hasDuration = tEnd > tStart;
@@ -2921,9 +2924,7 @@ async function play(id){
     if(lc===0){
       const s=ctx.createBufferSource();
       s.buffer=b; s.loop=true; s.connect(g);
-      
       if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
-      
       srcs[id]=[s];
     } else {
       srcs[id]=[null];
@@ -2932,9 +2933,7 @@ async function play(id){
         if(!srcs[id]) return;
         const s=ctx.createBufferSource();
         s.buffer=b; s.connect(g);
-        
         if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
-        
         srcs[id]=[s]; rem--;
         if(rem<=0){
           s.onended=()=>{ if(srcs[id]){ _onPadStopped(id); delete srcs[id]; delete gains[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); } };
@@ -2944,30 +2943,75 @@ async function play(id){
       })();
     }
     updBtn(id,true,lc===0); _onPadStarted(id); setNP(p.name+' ↻');
-  } else {
-    if(srcs[id]){ stopPad(id); return; }
-    const all=(bufs[id]||[]).filter(Boolean); if(!all.length) return;
-    _onPadStarted(id); playNext(id,all);
   }
 }
-function playNext(id,all){
+async function playNext(id, allHashes){
   const p=pads[id]; if(!p) return;
   let i;
+  
+  // 1. Richtigen Index ermitteln (Shuffle oder der Reihe nach)
   if(p.shuffle){
-    i=Math.floor(Math.random()*all.length);
+    i=Math.floor(Math.random()*allHashes.length);
   } else {
-    playPos[id]=(playPos[id]||0)%all.length;
+    playPos[id]=(playPos[id]||0)%allHashes.length;
     i=playPos[id];
     playPos[id]++;
   }
+  
+  const hash = typeof allHashes[i]==='string' ? allHashes[i] : null;
+  if(!hash) {
+    // Falls ein Eintrag ungültig ist, springe direkt zum nächsten
+    if(srcs[id]) playNext(id, allHashes);
+    return;
+  }
+
+  // Visual Feedback: Button bekommt eine Mini-Lade-Animation während des On-Demand-Ladens
+  const btn = document.querySelector(`[data-id="${id}"]`);
+  if(btn) btn.classList.add('loading-audio');
+
+  let buf = null;
+  try {
+    // 2. Genau DIESEN einen Song aus der IndexedDB holen, falls er nicht geladen ist
+    if(!libBufs[hash]){
+      const entry = await libGet(hash);
+      if(!entry?.buf) throw new Error("Track nicht in DB gefunden");
+      libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0));
+    }
+    buf = libBufs[hash];
+  } catch(e) {
+    console.warn("On-demand playlist decode failed for hash: " + hash, e);
+    if(btn) btn.classList.remove('loading-audio');
+    // Fehler? Dann versuche den nächsten Track, damit die Playlist nicht stirbt
+    if(srcs[id]) playNext(id, allHashes);
+    return;
+  } finally {
+    if(btn) btn.classList.remove('loading-audio');
+  }
+
+  if(!buf) return;
+
+  // 3. Audio-Knotenpunkte erstellen und abspielen
   const s=ctx.createBufferSource(), g=ctx.createGain();
   fadeInGain(g,(p.volume||80)/100,p.fadeIn||0);
-  s.buffer=all[i]; s.connect(g); _connectGainToMaster(id,g); s.start(0);
+  s.buffer=buf; s.connect(g); _connectGainToMaster(id,g); s.start(0);
+  
   srcs[id]=[s]; gains[id]=g;
   updBtn(id,true,true);
-  const fn=(p.files[i]||{}).name||'';
-  setNP(p.name+(fn?' — '+fn:''));
-  s.onended=()=>{ if(srcs[id]) playNext(id,all); };
+  
+  // Songname anzeigen (falls im System hinterlegt, sonst nutzen wir den Hash-Namen)
+  const fn = (p.files && p.files[i] && p.files[i].name) || hash.substring(0, 8) + '...';
+  setNP(p.name + ' — ' + fn);
+  
+  // 4. Wenn der Song endet: RAM säubern und nächsten Titel laden!
+  s.onended=()=>{ 
+    if(srcs[id]) {
+      // IPHONE RAM-PROTECT: Wir werfen den gerade abgespielten Buffer aktiv aus dem 
+      // Speicher, bevor wir den nächsten laden. Das hält den RAM dauerhaft flach!
+      delete libBufs[hash]; 
+      
+      playNext(id, allHashes); 
+    } 
+  };
 }
 function stopPad(id, immediate=false){
   if(pads[id]?.mode==='combo'){ stopCombo(id); return; }
