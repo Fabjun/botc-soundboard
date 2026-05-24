@@ -1815,8 +1815,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 123;
+const APP_VERSION = 124;
 const CHANGELOG=[
+  {v:124,date:'2026-05-24',items:["RAM management: LRU eviction for libBufs cache — max 20 decoded AudioBuffers held in RAM; least-recently-decoded entry evicted when limit is exceeded; _lruBufSet() called at every decode point (play, playNext, createPadInstance, preview); _lruBufDelete() used instead of bare delete to keep LRU state consistent; delete bufs[id] added to once-pad onended handler so next tap re-enters the cache-check path rather than holding a stale reference"]},
   {v:123,date:'2026-05-24',items:["iPhone reliability: -webkit-overflow-scrolling:touch and overscroll-behavior:contain on all scroll containers (.ep-body, .pgrid, #sidebar, #combo-body, #hint-body, #keymap-body); overscroll-behavior:none on fixed overlay panels (#ep, #combo-ov, #hint-ov, #icon-picker, #lib-picker, #import-ov, #changelog-ov, #onboard-ov, #pad-type-picker, #keymap-ov); blanket rule for inline overflow-y:auto elements; min-height:44px on .btn-p/.btn-s/.btn-g/.dlg-*; .ep-back min touch target 44×44px"]},
   {v:122,date:'2026-05-24',items:["Fix icon picker: 5 missing functions restored (updIconPreview, pickBuiltinIcon, pickLibIcon, clearIconSlot, _updateIconPickerLib); libIconEntries populated on load and kept in sync on add/delete; duplicate filterIconGrid definition removed","Fix combo playback: pads filter in playComboStep no longer requires bufs[] to be pre-loaded — on-demand audio works in all combo steps","Fix combo engine: once/loop pads in createPadInstance now load audio on-demand from IndexedDB (same pattern as playlist branch) instead of failing silently when bufs[] is empty","Remove dead code: isSetupMode block in play() referenced CSS classes that are never set — removed 18-line block","Refactor: hardcoded inline styles s12/s12g/s12n in updFB() replaced with CSS classes .ep-act/.ep-act-g/.ep-act-t","Remove debug overlay: logDebug(), window.onerror/onunhandledrejection handlers and #debug-log div removed"]},
   {v:121,date:'2026-05-23',items:["Folder assignments survive export/import: buildExportJson now includes the 'folder' field in serialized library entries; executeImport restores folder assignments on all import paths (replace, keep-both, add, pad templates)"]},
@@ -1944,6 +1945,20 @@ function _onPadStarted(id){ _playStack=_playStack.filter(x=>x!==id); _playStack.
 function _onPadStopped(id){ _playStack=_playStack.filter(x=>x!==id); }
 let _padLevelRAF = null;
 let libBufs = {};
+const LRU_BUF_MAX = 20; // max decoded AudioBuffers held in RAM simultaneously
+let _libBufLru = []; // access-ordered list of hashes, most-recent last
+function _lruBufSet(hash){
+  _libBufLru = _libBufLru.filter(h=>h!==hash);
+  _libBufLru.push(hash);
+  while(_libBufLru.length > LRU_BUF_MAX){
+    const evict = _libBufLru.shift();
+    delete libBufs[evict];
+  }
+}
+function _lruBufDelete(hash){
+  _libBufLru = _libBufLru.filter(h=>h!==hash);
+  _lruBufDelete(hash);
+}
 let eqRAF = null;
 let eId = null, eFiles = [], eMode = 'once', eImage = null, eIcons = [null,null,null,null], eIconSlot = 0, eShuffle = false, pendingMode = null, eLoopCount = 0, appendFiles = false, fadeSub = false;
 let libMainTab = 'audio';
@@ -2892,7 +2907,7 @@ async function play(id){
       if(!libBufs[hash]){
         const entry = await libGet(hash); 
         if(!entry?.buf) return;
-        libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0)); 
+        libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash);
       }
       bufs[id][0] = libBufs[hash];
     } catch (err) {
@@ -2922,7 +2937,7 @@ async function play(id){
     if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
     
     srcs[id]=[s]; gains[id]=g;
-    s.onended=()=>{ _onPadStopped(id); delete srcs[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); };
+    s.onended=()=>{ _onPadStopped(id); delete srcs[id]; delete bufs[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); };
     updBtn(id,true,false); _onPadStarted(id); setNP(p.name);
   } else if(p.mode==='loop'){
     if(srcs[id]){ stopPad(id); return; }
@@ -2985,7 +3000,7 @@ async function playNext(id, allHashes){
     if(!libBufs[hash]){
       const entry = await libGet(hash);
       if(!entry?.buf) throw new Error("Track nicht in DB gefunden");
-      libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0));
+      libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash);
     }
     buf = libBufs[hash];
   } catch(e) {
@@ -3017,7 +3032,7 @@ async function playNext(id, allHashes){
     if(srcs[id]) {
       // IPHONE RAM-PROTECT: Wir werfen den gerade abgespielten Buffer aktiv aus dem 
       // Speicher, bevor wir den nächsten laden. Das hält den RAM dauerhaft flach!
-      delete libBufs[hash]; 
+      _lruBufDelete(hash); 
       
       playNext(id, allHashes); 
     } 
@@ -3076,7 +3091,7 @@ function createPadInstance(padId,volOverride,fadeOverride){
           try{
             if(!libBufs[hash]){
               const entry=await libGet(hash);
-              if(entry?.buf) libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0));
+              if(entry?.buf){ libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash); }
             }
             b=libBufs[hash];
             if(!bufs[padId]) bufs[padId]=[];
@@ -3098,7 +3113,7 @@ function createPadInstance(padId,volOverride,fadeOverride){
           try{
             if(!libBufs[hash]){
               const entry=await libGet(hash);
-              if(entry?.buf) libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0));
+              if(entry?.buf){ libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash); }
             }
             b=libBufs[hash];
             if(!bufs[padId]) bufs[padId]=[];
@@ -3142,8 +3157,8 @@ function createPadInstance(padId,volOverride,fadeOverride){
           // Track on-demand aus der DB decodieren
           if(!libBufs[hash]){
             const entry = await libGet(hash);
-            if(entry?.buf) {
-              libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0));
+            if(entry?.buf){
+              libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash);
             }
           }
           buf = libBufs[hash];
@@ -3165,7 +3180,7 @@ function createPadInstance(padId,volOverride,fadeOverride){
           active.splice(active.indexOf(s),1); 
           
           // RAM-Säuberung: Alten Track löschen, bevor das nächste geladen wird
-          delete libBufs[hash]; 
+          _lruBufDelete(hash); 
           
           nextTrack(); 
         };
@@ -3599,7 +3614,7 @@ async function libDeleteFile(hash){
   const name=entry?.name||'this file';
   showConfirmDel(`Delete "${name}" from Library?\nPads using it will no longer play.`,async()=>{
     await libDelete(hash);
-    delete libBufs[hash];
+    _lruBufDelete(hash);
     showToast('File deleted from Library.');
     initLibScreen();
   });
@@ -4568,7 +4583,7 @@ function lpPlay(hash){
     if(!buf){
       const entry=await libGet(hash);
       if(!entry) return;
-      try{ buf=libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0)); }catch(e){ return; }
+      try{ libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash); buf=libBufs[hash]; }catch(e){ return; }
     }
     const src=ctx.createBufferSource();
     src.buffer=buf;
