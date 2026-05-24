@@ -3831,6 +3831,7 @@ function renderIconCell(ic, selectedId, isPicker){
   const click = isPicker ? ` onclick="pickBuiltinIcon('${ic.id}')"` : '';
   return `<div class="ico-cell${sel}" title="${escHtml(ic.label)}"${click}>${svgI(`<path d="${ic.d}"/>`,ic.v||'0 0 24 24')}<span class="ico-cell-name">${escHtml(ic.label)}</span></div>`;
 }
+
 function _renderGroupedIcons(icons, containerId, selectedId, isPicker){
   const container=document.getElementById(containerId);
   if(!container) return;
@@ -3843,7 +3844,7 @@ function _renderGroupedIcons(icons, containerId, selectedId, isPicker){
   for(const cat of CAT_ORDER){ if(groups[cat]) ordered.push([cat,groups[cat]]); }
   for(const [cat,list] of Object.entries(groups)){ if(!CAT_ORDER.includes(cat)) ordered.push([cat,list]); }
 
-  // Render only category headers — icon cells are lazy-loaded on first expand
+  // Render only category headers — 0 MB DOM-overhead on start
   let h='';
   for(const [cat,list] of ordered){
     const open=catOpen[cat]??false;
@@ -3856,6 +3857,7 @@ function _renderGroupedIcons(icons, containerId, selectedId, isPicker){
     const cat=hdr.dataset.cat;
     const list=groups[cat]||[];
     const grid=hdr.nextElementSibling;
+    
     // Eagerly render any category that starts open
     if((catOpen[cat]??false)&&!grid._rendered){
       grid.innerHTML=list.map(ic=>renderIconCell(ic,selectedId,isPicker)).join('');
@@ -3871,6 +3873,10 @@ function _renderGroupedIcons(icons, containerId, selectedId, isPicker){
         }
         grid.style.display='';
       } else {
+        // RADIKALER IPHONE RAM-PROTECT: Wenn eine Kategorie geschlossen wird, 
+        // löschen wir die SVGs sofort aus dem HTML, um den RAM zu leeren!
+        grid.innerHTML='';
+        grid._rendered=false;
         grid.style.display='none';
       }
     });
@@ -3889,65 +3895,36 @@ function openIconPicker(slot){
   ov.classList.add('open');
   setTimeout(()=>{ document.getElementById('ico-q')?.focus(); }, 50);
 }
+
 function closeIconPicker(){ popEsc('icon-picker'); document.getElementById('icon-picker')?.classList.remove('open'); }
+
 function renderIconGrid(filter){
   const q=(filter||'').toLowerCase().trim();
   const grid=document.getElementById('ico-grid-builtin'); if(!grid) return;
   const selectedId=eIcons[eIconSlot]?.b||null;
+  
   if(q){
+    // Bei einer Suche filtern wir das Array. Ergebnisse sind kurz, das packt das iPhone flach.
     const icons=BUILTIN_ICONS.filter(ic=>ic.id.includes(q)||ic.label.toLowerCase().includes(q));
     grid.className=iconNamesVisible?'ico-grid ico-names-on':'ico-grid';
     grid.innerHTML=icons.map(ic=>renderIconCell(ic,selectedId,true)).join('');
   } else {
+    // Ohne Filter übergeben wir alle Icons. Die Gruppen-Logik sorgt dafür, 
+    // dass im DOM nur die Überschriften landen, solange nichts angeklickt wird.
     grid.className='';
     _renderGroupedIcons(BUILTIN_ICONS,'ico-grid-builtin',selectedId,true);
   }
 }
+
 function filterIconGrid(val){
   renderIconGrid(val);
   _updateIconPickerLib(val);
 }
-function _updateIconPickerLib(q){
-  const sec=document.getElementById('ico-grid-lib-section');
-  const grid=document.getElementById('ico-grid-lib');
-  if(!sec||!grid) return;
-  const cached=Object.keys(iconSvgCache);
-  if(!cached.length){ sec.style.display='none'; return; }
-  libGetAll().then(all=>{
-    const icons=all.filter(e=>e.type==='icon'&&(!q||e.name.toLowerCase().includes(q.toLowerCase())));
-    if(!icons.length){ sec.style.display='none'; return; }
-    sec.style.display='';
-    const selHash=eIcons[eIconSlot]?.h;
-    grid.innerHTML=icons.map(e=>{
-      const s=iconSvgCache[e.hash]||'';
-      const thumb=s?s.replace(/width="[^"]*"/,'width="22px"').replace(/height="[^"]*"/,'height="22px"'):'?';
-      return `<div class="ico-cell${selHash===e.hash?' selected':''}" title="${escHtml(e.name)}" onclick="pickLibIcon('${e.hash}')">${thumb}</div>`;
-    }).join('');
-  });
-}
-function pickBuiltinIcon(id){ eIcons[eIconSlot]={b:id}; updIconPreview(); closeIconPicker(); }
-function pickLibIcon(hash){ eIcons[eIconSlot]={h:hash}; updIconPreview(); closeIconPicker(); }
-function clearIconSlot(idx){ eIcons[idx]=null; updIconPreview(); }
-function updIconPreview(){
-  for(let i=0;i<4;i++){
-    const slot=document.getElementById(`islot-${i}`);
-    if(!slot) continue;
-    const ref=eIcons[i];
-    const icoEl=slot.querySelector('.icon-slot-ico');
-    if(ref?.b){
-      const f=BUILTIN_ICONS.find(x=>x.id===ref.b);
-      if(f){ slot.classList.add('has-icon'); icoEl.innerHTML=svgI(`<path d="${f.d}"/>`,f.v||'0 0 24 24'); continue; }
-    }
-    if(ref?.h && iconSvgCache[ref.h]){
-      slot.classList.add('has-icon');
-      icoEl.innerHTML=iconSvgCache[ref.h].replace(/width="[^"]*"/,'width="26px"').replace(/height="[^"]*"/,'height="26px"');
-      continue;
-    }
-    slot.classList.remove('has-icon');
-    icoEl.innerHTML='';
-  }
-}
 
+function filterIconGrid(val){
+  renderIconGrid(val);
+  _updateIconPickerLib(val);
+}
 // ── ONBOARDING ──
 let onboardSlide=0;
 const OB_TOTAL=3;
