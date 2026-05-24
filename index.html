@@ -1863,8 +1863,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 136;
+const APP_VERSION = 137;
 const CHANGELOG=[
+  {v:137,date:'2026-05-24',items:["Fix PAD editor audio preview: openLibPicker contained a debug wrapper that permanently replaced window.updFB with a broken stub (only called initScrub + drawScrubber) the first time closeLibPicker ran; after that, every updFB() call skipped rebuilding btnEl.innerHTML, so the play button in the PAD editor lost its onclick handler after any lib-picker interaction; removed the entire 'iPhone-Rettungsring' block"]},
   {v:136,date:'2026-05-24',items:["Dismiss button on hint banners: both the export-hint and backup-hint banners now have a small × button on the left edge; tapping it hides the banner for the current session (_exportHintDismissed / _backupHintDismissed flags prevent checkExportHint/checkBackupHint from re-showing it)"]},
   {v:135,date:'2026-05-24',items:["Bug fixes — stopPad: chkNP() was missing from the immediate (non-fade) path so 'No sound active' and edge-glow stayed stale after stopping a single pad","stopAll: _playStack.filter treated numeric pad IDs as combo-state objects, throwing TypeError on state.currentFgInstances.forEach whenever any regular pad was playing; audio stopped correctly but combo cleanup and chkNP were skipped; replaced broken filter with Object.keys(comboState) loop + _playStack=[]","Pad volume quick-slider: stored volume in 0–1 fraction format but app uses 0–100 integers; opening slider showed 100% regardless of actual volume; saving reduced gain to ~1% on next play; fixed init to use pads[id].volume??80 and save as integer v (not v/100)","importPadTemplate: volume:pd.volume??1 defaulted to 1 in 0–100 scale (~1% gain); changed to pd.volume so undefined is preserved and play() falls back to its own 80 default","closeQuickRename / closePadVolSlider: both opened with pushEsc but closed without popEsc, leaking stale Escape handlers that accumulated on repeated use; fixed by calling popEsc before removing the open class"]},
   {v:134,date:'2026-05-24',items:["Fix critical script parse break: CHANGELOG v127 entry contained the closing script tag sequence inside a JS string — the HTML parser terminated the script block at that point, so unlock(), play(), and all other functions were never defined; TAP TO START did nothing; template literals appeared unevaluated in the DOM; fix: escape the sequence as '<\\/script>' so the HTML tokenizer does not match it"]},
@@ -4683,31 +4684,6 @@ async function openLibPicker(append=false){
   _lpRenderList();
   requestAnimationFrame(()=>{ const l=document.getElementById('lp-list'); if(l) l.scrollTop=_lpScroll; });
   setTimeout(()=>{ document.getElementById('lp-ssb-q')?.focus(); }, 50);
-
-  // ── NEU: IPHONE-RETTUNGSRING GEGEN BLOCKADEN ──
-  if (!window._pickerFixInstalled) {
-    window._pickerFixInstalled = true;
-    const originalClose = window.closeLibPicker;
-    if (typeof originalClose === 'function') {
-      window.closeLibPicker = function(...args) {
-        try {
-          const originalUpdFB = window.updFB;
-          window.updFB = function() {
-            try {
-              if (typeof initScrub === 'function') initScrub();
-              if (typeof drawScrubber === 'function') drawScrubber();
-            } catch(e) {
-              console.warn("Absturz in updFB abgefangen:", e);
-            }
-          };
-          if (typeof originalUpdFB === 'function') originalUpdFB();
-        } catch(err) {
-          console.error("Picker close guard error:", err);
-        }
-        return originalClose.apply(this, args);
-      };
-    }
-  }
 }
 function closeLibPicker(){
   const l=document.getElementById('lp-list');
