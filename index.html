@@ -2848,20 +2848,30 @@ function fadeInGain(g, targetVol, fadeIn){
 async function play(id){
   const p=pads[id]; if(!p) return;
 
-  // ── SCHARFER TÜRSTEHER FÜR DEN SETUP-MODUS ──
-  // Wir prüfen alle gängigen Variablen deiner App. Falls keine definiert ist,
-  // schauen wir direkt ins HTML, ob die App im Setup- oder Edit-Modus läuft.
+  // ── DER ULTIMATIVE TÜRSTEHER FÜR DEN SETUP-MODUS ──
+  const grid = document.getElementById('pgrid');
   const isSetupMode = 
+    // 1. Wir prüfen, ob das Grid existiert und eine typische Setup-Klasse hat
+    (grid && (
+      grid.classList.contains('setup') || 
+      grid.classList.contains('edit') || 
+      grid.classList.contains('setup-mode') || 
+      grid.classList.contains('edit-mode') ||
+      grid.classList.contains('editing')
+    )) ||
+    // 2. Sicherheits-Check: Hat der Body oder das Dokument eine Setup-Klasse?
+    document.body.classList.contains('setup-mode') || 
+    document.body.classList.contains('edit-mode') ||
+    // 3. Fallback auf globale Variablen, falls vorhanden
     (typeof mode !== 'undefined' && mode === 'setup') ||
     (typeof currentMode !== 'undefined' && currentMode === 'setup') ||
-    (typeof setupMode !== 'undefined' && setupMode === true) ||
-    (document.body.classList.contains('setup-mode') || document.getElementById('pgrid')?.classList.contains('edit-mode'));
+    (typeof setupMode !== 'undefined' && setupMode === true);
 
   if (isSetupMode) {
-    openEP(id); // Öffnet sofort dein Bearbeitungsmenü für dieses Pad!
+    openEP(id); // Öffnet sofort das Bearbeitungsmenü für Single-Pads & Playlists!
     return;
   }
-  // ───────────────────────────────────────────
+  // ──────────────────────────────────────────────────
 
   if(p.mode==='combo'){ playCombo(id); return; }
 
