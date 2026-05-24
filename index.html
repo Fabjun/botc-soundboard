@@ -1866,8 +1866,14 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 143;
+const APP_VERSION = 144;
 const CHANGELOG=[
+  {v:144,date:'2026-05-25',items:[
+    "Memory audit — fix all libGetAll() RAM spikes: replaced libGetAll() with libGetAllMeta() (omits audio buf) at 9 call sites: initLibScreen, renderLibIcons, renderLibPads (templates section), loadLibIcons, openLibPicker, libRenameStart, libRenamePadTemplateStart, _libConfirmFolderRename, libDeleteFolder; these functions only need metadata (hash, name, type, size, folder, dates) not audio data, so libGetAll() was loading 150-240 MB into RAM unnecessarily on every Library open, folder rename, and lib picker open",
+    "Memory audit — loadLibIcons: switched to libGetAllMeta() for enumeration, then lazy-loads each icon's buf via libGet(hash) only when not already in iconSvgCache; icons are SVG text (~1-10 KB each) so individual loads are negligible, while the old libGetAll() loaded all audio files alongside icons",
+    "Memory audit — serialize file upload: rewrote onFile() to process files one at a time via _processFilesSerial(); each file is read, added to IDB, peaks fetched from the resulting entry, and waveform populated — all sequentially; no raw buf stored in eFiles (hash+size only); the old code fired 30 parallel FileReader + addToLib + decodeWaveform calls (30 × decodeAudioData = ~1.5 GB RAM spike on large playlist uploads)",
+    "Memory audit — fix libGetAllMeta missing updatedAt: added updatedAt to the IDB cursor projection so sort-by-last-edited in Library no longer falls back to the creation date for all entries"
+  ]},
   {v:143,date:'2026-05-25',items:[
     "Fix backup import crash on iPhone: importData called libGetAll() which loaded all existing audio bufs into RAM (150-240 MB) just to compare hashes and names; replaced with libGetAllMeta() (new IDB cursor that omits the buf field); also: jsonStr is nulled after JSON.parse to allow GC of the 167 MB string before processing begins; e.data (base64 string, 6-10 MB per file) is nulled immediately after base64ToBuf in executeImport to release each entry's string as soon as it has been decoded and written to IDB",
     "Fix backup export crash on iPhone: buildExportJson loaded all library entries including audio bufs simultaneously (150-240 MB) then built a 200-320 MB JSON string — both in RAM at once (350-560 MB peak); replaced with buildExportBlob which loads one IDB entry at a time, converts it to base64, appends the JSON fragment to a chunks array, then returns a Blob; peak is now one entry buf (~5-8 MB) at a time instead of all bufs at once; both doExportLibrary and doAutoBackup updated to use the Blob result",
@@ -2156,8 +2162,8 @@ function libGetAllMeta(){
     req.onsuccess=e=>{
       const cursor=e.target.result;
       if(!cursor){ r(result); return; }
-      const {hash,name,type,size,added,folder,origName,duration,peaks}=cursor.value;
-      result.push({hash,name,type,size,added,folder,origName,duration,peaks});
+      const {hash,name,type,size,added,folder,origName,duration,peaks,updatedAt}=cursor.value;
+      result.push({hash,name,type,size,added,folder,origName,duration,peaks,updatedAt});
       cursor.continue();
     };
   });
@@ -2585,12 +2591,13 @@ async function _libConfirmFolderRename(tab, oldName){
   const newName=document.getElementById('fld-ren-inp')?.value.trim();
   _libFolderRename=null;
   if(!newName||newName===oldName){ renderSidebarContent(cur); return; }
-  const all=await libGetAll();
+  const all=await libGetAllMeta();
   const isAudio=tab==='audio';
   for(const entry of all){
     if(entry.folder!==oldName) continue;
     if(isAudio?(entry.type==='pad'||entry.type==='icon'):entry.type!=='pad') continue;
-    await libPut({...entry,folder:newName,updatedAt:Date.now()});
+    const full=await libGet(entry.hash); if(!full) continue;
+    await libPut({...full,folder:newName,updatedAt:Date.now()});
   }
   if(tab==='audio'&&_libAudioFolder===oldName) _libAudioFolder=newName;
   if(tab==='pads'&&_libPadsFolder===oldName) _libPadsFolder=newName;
@@ -2599,12 +2606,13 @@ async function _libConfirmFolderRename(tab, oldName){
 async function libDeleteFolder(evt, tab, name){
   evt.stopPropagation();
   showConfirmDel(`Delete folder "${escHtml(name)}"? All contents become unfiled.`,async()=>{
-    const all=await libGetAll();
+    const all=await libGetAllMeta();
     const isAudio=tab==='audio';
     for(const entry of all){
       if(entry.folder!==name) continue;
       if(isAudio?(entry.type==='pad'||entry.type==='icon'):entry.type!=='pad') continue;
-      const u={...entry,updatedAt:Date.now()}; delete u.folder; await libPut(u);
+      const full=await libGet(entry.hash); if(!full) continue;
+      const u={...full,updatedAt:Date.now()}; delete u.folder; await libPut(u);
     }
     if(tab==='audio'&&_libAudioFolder===name) _libAudioFolder=null;
     if(tab==='pads'&&_libPadsFolder===name) _libPadsFolder=null;
@@ -3597,7 +3605,7 @@ async function toggleLibPreview(hash){
   node.onended=()=>{ if(_libPreviewHash===hash) stopLibPreview(); };
 }
 async function initLibScreen(){
-  const all=await libGetAll();
+  const all=await libGetAllMeta();
   const usedHashes=new Set();
   _libUsedByPads=new Map();
   await new Promise(r=>{
@@ -3736,7 +3744,7 @@ async function libDeleteFile(hash){
 }
 async function libRenameStart(hash){
   const entry=await libGet(hash); if(!entry) return;
-  const all=await libGetAll();
+  const all=await libGetAllMeta();
   const type=entry.type||'audio';
   startInlineRename('lnm-'+hash, entry.name,
     async v=>{ await libPut({...entry,name:v,updatedAt:Date.now()}); showToast('File renamed.'); initLibScreen(); },
@@ -3764,7 +3772,7 @@ function libDeleteBoardPad(idx){
 function libRenamePadTemplateStart(hash){
   (async()=>{
     const el=document.getElementById('ltnm-'+hash); if(!el) return;
-    const all=await libGetAll();
+    const all=await libGetAllMeta();
     const templates=all.filter(e=>e.type==='pad');
     startInlineRename('ltnm-'+hash, el.textContent.trim(),
       async v=>{ const entry=await libGet(hash); if(!entry) return; const u={...entry,name:v,updatedAt:Date.now()}; if(u.padData) u.padData={...u.padData,name:v}; await libPut(u); showToast('Template renamed.'); renderLibPads(); },
@@ -3921,7 +3929,7 @@ async function renderLibPads(){
       : `<p style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:4px 0">${q?'No matching pads.':_libPadFilter==='current'?'No pads in this board.':'No pads in any board.'}</p>`;
   }
   // Templates
-  const all=await libGetAll();
+  const all=await libGetAllMeta();
   const templates=all.filter(e=>e.type==='pad');
   _libPadsFolderList=[...new Set(templates.map(e=>e.folder).filter(Boolean))].sort();
   renderSidebarContent(cur);
@@ -3999,7 +4007,7 @@ function deletePadTemplate(hash){
   });
 }
 async function renderLibIcons(){
-  const all=await libGetAll();
+  const all=await libGetAllMeta();
   const custom=all.filter(e=>e.type==='icon');
   const q=_libSsbQ.toLowerCase().trim();
   const searched=q?custom.filter(e=>e.name.toLowerCase().includes(q)):custom;
@@ -4055,11 +4063,14 @@ async function libDeleteIcon(hash){
 }
 async function loadLibIcons(){
   const el=document.getElementById('lib-builtin-count'); if(el) el.textContent=BUILTIN_ICONS.length;
-  const all=await libGetAll();
+  const all=await libGetAllMeta();
   libIconEntries=[];
   for(const e of all.filter(e=>e.type==='icon')){
-    if(e.buf) iconSvgCache[e.hash]=new TextDecoder().decode(e.buf);
     libIconEntries.push({hash:e.hash,name:e.name||e.hash});
+    if(!iconSvgCache[e.hash]){
+      const full=await libGet(e.hash);
+      if(full?.buf) iconSvgCache[e.hash]=new TextDecoder().decode(full.buf);
+    }
   }
 }
 
@@ -4769,7 +4780,7 @@ async function openLibPicker(append=false){
   if(searchEl) searchEl.value=_lpQuery;
   const list=document.getElementById('lp-list');
   list.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:20px 0">Loading…</p>';
-  _lpEntries=await libGetAll();
+  _lpEntries=await libGetAllMeta();
   _lpSsbUpdateUI();
   _lpRenderList();
   requestAnimationFrame(()=>{ const l=document.getElementById('lp-list'); if(l) l.scrollTop=_lpScroll; });
@@ -5845,25 +5856,28 @@ function onFile(inp){
   const isFirst=!appendFiles;
   if(!appendFiles){ stopPreview(); waveforms=[]; eFiles=[]; }
   appendFiles=false;
-  let n=0;
-  files.forEach(f=>{
-    const r=new FileReader();
-    r.onload=async e=>{
-      const buf=e.target.result;
-      const {hash,isDuplicate}=await addToLib(buf,f.name,f.type||'');
-      if(isDuplicate) showToast('Already in Library — using existing copy.');
-      eFiles.push({name:f.name,data:buf,hash});
-      decodeWaveform(eFiles.length-1);
-      if(++n===files.length){
-        updFB();
-        const nameEl=document.getElementById('en');
-        if(isFirst && nameEl && !nameEl.value.trim())
-          nameEl.value=files[0].name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').trim().slice(0,30);
-      }
-    };
-    r.readAsArrayBuffer(f);
-  });
   inp.value='';
+  _processFilesSerial(files, isFirst);
+}
+async function _processFilesSerial(files, isFirst){
+  let shownDupe=false;
+  for(let i=0; i<files.length; i++){
+    const f=files[i];
+    const buf=await new Promise(res=>{ const r=new FileReader(); r.onload=e=>res(e.target.result); r.readAsArrayBuffer(f); });
+    const {hash,isDuplicate}=await addToLib(buf,f.name,f.type||'');
+    if(isDuplicate && !shownDupe){ showToast('Already in Library — using existing copy.'); shownDupe=true; }
+    const fi=eFiles.length;
+    eFiles.push({name:f.name, hash, size:buf.byteLength}); // no raw buf in eFiles — saved via IDB by addToLib
+    const entry=await libGet(hash);
+    if(entry?.peaks && entry.duration!=null) waveforms[fi]={peaks:entry.peaks, duration:entry.duration};
+    else decodeWaveform(fi);
+    updFB();
+    if(isFirst && i===0){
+      const nameEl=document.getElementById('en');
+      if(nameEl && !nameEl.value.trim())
+        nameEl.value=f.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').trim().slice(0,30);
+    }
+  }
 }
 function onImg(inp){
   const f=inp.files[0]; if(!f) return;
