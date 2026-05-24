@@ -1863,8 +1863,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 134;
+const APP_VERSION = 135;
 const CHANGELOG=[
+  {v:135,date:'2026-05-24',items:["Bug fixes — stopPad: chkNP() was missing from the immediate (non-fade) path so 'No sound active' and edge-glow stayed stale after stopping a single pad","stopAll: _playStack.filter treated numeric pad IDs as combo-state objects, throwing TypeError on state.currentFgInstances.forEach whenever any regular pad was playing; audio stopped correctly but combo cleanup and chkNP were skipped; replaced broken filter with Object.keys(comboState) loop + _playStack=[]","Pad volume quick-slider: stored volume in 0–1 fraction format but app uses 0–100 integers; opening slider showed 100% regardless of actual volume; saving reduced gain to ~1% on next play; fixed init to use pads[id].volume??80 and save as integer v (not v/100)","importPadTemplate: volume:pd.volume??1 defaulted to 1 in 0–100 scale (~1% gain); changed to pd.volume so undefined is preserved and play() falls back to its own 80 default","closeQuickRename / closePadVolSlider: both opened with pushEsc but closed without popEsc, leaking stale Escape handlers that accumulated on repeated use; fixed by calling popEsc before removing the open class"]},
   {v:134,date:'2026-05-24',items:["Fix critical script parse break: CHANGELOG v127 entry contained the closing script tag sequence inside a JS string — the HTML parser terminated the script block at that point, so unlock(), play(), and all other functions were never defined; TAP TO START did nothing; template literals appeared unevaluated in the DOM; fix: escape the sequence as '<\\/script>' so the HTML tokenizer does not match it"]},
   {v:133,date:'2026-05-24',items:["Version label color: #ver-label color changed from var(--mist) (#4a4a7a) to var(--text-dim) (#8a8098) — contrast ratio was ~2.5:1 against the dark background, making the version number and changelog icon nearly invisible"]},
   {v:132,date:'2026-05-24',items:["Fix LRU buffer cache: _lruBufDelete had a recursive self-call instead of 'delete libBufs[hash]' — a leftover from replace_all on an earlier refactor — so the cache was never actually evicted; also switched from count-based limit (LRU_BUF_MAX=20) to size-based limit (LRU_BUF_MAX_BYTES=150MB); _bufDecodedBytes() computes buf.length×numberOfChannels×4; _libBufBytes tracks total decoded RAM; eviction now fires when decoded bytes exceed 150MB rather than when entry count exceeds 20 — prevents ~1.4GB RAM spike from 20 large files"]},
@@ -3101,6 +3102,7 @@ function stopPad(id, immediate=false){
     delete playPos[id];
     _detachPadAnalyser(id);
     updBtn(id,false);
+    chkNP();
   }
 }
 // ── COMBO PLAYBACK ENGINE ──
@@ -3373,21 +3375,14 @@ function stopAll(exceptComboId = null, isFade = false){
       updBtn(pid,false);
     }
   });
-  _playStack = _playStack.filter(state => {
-    if (exceptComboId !== null && state.id === exceptComboId) {
-      return true;
-    }
-    if (isFade) {
-      return true;
-    }
-    state.stopped = true;
-    if (state.pauseTimer) clearTimeout(state.pauseTimer);
-    state.currentFgInstances.forEach(inst => { try { inst.node.stop(); } catch(e) {} });
-    state.bgInstances.forEach(inst => { try { inst.node.stop(); } catch(e) {} });
-    finishCombo(state.id, state);
-    return false;
-  });
-  if (!isFade) chkNP();
+  if(!isFade){
+    Object.keys(comboState).forEach(id=>{
+      if(exceptComboId!==null && +id===exceptComboId) return;
+      stopCombo(+id);
+    });
+    _playStack=[];
+    chkNP();
+  }
 }
 
 function togglePad(id){ if(srcs[id]) stopPad(id); else play(id); }
@@ -3920,7 +3915,7 @@ async function importPadTemplate(hash){
   const newPad={id:newId,name:pd.name,key:'',keyLabel:'',mode:pd.mode,
     files:pd.files?[...pd.files]:[],
     icons:pd.icons?[...pd.icons]:undefined,
-    volume:pd.volume??1,fadeIn:pd.fadeIn??0,fadeOut:pd.fadeOut??0,
+    volume:pd.volume,fadeIn:pd.fadeIn??0,fadeOut:pd.fadeOut??0,
     loopCount:pd.loopCount,shuffle:pd.shuffle,
     steps:pd.steps?JSON.parse(JSON.stringify(pd.steps)):undefined};
   Object.keys(newPad).forEach(k=>{ if(newPad[k]===undefined) delete newPad[k]; });
@@ -6427,7 +6422,7 @@ document.addEventListener('keydown',_resetAutoStop);
 // ── PAD VOLUME QUICK-SLIDER ──
 function _openPadVolSlider(id){
   _pvId=id;
-  const vol=Math.round((pads[id]?.volume??1)*100);
+  const vol=pads[id]?.volume??80;
   document.getElementById('pv-slider').value=vol;
   document.getElementById('pv-lbl').textContent=vol+'%';
   // Position box near the pad
@@ -6449,12 +6444,13 @@ function _pvUpdate(v){
   try{ g.gain.setTargetAtTime(v/100,ctx.currentTime,0.01); }catch(e){}
 }
 function closePadVolSlider(){
+  popEsc('pv-ov');
   document.getElementById('pv-ov').classList.remove('open');
   if(_pvId===null) return;
   const v=+(document.getElementById('pv-slider').value);
   const id=_pvId; _pvId=null;
   if(!pads[id]) return;
-  pads[id].volume=v/100;
+  pads[id].volume=v;
   save();
 }
 
@@ -6468,6 +6464,7 @@ function _openQuickRename(id){
   requestAnimationFrame(()=>{ inp.focus(); inp.select(); });
 }
 function closeQuickRename(){
+  popEsc('qr-ov');
   document.getElementById('qr-ov').classList.remove('open');
   _qrId=null;
 }
