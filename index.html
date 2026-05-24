@@ -5268,62 +5268,70 @@ function drawScrubber(){
       g.fillRect(x+0.5, mid-h, Math.max(bw-1,1), h*2);
     }
     
-    // Trim overlay mask & boundaries calculation
+    // Trim overlay mask & boundaries calculation — robust/clamped
     let tsX = 0;
     let teX = W;
-    if(dur>0){
-      const ts = parseFloat(document.getElementById('ets')?.value || 0);
-      const te = parseFloat(document.getElementById('ete')?.value || 0);
-      
-      tsX = (ts / dur) * W;
-      teX = (te > ts && te < dur) ? (te / dur) * W : W;
+    const rawTs = parseFloat(document.getElementById('ets')?.value || 0) || 0;
+    const rawTe = parseFloat(document.getElementById('ete')?.value || 0) || 0;
+    const ts = Number.isFinite(rawTs) ? Math.max(0, rawTs) : 0;
+    const te = Number.isFinite(rawTe) ? Math.max(0, rawTe) : 0;
+
+    if(dur>0 && Number.isFinite(dur) && dur>0){
+      const tsClamped = Math.min(ts, dur);
+      const teClamped = (te > tsClamped && te <= dur) ? te : dur;
+      tsX = (tsClamped / dur) * W;
+      teX = (teClamped / dur) * W;
 
       // Draw dark semi-transparent mask over excluded start region
-      if(ts > 0){
+      if(tsClamped > 0){
         g.fillStyle = 'rgba(0, 0, 0, 0.55)';
         g.fillRect(0, 0, tsX, H);
-        
         // Trim start boundary line
-        g.fillStyle = 'rgba(218, 165, 32, 0.8)'; // Golden/yellow boundary line
+        g.fillStyle = 'rgba(218, 165, 32, 0.8)';
         g.fillRect(Math.round(tsX) - 1, 0, 2, H);
       }
-      
+
       // Draw dark semi-transparent mask over excluded end region
-      if(te > ts && te < dur){
+      if(teClamped > tsClamped && teClamped < dur){
         g.fillStyle = 'rgba(0, 0, 0, 0.55)';
         g.fillRect(teX, 0, W - teX, H);
-        
         // Trim end boundary line
-        g.fillStyle = 'rgba(218, 165, 32, 0.8)'; // Golden/yellow boundary line
+        g.fillStyle = 'rgba(218, 165, 32, 0.8)';
         g.fillRect(Math.round(teX) - 1, 0, 2, H);
       }
+    } else {
+      // Ensure sane defaults when duration unknown
+      tsX = 0; teX = W;
     }
 
     // Dynamic fade overlays relative to the trim window
-    if(dur>0){
-      const fi=+( document.getElementById('eft')?.value||0);
-      const fo=+( document.getElementById('efo')?.value||0);
-      const activeW = teX - tsX; // Total width of the playable trim window
+    // Dynamic fade overlays relative to the trim window (guarded)
+    const fi = +( document.getElementById('eft')?.value || 0 );
+    const fo = +( document.getElementById('efo')?.value || 0 );
+    const activeW = Number.isFinite(teX) && Number.isFinite(tsX) ? Math.max(0, teX - tsX) : 0;
 
-      if(fi>0 && activeW > 0){
-        // Calculate fade-in width based on duration, capped at the active trim width
-        const fiW = Math.min((fi / dur) * W, activeW);
-        const grad = g.createLinearGradient(tsX, 0, tsX + fiW, 0);
-        grad.addColorStop(0, 'rgba(200,50,210,0.38)');
-        grad.addColorStop(0.75, 'rgba(200,50,210,0.28)');
-        grad.addColorStop(1, 'rgba(200,50,210,0)');
-        g.fillStyle = grad; 
-        g.fillRect(tsX, 0, fiW, H);
+    if(dur>0 && Number.isFinite(dur) && activeW > 0){
+      if(fi>0){
+        const fiW = Math.min(Math.max(0, (fi / dur) * W), activeW);
+        if(fiW > 0 && Number.isFinite(fiW)){
+          const grad = g.createLinearGradient(tsX, 0, tsX + fiW, 0);
+          grad.addColorStop(0, 'rgba(200,50,210,0.38)');
+          grad.addColorStop(0.75, 'rgba(200,50,210,0.28)');
+          grad.addColorStop(1, 'rgba(200,50,210,0)');
+          g.fillStyle = grad;
+          g.fillRect(tsX, 0, fiW, H);
+        }
       }
-      if(fo>0 && activeW > 0){
-        // Calculate fade-out width based on duration, capped at the active trim width
-        const foW = Math.min((fo / dur) * W, activeW);
-        const grad = g.createLinearGradient(teX - foW, 0, teX, 0);
-        grad.addColorStop(0, 'rgba(200,50,210,0)');
-        grad.addColorStop(0.25, 'rgba(200,50,210,0.28)');
-        grad.addColorStop(1, 'rgba(200,50,210,0.38)');
-        g.fillStyle = grad; 
-        g.fillRect(teX - foW, 0, foW, H);
+      if(fo>0){
+        const foW = Math.min(Math.max(0, (fo / dur) * W), activeW);
+        if(foW > 0 && Number.isFinite(foW)){
+          const grad = g.createLinearGradient(teX - foW, 0, teX, 0);
+          grad.addColorStop(0, 'rgba(200,50,210,0)');
+          grad.addColorStop(0.25, 'rgba(200,50,210,0.28)');
+          grad.addColorStop(1, 'rgba(200,50,210,0.38)');
+          g.fillStyle = grad;
+          g.fillRect(teX - foW, 0, foW, H);
+        }
       }
     }
     if(dur>0||previewSeekPos>0){
