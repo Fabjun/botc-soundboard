@@ -1830,6 +1830,31 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <input class="fi" id="ck" placeholder="Press a key…" readonly onkeydown="captureComboKey(event)">
       <div id="combo-key-warn" style="display:none;font-size:calc(11px * var(--font-scale));color:var(--blood-bright);margin-top:4px;padding:4px 8px;border-left:2px solid var(--blood)"></div>
     </div>
+    <div class="fg">
+      <label class="fl">VISUAL <span style="font-size:calc(10px * var(--font-scale));color:var(--text-dim)">optional — up to 4 icons</span></label>
+      <div class="icon-slots">
+        <div class="icon-slot" id="cslot-0" onclick="openIconPicker(0)">
+          <span class="icon-slot-plus">+</span>
+          <div class="icon-slot-ico"></div>
+          <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(0)">✕</button>
+        </div>
+        <div class="icon-slot" id="cslot-1" onclick="openIconPicker(1)">
+          <span class="icon-slot-plus">+</span>
+          <div class="icon-slot-ico"></div>
+          <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(1)">✕</button>
+        </div>
+        <div class="icon-slot" id="cslot-2" onclick="openIconPicker(2)">
+          <span class="icon-slot-plus">+</span>
+          <div class="icon-slot-ico"></div>
+          <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(2)">✕</button>
+        </div>
+        <div class="icon-slot" id="cslot-3" onclick="openIconPicker(3)">
+          <span class="icon-slot-plus">+</span>
+          <div class="icon-slot-ico"></div>
+          <button class="icon-slot-clr" onclick="event.stopPropagation();clearIconSlot(3)">✕</button>
+        </div>
+      </div>
+    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
       <label class="fl" style="margin:0">STEPS</label>
       <button onclick="addComboStep()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:4px 9px;border-radius:2px;cursor:pointer">+ STEP</button>
@@ -1898,8 +1923,12 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 145;
+const APP_VERSION = 146;
 const CHANGELOG=[
+  {v:146,date:'2026-05-25',items:[
+    "Fix PAD editor audio preview on iOS: replaced HTML Audio (new Audio() + Object URL) with Web Audio API; the old previewFile() was async and called await libGet() before play(), which broke iOS Safari's user gesture requirement, causing silent failure; new implementation initialises AudioContext synchronously before the first await, then uses _ensureLibBuf() + AudioBufferSourceNode — identical engine as the library picker and pad playback; playhead tracking uses ctx.currentTime arithmetic instead of HTMLAudioElement.currentTime",
+    "Fix Combo PAD icons: icon picker was wired only to PAD editor (islot-0..3); Combo PAD editor now has a VISUAL section with cslot-0..3 slots; openComboEditor loads/resets eIcons from pad.icons; doSaveCombo persists icons; updIconPreview() refactored with _updSlotEl() helper and auto-detects active editor via combo-ov.open to target the correct slot prefix"
+  ]},
   {v:145,date:'2026-05-25',items:[
     "Add DEVELOPER section to Settings: DEBUG LOG toggle (default OFF) + VIEW LOG button; console intercept stores last 200 entries in a circular buffer with zero overhead when disabled; log overlay has three tabs — LOG (timestamped entries, COPY ALL + CLEAR), STATS (IDB audio count, total size, boards, pads, LRU state, app/SW version), LRU (decoded audio buffers in cache with sizes)",
     "Add CLAUDE.md to project root: permanent guidelines file covering architecture rules, iPhone/iOS memory constraints (banned and required patterns), design language, coding standards, and workflow; Claude Code self-maintains this file when permanent standards change"
@@ -2161,8 +2190,10 @@ const comboChipExpanded = new Set();
 const comboState = {};
 let cropOffX=0, cropOffY=0, cropImgDispW=0, cropImgDispH=0, cropDragging=false, cropDragX=0, cropDragY=0;
 const CROP_SIZE=280;
-let previewAudio=null, previewFileIdx=null, previewURL=null, previewFadeGen=0;
-let waveforms=[], scrubRAF=null, previewSeekPos=0;
+let previewFileIdx=null, previewFadeGen=0;
+let _prevBuf=null, _prevSrc=null, _prevGain=null;
+let _prevStartCtx=0, _prevPausePos=0, _prevPlaying=false;
+let waveforms=[], scrubRAF=null;
 let cur = 'su';
 let locked = false;
 const klog = [];
@@ -3483,11 +3514,11 @@ function stopCombo(id){
 function pauseAllAudio(){
   const epOpen=document.getElementById('ep').classList.contains('open');
   if(epOpen){
-    if(!previewAudio && eFiles.length) previewFile(previewFileIdx!==null?previewFileIdx:0);
-    else if(previewAudio) pausePreview();
+    if(!_prevPlaying && eFiles.length) previewFile(previewFileIdx!==null?previewFileIdx:0);
+    else if(_prevBuf) pausePreview();
     return;
   }
-  if(previewAudio) pausePreview();
+  if(_prevBuf) pausePreview();
   if(!ctx) return;
   if(ctx.state==='suspended') ctx.resume();
   else ctx.suspend();
@@ -4246,24 +4277,25 @@ function _updateIconPickerLib(q){
 function pickBuiltinIcon(id){ eIcons[eIconSlot]={b:id}; updIconPreview(); closeIconPicker(); }
 function pickLibIcon(hash){ eIcons[eIconSlot]={h:hash}; updIconPreview(); closeIconPicker(); }
 function clearIconSlot(idx){ eIcons[idx]=null; updIconPreview(); }
-function updIconPreview(){
-  for(let i=0;i<4;i++){
-    const slot=document.getElementById(`islot-${i}`);
-    if(!slot) continue;
-    const ref=eIcons[i];
-    const icoEl=slot.querySelector('.icon-slot-ico');
-    if(ref?.b){
-      const f=BUILTIN_ICONS.find(x=>x.id===ref.b);
-      if(f){ slot.classList.add('has-icon'); icoEl.innerHTML=svgI(`<path d="${f.d}"/>`,f.v||'0 0 24 24'); continue; }
-    }
-    if(ref?.h && iconSvgCache[ref.h]){
-      slot.classList.add('has-icon');
-      icoEl.innerHTML=iconSvgCache[ref.h].replace(/width="[^"]*"/,'width="26px"').replace(/height="[^"]*"/,'height="26px"');
-      continue;
-    }
-    slot.classList.remove('has-icon');
-    icoEl.innerHTML='';
+function _updSlotEl(slot, ref){
+  if(!slot) return;
+  const icoEl=slot.querySelector('.icon-slot-ico');
+  if(ref?.b){
+    const f=BUILTIN_ICONS.find(x=>x.id===ref.b);
+    if(f){ slot.classList.add('has-icon'); icoEl.innerHTML=svgI(`<path d="${f.d}"/>`,f.v||'0 0 24 24'); return; }
   }
+  if(ref?.h && iconSvgCache[ref.h]){
+    slot.classList.add('has-icon');
+    icoEl.innerHTML=iconSvgCache[ref.h].replace(/width="[^"]*"/,'width="26px"').replace(/height="[^"]*"/,'height="26px"');
+    return;
+  }
+  slot.classList.remove('has-icon');
+  icoEl.innerHTML='';
+}
+function updIconPreview(){
+  const inCombo=document.getElementById('combo-ov')?.classList.contains('open');
+  const prefix=inCombo?'cs':'i';
+  for(let i=0;i<4;i++) _updSlotEl(document.getElementById(`${prefix}lot-${i}`), eIcons[i]);
 }
 
 function renderIconGrid(filter){
@@ -5220,10 +5252,14 @@ function openComboEditor(editId=null){
     }));
     
     comboChipExpanded.clear();
+    eIcons=[null,null,null,null];
+    const _srcIcons=p.icons?.length?p.icons:(p.icon?[p.icon]:[]);
+    _srcIcons.slice(0,4).forEach((ic,i)=>{ eIcons[i]=ic; });
   } else {
     cn.value=''; ck.value=''; ck.dataset.code='';
     comboSteps=[{pads:[],dur:1,chipOpts:[]}];
     comboChipExpanded.clear();
+    eIcons=[null,null,null,null];
   }
   document.getElementById('combo-bg-warn').style.display='none';
   document.getElementById('combo-key-warn').style.display='none';
@@ -5232,6 +5268,7 @@ function openComboEditor(editId=null){
   renderComboSteps(); renderComboPalette();
   pushEsc(tryCloseComboEditor);
   document.getElementById('combo-ov').classList.add('open');
+  updIconPreview();
   _comboSnap=_snapshotCombo();
 }
 
@@ -5636,7 +5673,7 @@ function doSaveCombo(){
       ...(s.dur>0?{dur:s.dur}:{}),
       ...(opts.some(Boolean)?{chipOpts:opts}:{})
     };
-  }),volume:80};
+  }),volume:80,...(eIcons.filter(Boolean).length?{icons:eIcons.filter(Boolean)}:{})};
   if(comboEditId!==null){
     pad.id=comboEditId; pads[comboEditId]=pad;
   } else {
@@ -5709,9 +5746,8 @@ function drawScrubber(){
   const idx=previewFileIdx!==null?previewFileIdx:0;
   const wfData=waveforms[idx];
   const wf=wfData?.peaks||wfData; // support both old and new format
-  const audio=previewAudio;
-  const pos=audio?.currentTime||0, dur=audio?.duration||wfData?.duration||0;
-  const frac=audio?( dur>0?Math.min(pos/dur,1):0 ):previewSeekPos;
+  const pos=_prevGetPos(), dur=_prevGetDur();
+  const frac=dur>0?Math.min(pos/dur,1):0;
   const mid=H/2;
   if(wf){
     const vol=+document.getElementById('ev').value/100;
@@ -5742,7 +5778,7 @@ function drawScrubber(){
         g.fillStyle=grad; g.fillRect(W-foW,0,foW,H);
       }
     }
-    if(dur>0||previewSeekPos>0){
+    if(dur>0||_prevPausePos>0){
       const px=Math.round(frac*W);
       g.save();
       g.shadowColor='rgba(80,200,120,0.9)';
@@ -5759,7 +5795,7 @@ function startScrubRAF(){
   if(scrubRAF) return;
   const tick=()=>{
     drawScrubber();
-    if(previewAudio&&!previewAudio.paused) scrubRAF=requestAnimationFrame(tick);
+    if(_prevPlaying) scrubRAF=requestAnimationFrame(tick);
     else scrubRAF=null;
   };
   scrubRAF=requestAnimationFrame(tick);
@@ -5776,14 +5812,11 @@ function initScrub(){
     const r=c.getBoundingClientRect();
     return Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
   }
-  function getDur(){
-    const idx=previewFileIdx!==null?previewFileIdx:0;
-    return previewAudio?.duration||waveforms[idx]?.duration||0;
-  }
+  function getDur(){ return _prevGetDur(); }
   function getMode(frac){
     const dur=getDur(); if(!dur) return 'seek';
     // playhead always wins within ±8px hit zone
-    const seekFrac=previewAudio?.duration?(previewAudio.currentTime/previewAudio.duration):previewSeekPos;
+    const seekFrac=dur>0?(_prevGetPos()/dur):0;
     if(Math.abs(frac-seekFrac)*(c.offsetWidth||1)<8) return 'seek';
     const fi=+(document.getElementById('eft')?.value||0);
     const fo=+(document.getElementById('efo')?.value||0);
@@ -5807,8 +5840,7 @@ function initScrub(){
       const v=Math.min(Math.round((1-frac)*dur*2)/2,10);
       document.getElementById('efo').value=v; updFadeLabel('efo');
     } else if(dragMode==='seek'){
-      if(previewAudio&&previewAudio.duration) previewAudio.currentTime=frac*previewAudio.duration;
-      else previewSeekPos=frac;
+      const dur=getDur(); if(dur>0) _prevPausePos=frac*dur;
       drawScrubber();
     }
   });
@@ -5819,10 +5851,15 @@ function initScrub(){
     dragMode=getMode(frac);
     c.setPointerCapture(e.pointerId);
     if(dragMode==='seek'){
-      if(previewAudio&&previewAudio.duration){
-        previewAudio.currentTime=frac*previewAudio.duration;
-        if(!previewAudio.paused){ previewAudio.pause(); updFB(); }
-      } else { previewSeekPos=frac; }
+      const dur=getDur();
+      if(dur>0){
+        const newPos=frac*dur;
+        if(_prevPlaying){
+          if(_prevSrc){ try{_prevSrc.onended=null;_prevSrc.stop();}catch(e){} _prevSrc=null; }
+          _prevPlaying=false; updFB();
+        }
+        _prevPausePos=newPos;
+      }
       drawScrubber();
     }
   });
@@ -5830,83 +5867,90 @@ function initScrub(){
   c.addEventListener('pointerup',  ()=>{ dragMode=null; });
   c.addEventListener('pointercancel',()=>{ dragMode=null; });
 }
+function _prevGetPos(){
+  if(_prevPlaying && ctx) return Math.min(_prevPausePos + (ctx.currentTime - _prevStartCtx), _prevBuf?.duration||0);
+  return _prevPausePos;
+}
+function _prevGetDur(){
+  const idx=previewFileIdx!==null?previewFileIdx:0;
+  return _prevBuf?.duration||waveforms[idx]?.duration||0;
+}
+function _prevStartPlayback(offset, applyFadeIn){
+  if(_prevSrc){ try{_prevSrc.onended=null;_prevSrc.stop();}catch(e){} _prevSrc=null; }
+  if(!_prevBuf||!ctx) return;
+  if(!_prevGain){ _prevGain=ctx.createGain(); _prevGain.connect(ctx.destination); }
+  const targetVol=+document.getElementById('ev').value/100;
+  const fi=applyFadeIn?+(document.getElementById('eft')?.value||0):0;
+  _prevGain.gain.cancelScheduledValues(ctx.currentTime);
+  if(fi>0){
+    _prevGain.gain.setValueAtTime(0, ctx.currentTime);
+    _prevGain.gain.linearRampToValueAtTime(targetVol, ctx.currentTime+fi);
+  } else {
+    _prevGain.gain.setValueAtTime(targetVol, ctx.currentTime);
+  }
+  _prevSrc=ctx.createBufferSource();
+  _prevSrc.buffer=_prevBuf;
+  _prevSrc.connect(_prevGain);
+  _prevPausePos=offset;
+  _prevStartCtx=ctx.currentTime;
+  _prevPlaying=true;
+  _prevSrc.start(0, Math.max(0, Math.min(offset, _prevBuf.duration-0.001)));
+  _prevSrc.onended=()=>{ _prevSrc=null; _prevPlaying=false; _prevPausePos=0; updFB(); drawScrubber(); };
+}
 function _cleanupPreview(){
   ++previewFadeGen;
   stopScrubRAF();
-  if(previewURL){ URL.revokeObjectURL(previewURL); previewURL=null; }
-  previewAudio=null; previewFileIdx=null; previewSeekPos=0;
+  if(_prevSrc){ try{_prevSrc.onended=null;_prevSrc.stop();}catch(e){} _prevSrc=null; }
+  if(_prevGain){ try{_prevGain.disconnect();}catch(e){} _prevGain=null; }
+  _prevBuf=null; _prevPlaying=false; _prevPausePos=0;
+  previewFileIdx=null;
 }
 function stopPreview(){
-  if(!previewAudio) return;
+  if(!_prevBuf && !_prevPlaying) return;
   const fo=+document.getElementById('efo').value;
-  const a=previewAudio, gen=++previewFadeGen;
-  if(fo>0){
-    const startVol=a.volume;
-    const t0=performance.now();
-    const ramp=()=>{
-      if(previewFadeGen!==gen) return;
-      const elapsed=(performance.now()-t0)/1000;
-      if(elapsed<fo){ a.volume=startVol*Math.max(0,1-elapsed/fo); requestAnimationFrame(ramp); }
-      else { try{a.pause();a.currentTime=0;}catch(e){} _cleanupPreview(); updFB(); }
-    };
-    requestAnimationFrame(ramp);
+  if(fo>0 && _prevPlaying && _prevGain && ctx){
+    const gen=++previewFadeGen;
+    _prevGain.gain.cancelScheduledValues(ctx.currentTime);
+    _prevGain.gain.setValueAtTime(_prevGain.gain.value, ctx.currentTime);
+    _prevGain.gain.linearRampToValueAtTime(0, ctx.currentTime+fo);
+    setTimeout(()=>{ if(previewFadeGen===gen){ _cleanupPreview(); updFB(); } }, fo*1000+50);
   } else {
-    try{ a.pause(); a.currentTime=0; }catch(e){}
     _cleanupPreview(); updFB();
   }
 }
 function pausePreview(){
-  if(!previewAudio) return;
-  if(previewAudio.paused){ previewAudio.play(); startScrubRAF(); }
-  else { previewAudio.pause(); drawScrubber(); }
+  if(!_prevBuf) return;
+  if(_prevPlaying){
+    const pos=_prevGetPos();
+    if(_prevSrc){ try{_prevSrc.onended=null;_prevSrc.stop();}catch(e){} _prevSrc=null; }
+    _prevPlaying=false; _prevPausePos=pos;
+    drawScrubber();
+  } else {
+    _prevStartPlayback(_prevPausePos, false);
+    startScrubRAF();
+  }
   updFB();
 }
 function liveVol(){
   const v=+document.getElementById('ev').value;
-  if(previewAudio && !previewAudio.paused) previewAudio.volume=v/100;
+  if(_prevGain && _prevPlaying && ctx) _prevGain.gain.setValueAtTime(v/100, ctx.currentTime);
   const lbl=document.getElementById('ev-lbl'); if(lbl) lbl.textContent=v;
   drawScrubber();
 }
 async function previewFile(i){
-  if(previewAudio){ try{previewAudio.pause();}catch(e){} }
-  const seekFrac=previewSeekPos;
+  const startPos=_prevPausePos;
   _cleanupPreview();
   const f=eFiles[i]; if(!f) return;
-  let data=f.data;
-  if(!data){
-    if(!f.hash) return;
-    const entry=await libGet(f.hash);
-    if(!entry?.buf) return;
-    data=entry.buf;
-  }
-  // Trigger waveform decode for this file if not yet done
+  // Init ctx synchronously BEFORE any await — preserves iOS user gesture context
+  if(!ctx) ctx=new(window.AudioContext||window.webkitAudioContext)();
+  if(ctx.state==='suspended') ctx.resume().catch(()=>{});
   if(!waveforms[i]) decodeWaveform(i);
-  const ext=(f.name.split('.').pop()||'').toLowerCase();
-  const mime={mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',m4a:'audio/mp4',aac:'audio/aac',flac:'audio/flac'}[ext]||'audio/*';
-  previewURL=URL.createObjectURL(new Blob([data],{type:mime}));
-  previewAudio=new Audio(previewURL);
-  const fi=+document.getElementById('eft').value;
+  const hash=f.hash; if(!hash) return;
+  await _ensureLibBuf(hash);
+  if(!libBufs[hash]) return;
+  _prevBuf=libBufs[hash];
   previewFileIdx=i;
-  previewAudio.onended=()=>{ _cleanupPreview(); updFB(); drawScrubber(); };
-  if(seekFrac>0) previewAudio.addEventListener('loadedmetadata',()=>{
-    if(previewAudio?.duration) previewAudio.currentTime=seekFrac*previewAudio.duration;
-  },{once:true});
-  if(fi>0){
-    previewAudio.volume=0;
-    previewAudio.play();
-    const gen=previewFadeGen, t0=performance.now();
-    const ramp=()=>{
-      if(previewFadeGen!==gen||!previewAudio) return;
-      const elapsed=(performance.now()-t0)/1000;
-      const target=+document.getElementById('ev').value/100;
-      if(elapsed<fi){ previewAudio.volume=Math.min((elapsed/fi)*target,1); requestAnimationFrame(ramp); }
-      else previewAudio.volume=target;
-    };
-    requestAnimationFrame(ramp);
-  } else {
-    previewAudio.volume=+document.getElementById('ev').value/100;
-    previewAudio.play();
-  }
+  _prevStartPlayback(startPos, true);
   startScrubRAF();
   updFB();
 }
@@ -6075,7 +6119,7 @@ function updFB(){
   }).join('');
   // Playback controls
   const ai=previewFileIdx!==null?previewFileIdx:0;
-  const isPlaying=previewFileIdx!==null&&!previewAudio?.paused;
+  const isPlaying=previewFileIdx!==null&&_prevPlaying;
   const dim='opacity:0.25;pointer-events:none';
   btnEl.innerHTML=
     `<button class="pvbtn" onclick="${isPlaying?'pausePreview()':'previewFile('+ai+')'}">${isPlaying?'⏸':'▶'}</button>`+
