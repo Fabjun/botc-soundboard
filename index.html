@@ -1866,8 +1866,13 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 142;
+const APP_VERSION = 143;
 const CHANGELOG=[
+  {v:143,date:'2026-05-25',items:[
+    "Fix backup import crash on iPhone: importData called libGetAll() which loaded all existing audio bufs into RAM (150-240 MB) just to compare hashes and names; replaced with libGetAllMeta() (new IDB cursor that omits the buf field); also: jsonStr is nulled after JSON.parse to allow GC of the 167 MB string before processing begins; e.data (base64 string, 6-10 MB per file) is nulled immediately after base64ToBuf in executeImport to release each entry's string as soon as it has been decoded and written to IDB",
+    "Fix backup export crash on iPhone: buildExportJson loaded all library entries including audio bufs simultaneously (150-240 MB) then built a 200-320 MB JSON string — both in RAM at once (350-560 MB peak); replaced with buildExportBlob which loads one IDB entry at a time, converts it to base64, appends the JSON fragment to a chunks array, then returns a Blob; peak is now one entry buf (~5-8 MB) at a time instead of all bufs at once; both doExportLibrary and doAutoBackup updated to use the Blob result",
+    "Add libGetAllMeta(): IDB cursor that reads all library entries without the buf field — safe to call without loading all audio into RAM; used by importData and the conflict-resolution path in executeImport"
+  ]},
   {v:142,date:'2026-05-24',items:[
     "Fix playlist PAD crash on iPhone: openEP loaded all N audio files from IDB into JS heap (N × 5-8 MB) then fired N parallel decodeAudioData calls (each 50-100 MB PCM) — peak RAM was 1.5-3 GB, causing iOS Safari tab-kill and page reload; fix: store only {name,hash,size} in eFiles (no raw buf), populate waveforms[] from stored entry.peaks/duration (set at upload in v131) so no decode is needed; only call decodeWaveform for files without stored peaks, and only for one file at a time; same fix applied to pickMultiFromLib",
     "Fix playlist PAD silent failure (v139 regression): playNext() guard 'if(!ctx||!srcs[id]) return' also blocked the initial call from play() where srcs[id] is undefined; fix: play() now creates ctx, sets srcs[id]=[{}] as a loading sentinel, and calls updBtn before playNext — the sentinel makes the guard pass; stopPad already handles {} safely via try/catch",
@@ -2140,6 +2145,21 @@ function libGetAll(){
     const req=db.transaction('lib','readonly').objectStore('lib').getAll();
     req.onerror=()=>r([]);
     req.onsuccess=e=>r(e.target.result||[]);
+  });
+}
+// Like libGetAll but omits the buf field — safe to call without loading all audio into RAM
+function libGetAllMeta(){
+  return new Promise(r=>{
+    const result=[];
+    const req=db.transaction('lib','readonly').objectStore('lib').openCursor();
+    req.onerror=()=>r([]);
+    req.onsuccess=e=>{
+      const cursor=e.target.result;
+      if(!cursor){ r(result); return; }
+      const {hash,name,type,size,added,folder,origName,duration,peaks}=cursor.value;
+      result.push({hash,name,type,size,added,folder,origName,duration,peaks});
+      cursor.continue();
+    };
   });
 }
 // In-flight map: prevents concurrent decodes for the same hash from racing
@@ -4276,13 +4296,30 @@ function getAllBoardsFull(){
 function putBoard(b){
   return new Promise((r,j)=>{ const tx=db.transaction('p','readwrite'); tx.onerror=()=>j(tx.error); tx.objectStore('p').put(b).onsuccess=r; });
 }
-async function buildExportJson(){
-  const libEntries=await libGetAll();
+async function buildExportBlob(){
+  // Load one audio entry at a time to avoid holding all audio buffers in RAM simultaneously.
+  // Peak: one entry buf (~5-8 MB) + accumulated JSON strings, NOT all bufs at once.
+  const meta=await libGetAllMeta();
   const boards=await getAllBoardsFull();
   const settings={};
   SETTINGS_KEYS.forEach(k=>{ const v=localStorage.getItem(k); if(v!==null) settings[k]=v; });
-  const library=libEntries.map(e=>({hash:e.hash,name:e.name,origName:e.origName||'',type:e.type||'',size:e.size||0,added:e.added||0,data:bufToBase64(e.buf),...(e.folder?{folder:e.folder}:{}),...(e.padData?{padData:e.padData}:{})}));
-  return JSON.stringify({version:APP_VERSION,exported:new Date().toISOString(),settings,boards,library});
+
+  const headerObj={version:APP_VERSION,exported:new Date().toISOString(),settings,boards};
+  // Open the JSON manually so we can inject the library array incrementally
+  const headerJson=JSON.stringify(headerObj);
+  const chunks=[headerJson.slice(0,-1)+',"library":[']; // everything before the closing }
+  let first=true;
+  for(const m of meta){
+    const entry=await libGet(m.hash);
+    if(!entry) continue;
+    const item={hash:entry.hash,name:entry.name,origName:entry.origName||'',type:entry.type||'',size:entry.size||0,added:entry.added||0,data:bufToBase64(entry.buf),...(entry.folder?{folder:entry.folder}:{}),...(entry.padData?{padData:entry.padData}:{})};
+    if(!first) chunks.push(',');
+    chunks.push(JSON.stringify(item));
+    first=false;
+    // entry.buf and item.data are eligible for GC after this iteration
+  }
+  chunks.push(']}');
+  return new Blob(chunks,{type:'application/json'});
 }
 function _markExported(){
   localStorage.setItem('last-export-ts',Date.now());
@@ -4311,10 +4348,10 @@ function checkExportHint(){
 async function doExportLibrary(){
   showToast('Preparing export…');
   await new Promise(r=>setTimeout(r,60));
-  const json=await buildExportJson();
+  const exportBlob=await buildExportBlob();
   const date=new Date().toISOString().slice(0,10);
   const canCompress=typeof CompressionStream!=='undefined';
-  const blob=canCompress ? await compressData(json) : new Blob([json],{type:'application/json'});
+  const blob=canCompress ? await compressData(exportBlob) : exportBlob;
   const filename=`botc-library-${date}.json${canCompress?'.gz':''}`;
   const mimeType=blob.type||'application/octet-stream';
   const file=new File([blob],filename,{type:mimeType});
@@ -4366,12 +4403,13 @@ async function parseAndShowImport(inp){
       jsonStr=await file.text();
     }
     data=JSON.parse(jsonStr);
+    jsonStr=null; // allow GC of the large JSON string before processing
   }
   catch(e){ showToast('Invalid file — could not parse.'); return; }
   if(!Array.isArray(data.library)||!Array.isArray(data.boards)){ showToast('Invalid backup file.'); return; }
   _importParsed=data; _importAudioChoices={}; _importBoardChoices={};
 
-  const currentLib=await libGetAll();
+  const currentLib=await libGetAllMeta(); // no buf: avoids loading all audio into RAM
   const currentHashes=new Set(currentLib.map(e=>e.hash));
   const currentNameMap=Object.fromEntries(currentLib.map(e=>[e.name,e.hash]));
   const currentBoards=await getAllBoardsFull();
@@ -4455,9 +4493,10 @@ async function executeImport(){
       audioAdded++; continue;
     }
     const buf=base64ToBuf(e.data);
+    e.data=null; // free the 6-10 MB base64 string immediately after decoding
     const _fld=e.folder?{folder:e.folder}:{};
     if(choice==='replace'){
-      const all=await libGetAll();
+      const all=await libGetAllMeta();
       const ex=all.find(x=>x.name===e.name&&x.hash!==e.hash);
       if(ex) await libDelete(ex.hash);
       await libPut({hash:e.hash,name:e.name,origName:e.origName||e.name,type:e.type||'',size:e.size||buf.byteLength,added:e.added||Date.now(),buf,..._fld});
@@ -4531,9 +4570,9 @@ async function doAutoBackup(){
   if(!_autoBackupDirHandle) return;
   _autoBackupIdx=(_autoBackupIdx+1)%3;
   try{
-    const json=await buildExportJson();
+    const exportBlob=await buildExportBlob();
     const fh=await _autoBackupDirHandle.getFileHandle(`botc-autobackup-${_autoBackupIdx+1}.json`,{create:true});
-    const w=await fh.createWritable(); await w.write(json); await w.close();
+    const w=await fh.createWritable(); await w.write(exportBlob); await w.close();
     _markExported();
     _autoBackupFailCount=0;
   } catch(e){
