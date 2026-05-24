@@ -1863,8 +1863,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 139;
+const APP_VERSION = 140;
 const CHANGELOG=[
+  {v:140,date:'2026-05-24',items:["Fix libFolderDropdown onclick injection: two libCard() calls (audio tab line ~3656, pads tab line ~3907) used bare JSON.stringify() for the currentFolder argument in inline onclick attributes — a folder name containing a double-quote character would terminate the HTML attribute early, breaking the button silently; fixed by wrapping with escHtml() to match the pattern already used correctly elsewhere (v120)"]},
   {v:139,date:'2026-05-24',items:[
     "A1: libPut now rejects with a real Error instead of undefined — callers get actionable IDB error messages; libDelete logs IDB errors to console instead of silently swallowing them",
     "A3: playNext() guards against null ctx and stale srcs[] at function entry — prevents crash when onended callback fires after page is backgrounded",
@@ -3653,7 +3654,7 @@ function renderLibList(entries,usedHashes){
       actions:[
         {type:'preview', hash:h},
         {type:'rename', onclick:`libRenameStart('${h}')`},
-        {type:'folder', onclick:`libFolderDropdown(event,'${h}','audio',${JSON.stringify(e.folder||null)})`},
+        {type:'folder', onclick:`libFolderDropdown(event,'${h}','audio',${escHtml(JSON.stringify(e.folder||null))})`},
         {type:'del', onclick:`libDeleteFile('${h}')`},
       ],
       subLines:[
@@ -3904,7 +3905,7 @@ async function renderLibPads(){
             actions:[
               ...(fhT?[{type:'preview', hash:fhT}]:[]),
               {type:'rename', onclick:`libRenamePadTemplateStart('${e.hash}')`},
-              {type:'folder', onclick:`libFolderDropdown(event,'${e.hash}','pads',${JSON.stringify(e.folder||null)})`},
+              {type:'folder', onclick:`libFolderDropdown(event,'${e.hash}','pads',${escHtml(JSON.stringify(e.folder||null))})`},
               {type:'pos', label:'+ ADD', onclick:`importPadTemplate('${e.hash}')`},
               {type:'del', onclick:`deletePadTemplate('${e.hash}')`},
             ],
