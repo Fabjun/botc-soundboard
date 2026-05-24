@@ -3039,10 +3039,11 @@ function stopPad(id, immediate=false){
 function isInfiniteBg(p){ return p&&p.mode==='loop'&&(!p.loopCount||p.loopCount===0); }
 
 // Creates a self-contained playable instance from a pad config.
-// onEnded is called when the pad finishes (not called for infinite bg loops).
+// iPhone-safe with fully integrated on-demand loading for playlists!
 function createPadInstance(padId,volOverride,fadeOverride){
   const p=pads[padId], padBufs=bufs[padId];
-  if(!p||!padBufs||!padBufs.length) return null;
+  if(!p) return null; // padBufs-Check entfernt, da Playlists On-Demand laden
+  
   const g=ctx.createGain();
   const vol=(volOverride!=null?volOverride:(p.volume||80))/100;
   const fadeIn=fadeOverride!=null?fadeOverride:(p.fadeIn||0);
@@ -3057,13 +3058,15 @@ function createPadInstance(padId,volOverride,fadeOverride){
 
   function doStart(onEnded){
     if(p.mode==='once'){
-      const b=padBufs[0]; if(!b){onEnded&&onEnded();return;}
+      if(!padBufs || !padBufs[0]){ onEnded&&onEnded(); return; }
+      const b=padBufs[0];
       const s=ctx.createBufferSource();
       s.buffer=b; s.connect(g); active.push(s);
       s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
       if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
     } else if(p.mode==='loop'){
-      const b=padBufs[0]; if(!b){onEnded&&onEnded();return;}
+      if(!padBufs || !padBufs[0]){ onEnded&&onEnded(); return; }
+      const b=padBufs[0];
       const lc=p.loopCount||0;
       if(lc===0){
         const s=ctx.createBufferSource();
@@ -3079,27 +3082,68 @@ function createPadInstance(padId,volOverride,fadeOverride){
           if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
         })();
       }
-    } else if(p.mode==='playlist'){
-      const all=padBufs.filter(Boolean);
-      if(!all.length){onEnded&&onEnded();return;}
+    } else if(p.mode==='playlist' || p.mode==='chain' || p.mode==='random'){ // Greift bei allen Playlist-Modi
+      if(!p.files || !p.files.length){ onEnded&&onEnded(); return; }
       let pos=0;
-      (function nextTrack(){
+      
+      // Asynchrone Kette für das schrittweise Laden innerhalb der Instanz
+      (async function nextTrack(){
         if(stopped) return;
-        if(pos>=all.length){onEnded&&onEnded();return;}
-        const i=p.shuffle?Math.floor(Math.random()*all.length):pos; pos++;
-        const s=ctx.createBufferSource(); s.buffer=all[i]; s.connect(g); active.push(s);
-        s.onended=()=>{ if(stopped) return; active.splice(active.indexOf(s),1); nextTrack(); };
+        if(pos >= p.files.length){ onEnded&&onEnded(); return; }
+        
+        const i = p.shuffle ? Math.floor(Math.random() * p.files.length) : pos; 
+        pos++;
+        
+        const hash = typeof p.files[i]==='string' ? p.files[i] : null;
+        if(!hash) { nextTrack(); return; }
+        
+        let buf = null;
+        try {
+          // Track on-demand aus der DB decodieren
+          if(!libBufs[hash]){
+            const entry = await libGet(hash);
+            if(entry?.buf) {
+              libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0));
+            }
+          }
+          buf = libBufs[hash];
+        } catch(e) {
+          console.warn("Combo engine playlist decode failed:", e);
+          nextTrack(); // Bei Fehler direkt weiter zum nächsten Track
+          return;
+        }
+        
+        if(!buf || stopped) { nextTrack(); return; }
+        
+        const s=ctx.createBufferSource(); 
+        s.buffer=buf; 
+        s.connect(g); 
+        active.push(s);
+        
+        s.onended=()=>{ 
+          if(stopped) return; 
+          active.splice(active.indexOf(s),1); 
+          
+          // RAM-Säuberung: Alten Track löschen, bevor das nächste geladen wird
+          delete libBufs[hash]; 
+          
+          nextTrack(); 
+        };
+        
         if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
       })();
     } else { onEnded&&onEnded(); }
   }
 
-  function doStop(){
-    stopped=true;
-    [...active].forEach(s=>{try{s.onended=null;s.stop();}catch(e){}});
-    active.length=0;
-  }
-  return {start:doStart, stop:doStop};
+  // Rückgabe-Objekt der Instanz (falls dein Code das erwartet, lass es so wie es im Original war)
+  return {
+    start: doStart,
+    stop: () => {
+      stopped = true;
+      active.forEach(s => { try{ s.stop(); }catch(e){} });
+      try { g.gain.value = 0; } catch(e){}
+    }
+  };
 }
 
 function playCombo(id, onFinish=null){
