@@ -54,6 +54,10 @@ body.theme-modern .trow .topt{font-weight:500}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch-action:manipulation;
   font-family:var(--ff-body);overflow:hidden;user-select:none}
+/* iOS: momentum scrolling + bounce prevention for all scroll containers */
+[style*="overflow-y:auto"],[style*="overflow-y: auto"]{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+/* iOS: prevent pull-to-refresh and rubber-band from leaking through fullscreen overlays */
+#hint-ov,#icon-picker,#lib-picker,#import-ov,#changelog-ov,#onboard-ov,#pad-type-picker,#keymap-ov{overscroll-behavior:none}
 .screen{display:none;width:100%;height:100%;flex-direction:column}
 .screen.active{display:flex;animation:screen-in 90ms ease-out}
 .sc-wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box}
@@ -100,14 +104,14 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 /* BUTTONS */
 .btn-p{background:linear-gradient(135deg,var(--gold-dim),#5a4010);border:1px solid var(--gold);
   color:var(--gold);font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));letter-spacing:0;
-  padding:11px 22px;border-radius:2px;cursor:pointer}
+  padding:11px 22px;border-radius:2px;cursor:pointer;min-height:44px}
 .btn-p:active{transform:scale(.97)}
 .btn-s{background:transparent;border:1px solid rgba(100,95,122,.8);color:rgba(200,192,215,.85);
   font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
-  padding:9px 18px;border-radius:2px;cursor:pointer}
+  padding:9px 18px;border-radius:2px;cursor:pointer;min-height:44px}
 .btn-g{background:linear-gradient(135deg,var(--emerald-dim),#0e3820);border:1px solid var(--emerald);
   color:var(--emerald);font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));letter-spacing:0;
-  padding:11px 22px;border-radius:2px;cursor:pointer}
+  padding:11px 22px;border-radius:2px;cursor:pointer;min-height:44px}
 .btn-g:active{transform:scale(.97)}
 
 /* SETUP */
@@ -148,16 +152,16 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 #ebk.open{display:block}
 #ep{position:fixed;top:var(--p-hdr-h);left:0;right:0;bottom:0;background:var(--raised);
   transform:translateY(100%);transition:transform .3s ease;z-index:100;
-  display:flex;flex-direction:column}
+  display:flex;flex-direction:column;overscroll-behavior:none}
 #ep.open{transform:translateY(0)}
 .ep-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;
   border-bottom:1px solid var(--mode-accent-dim);flex-shrink:0;background:var(--surface)}
 .ep-back{background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);
-  font-size:calc(20px * var(--font-scale));cursor:pointer;padding:0 4px 0 0;line-height:1;flex-shrink:0}
+  font-size:calc(20px * var(--font-scale));cursor:pointer;padding:0 12px 0 4px;min-height:44px;min-width:44px;line-height:1;flex-shrink:0}
 .ep-title{font-family:var(--ff-label);color:var(--mode-accent);font-size:calc(15px * var(--font-scale));
   letter-spacing:0;flex:1;text-align:center}
 .ep-save-btn{padding:6px 20px;font-size:calc(14px * var(--font-scale));flex-shrink:0}
-.ep-body{flex:1;overflow-y:auto;padding:12px 14px 40px;display:flex;flex-direction:column;gap:10px}
+.ep-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 14px 40px;display:flex;flex-direction:column;gap:10px}
 .ep-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px}
 .ep-card-hdr{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));
   color:var(--mode-accent-dim);letter-spacing:.08em;margin-bottom:10px;padding-bottom:8px;
@@ -199,7 +203,7 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 .topt.al{background:var(--mode-accent-glow);border-color:var(--mode-accent-dim);color:var(--mode-accent)}
 .topt.ap{background:#1a2a1a;border-color:#1a5a1a;color:#81c784}
 /* Dialog action buttons — shared by all modal dialogs */
-.dlg-cancel,.dlg-destruct,.dlg-positive,.dlg-reload{flex:1;font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:10px;border-radius:2px;cursor:pointer;letter-spacing:0}
+.dlg-cancel,.dlg-destruct,.dlg-positive,.dlg-reload{flex:1;font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:10px;border-radius:2px;cursor:pointer;letter-spacing:0;min-height:44px}
 .dlg-cancel{background:none;border:1px solid var(--border);color:var(--text-dim)}
 .dlg-destruct{background:var(--blood);border:1px solid var(--blood-bright);color:var(--blood-bright)}
 .dlg-positive{background:var(--emerald);border:1px solid var(--emerald);color:#fff}
@@ -260,7 +264,7 @@ input[type=file]{display:none}
 #phdr-menu-btn{background:none;border:1px solid var(--screen-accent-dim);color:var(--screen-accent);font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;padding:4px 10px;border-radius:2px;cursor:pointer;flex-shrink:0}
 #phdr-title{font-family:var(--ff-label);color:var(--screen-accent);font-size:calc(17px * var(--font-scale));letter-spacing:0;text-align:center;flex:1;margin:0}
 #sidebar-bk{display:none!important}
-#sidebar{position:fixed;top:var(--p-hdr-h);left:0;bottom:0;width:min(220px,75vw);background:var(--surface);border-right:1px solid var(--border);z-index:190;transform:translateX(-100%);transition:transform .25s ease;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:16px}
+#sidebar{position:fixed;top:var(--p-hdr-h);left:0;bottom:0;width:min(220px,75vw);background:var(--surface);border-right:1px solid var(--border);z-index:190;transform:translateX(-100%);transition:transform .25s ease;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:14px 12px;display:flex;flex-direction:column;gap:16px}
 #sidebar.open{transform:translateX(0)}
 /* Desktop (≥500px): sidebar pushes content right instead of overlaying */
 @media(min-width:500px){
@@ -337,7 +341,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 @keyframes switch-breathe-blue{
   0%,100%{box-shadow:0 0 5px rgba(79,195,247,.12),0 0 12px rgba(79,195,247,.05)}
   50%    {box-shadow:0 0 18px rgba(79,195,247,.42),0 0 34px rgba(79,195,247,.16)}}
-.pgrid{flex:1;overflow-y:auto;display:grid;
+.pgrid{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:grid;
   grid-template-columns:repeat(auto-fill,var(--pad-sz));
   gap:var(--pad-gap);padding:8px;position:relative;z-index:2;align-content:start}
 .pbtn{background:var(--surface);border:1px solid var(--border);border-radius:var(--pad-radius);
@@ -381,7 +385,7 @@ body.mode-play .pbtn::before{background:linear-gradient(to top,rgba(201,168,76,.
 body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.3) 0%,rgba(79,195,247,.07) 55%,transparent 100%)}
 #hint-ov{display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.88);flex-direction:column}
 #hint-ov.open{display:flex}
-#hint-body{flex:1;overflow-y:auto;padding:0 14px 20px}
+#hint-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 14px 20px}
 #hint-body .tip{border-bottom:1px solid var(--border)}
 .hint-q{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:2px 7px;border-radius:2px;cursor:pointer;line-height:1.4;flex-shrink:0}
 .pbtn.has-img::after{content:'';position:absolute;inset:0;background:rgba(10,10,20,0.52);border-radius:inherit;pointer-events:none}
@@ -527,7 +531,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   box-shadow:0 0 40px rgba(201,168,76,.12)}
 .keymap-hdr{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;color:var(--gold);
   padding:10px 14px 9px;border-bottom:1px solid var(--border);flex-shrink:0}
-#keymap-body{overflow-y:auto;flex:1}
+#keymap-body{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex:1}
 .km-row{display:grid;padding:7px 14px;border-bottom:1px solid rgba(42,42,74,.4);
   align-items:center;gap:10px}
 .km-row.minimal{grid-template-columns:46px 1fr}
@@ -587,10 +591,10 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 #loopcount-row{display:none}
 
 /* COMBO EDITOR */
-#combo-ov{position:fixed;top:var(--p-hdr-h);left:0;right:0;bottom:0;z-index:150;background:var(--night);
+#combo-ov{position:fixed;top:var(--p-hdr-h);left:0;right:0;bottom:0;z-index:150;background:var(--night);overscroll-behavior:none;
   display:none;flex-direction:column;overflow:hidden}
 #combo-ov.open{display:flex}
-#combo-body{flex:1;overflow-y:auto;padding:10px 13px;
+#combo-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:10px 13px;
   display:flex;flex-direction:column;gap:0}
 .combo-step{background:var(--surface);border:1px solid var(--border);
   border-radius:3px;margin-bottom:8px}
@@ -1811,8 +1815,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 122;
+const APP_VERSION = 123;
 const CHANGELOG=[
+  {v:123,date:'2026-05-24',items:["iPhone reliability: -webkit-overflow-scrolling:touch and overscroll-behavior:contain on all scroll containers (.ep-body, .pgrid, #sidebar, #combo-body, #hint-body, #keymap-body); overscroll-behavior:none on fixed overlay panels (#ep, #combo-ov, #hint-ov, #icon-picker, #lib-picker, #import-ov, #changelog-ov, #onboard-ov, #pad-type-picker, #keymap-ov); blanket rule for inline overflow-y:auto elements; min-height:44px on .btn-p/.btn-s/.btn-g/.dlg-*; .ep-back min touch target 44×44px"]},
   {v:122,date:'2026-05-24',items:["Fix icon picker: 5 missing functions restored (updIconPreview, pickBuiltinIcon, pickLibIcon, clearIconSlot, _updateIconPickerLib); libIconEntries populated on load and kept in sync on add/delete; duplicate filterIconGrid definition removed","Fix combo playback: pads filter in playComboStep no longer requires bufs[] to be pre-loaded — on-demand audio works in all combo steps","Fix combo engine: once/loop pads in createPadInstance now load audio on-demand from IndexedDB (same pattern as playlist branch) instead of failing silently when bufs[] is empty","Remove dead code: isSetupMode block in play() referenced CSS classes that are never set — removed 18-line block","Refactor: hardcoded inline styles s12/s12g/s12n in updFB() replaced with CSS classes .ep-act/.ep-act-g/.ep-act-t","Remove debug overlay: logDebug(), window.onerror/onunhandledrejection handlers and #debug-log div removed"]},
   {v:121,date:'2026-05-23',items:["Folder assignments survive export/import: buildExportJson now includes the 'folder' field in serialized library entries; executeImport restores folder assignments on all import paths (replace, keep-both, add, pad templates)"]},
   {v:120,date:'2026-05-23',items:["Folder assignment bug fixed: JSON.stringify() inside onclick attributes produced unescaped double quotes that terminated the HTML attribute early — all folder handler attributes now use escHtml(JSON.stringify()) consistently","Library Picker multi-select: clicking any row toggles a checkbox (☐/☑); a sticky footer appears when ≥1 file is selected showing 'ADD N FILES' — all selected files added at once to the PAD playlist on confirm","Library Audio multi-select: each audio card has a ☐ checkbox button on the left; selecting files shows a sticky 'N SELECTED' bar at the bottom with 'MOVE TO FOLDER' (folder picker dropdown) and '✕ CLEAR'; bulk move updates all entries in parallel then re-renders once; selection clears when switching Library tabs"]},
