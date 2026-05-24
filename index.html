@@ -184,6 +184,9 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 .pvbtn{background:none;border:1px solid var(--border);border-radius:2px;
   color:var(--active);width:24px;height:24px;font-size:calc(11px * var(--font-scale));cursor:pointer;flex-shrink:0}
 .pvbtn:active{background:var(--surface)}
+.ep-act{background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-size:calc(12px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px}
+.ep-act-g{background:none;border:1px solid var(--gold-dim);border-radius:2px;color:var(--gold);font-size:calc(12px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px}
+.ep-act-t{background:none;border:none;color:var(--text-dim);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0}
 .fbtn{width:100%;background:var(--surface);border:1px dashed var(--border);
   color:var(--text-dim);font-family:var(--ff-body);font-size:calc(13px * var(--font-scale));
   padding:9px;border-radius:2px;cursor:pointer;text-align:center}
@@ -1808,31 +1811,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-  // ==========================================
-// CENTRAL DEBUG LOGGER FOR IPHONE
-// ==========================================
-function logDebug(message, isError = false) {
-  const logBox = document.getElementById('debug-log');
-  if (!logBox) return;
-  const time = new Date().toLocaleTimeString();
-  const color = isError ? '#ff4444' : '#00ff00';
-  logBox.innerHTML += `<div style="color: ${color}; margin-bottom: 2px;">[${time}] ${message}</div>`;
-  logBox.scrollTop = logBox.scrollHeight;
-}
-
-window.onerror = function(message, source, lineno, colno, error) {
-  const shortSource = source ? source.split('/').pop() : 'inline';
-  logDebug(`CRASH: ${message} (${shortSource}:${lineno})`, true);
-  return false;
-};
-
-window.onunhandledrejection = function(event) {
-  logDebug(`ASYNC-FEHLER: ${event.reason?.message || event.reason}`, true);
-};
-// ==========================================
-
-const APP_VERSION = 121;
+const APP_VERSION = 122;
 const CHANGELOG=[
+  {v:122,date:'2026-05-24',items:["Fix icon picker: 5 missing functions restored (updIconPreview, pickBuiltinIcon, pickLibIcon, clearIconSlot, _updateIconPickerLib); libIconEntries populated on load and kept in sync on add/delete; duplicate filterIconGrid definition removed","Fix combo playback: pads filter in playComboStep no longer requires bufs[] to be pre-loaded — on-demand audio works in all combo steps","Fix combo engine: once/loop pads in createPadInstance now load audio on-demand from IndexedDB (same pattern as playlist branch) instead of failing silently when bufs[] is empty","Remove dead code: isSetupMode block in play() referenced CSS classes that are never set — removed 18-line block","Refactor: hardcoded inline styles s12/s12g/s12n in updFB() replaced with CSS classes .ep-act/.ep-act-g/.ep-act-t","Remove debug overlay: logDebug(), window.onerror/onunhandledrejection handlers and #debug-log div removed"]},
   {v:121,date:'2026-05-23',items:["Folder assignments survive export/import: buildExportJson now includes the 'folder' field in serialized library entries; executeImport restores folder assignments on all import paths (replace, keep-both, add, pad templates)"]},
   {v:120,date:'2026-05-23',items:["Folder assignment bug fixed: JSON.stringify() inside onclick attributes produced unescaped double quotes that terminated the HTML attribute early — all folder handler attributes now use escHtml(JSON.stringify()) consistently","Library Picker multi-select: clicking any row toggles a checkbox (☐/☑); a sticky footer appears when ≥1 file is selected showing 'ADD N FILES' — all selected files added at once to the PAD playlist on confirm","Library Audio multi-select: each audio card has a ☐ checkbox button on the left; selecting files shows a sticky 'N SELECTED' bar at the bottom with 'MOVE TO FOLDER' (folder picker dropdown) and '✕ CLEAR'; bulk move updates all entries in parallel then re-renders once; selection clears when switching Library tabs"]},
   {v:119,date:'2026-05-23',items:["Circular PAD arc label moved to bottom edge: SVG textPath sweep-flag changed from 1 to 0 — text now curves along the bottom of the circle, right-side up","Key assignment (.pnum) now larger than PAD label (.plbl): both scale proportionally with --pad-sz (pnum: pad-sz × 15.5%, plbl: pad-sz × 13.3%) so labels grow and shrink with the PAD size slider","Multi-icon groups (2/3/4 icons) now also hidden at very small PAD sizes: @container rule extended to match .pico-g override specificity","Sidebar suppressed when PAD editor is open: openEP() closes the sidebar and hides the toggle button; closeEP() restores the button state from SCREEN_CONFIG"]},
@@ -1977,6 +1958,7 @@ let _libFolderRename = null;
 let _libPendingFolderMove = null;
 let _fldDropEl = null;
 const iconSvgCache = {};
+let libIconEntries = [];
 const playPos = {};
 // Combo editor state
 let comboSteps = [], comboKey = '', comboKeyLabel = '', comboEditId = null, comboDragId = null;
@@ -2870,31 +2852,6 @@ function fadeInGain(g, targetVol, fadeIn){
 async function play(id){
   const p=pads[id]; if(!p) return;
 
-  // ── DER ULTIMATIVE TÜRSTEHER FÜR DEN SETUP-MODUS ──
-  const grid = document.getElementById('pgrid');
-  const isSetupMode = 
-    // 1. Wir prüfen, ob das Grid existiert und eine typische Setup-Klasse hat
-    (grid && (
-      grid.classList.contains('setup') || 
-      grid.classList.contains('edit') || 
-      grid.classList.contains('setup-mode') || 
-      grid.classList.contains('edit-mode') ||
-      grid.classList.contains('editing')
-    )) ||
-    // 2. Sicherheits-Check: Hat der Body oder das Dokument eine Setup-Klasse?
-    document.body.classList.contains('setup-mode') || 
-    document.body.classList.contains('edit-mode') ||
-    // 3. Fallback auf globale Variablen, falls vorhanden
-    (typeof mode !== 'undefined' && mode === 'setup') ||
-    (typeof currentMode !== 'undefined' && currentMode === 'setup') ||
-    (typeof setupMode !== 'undefined' && setupMode === true);
-
-  if (isSetupMode) {
-    openEP(id); // Öffnet sofort das Bearbeitungsmenü für Single-Pads & Playlists!
-    return;
-  }
-  // ──────────────────────────────────────────────────
-
   if(p.mode==='combo'){ playCombo(id); return; }
 
   // ── SONDERFALL PLAYLIST / CHAIN MODUS (Echtes fortlaufendes On-Demand) ──
@@ -3106,30 +3063,60 @@ function createPadInstance(padId,volOverride,fadeOverride){
 
   function doStart(onEnded){
     if(p.mode==='once'){
-      if(!padBufs || !padBufs[0]){ onEnded&&onEnded(); return; }
-      const b=padBufs[0];
-      const s=ctx.createBufferSource();
-      s.buffer=b; s.connect(g); active.push(s);
-      s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
-      if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
-    } else if(p.mode==='loop'){
-      if(!padBufs || !padBufs[0]){ onEnded&&onEnded(); return; }
-      const b=padBufs[0];
-      const lc=p.loopCount||0;
-      if(lc===0){
+      (async ()=>{
+        let b=padBufs?.[0];
+        if(!b){
+          const hash=typeof p.files?.[0]==='string'?p.files[0]:null;
+          if(!hash){ onEnded&&onEnded(); return; }
+          try{
+            if(!libBufs[hash]){
+              const entry=await libGet(hash);
+              if(entry?.buf) libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0));
+            }
+            b=libBufs[hash];
+            if(!bufs[padId]) bufs[padId]=[];
+            bufs[padId][0]=b;
+          } catch(e){ console.warn('Combo once load:',e); onEnded&&onEnded(); return; }
+        }
+        if(!b||stopped){ onEnded&&onEnded(); return; }
         const s=ctx.createBufferSource();
-        s.buffer=b; s.loop=true; s.connect(g); active.push(s); 
-        if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
-      } else {
-        let rem=lc;
-        (function loopOne(){
-          if(stopped) return;
-          const s=ctx.createBufferSource(); s.buffer=b; s.connect(g); active.push(s); rem--;
-          if(rem<=0) s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
-          else s.onended=()=>{ if(!stopped){ active.splice(active.indexOf(s),1); loopOne(); } };
-          if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
-        })();
-      }
+        s.buffer=b; s.connect(g); active.push(s);
+        s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
+        if(hasDuration) s.start(0,tStart,dur); else s.start(0,tStart);
+      })();
+    } else if(p.mode==='loop'){
+      (async ()=>{
+        let b=padBufs?.[0];
+        if(!b){
+          const hash=typeof p.files?.[0]==='string'?p.files[0]:null;
+          if(!hash){ onEnded&&onEnded(); return; }
+          try{
+            if(!libBufs[hash]){
+              const entry=await libGet(hash);
+              if(entry?.buf) libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0));
+            }
+            b=libBufs[hash];
+            if(!bufs[padId]) bufs[padId]=[];
+            bufs[padId][0]=b;
+          } catch(e){ console.warn('Combo loop load:',e); onEnded&&onEnded(); return; }
+        }
+        if(!b||stopped){ onEnded&&onEnded(); return; }
+        const lc=p.loopCount||0;
+        if(lc===0){
+          const s=ctx.createBufferSource();
+          s.buffer=b; s.loop=true; s.connect(g); active.push(s);
+          if(hasDuration) s.start(0,tStart,dur); else s.start(0,tStart);
+        } else {
+          let rem=lc;
+          (function loopOne(){
+            if(stopped) return;
+            const s=ctx.createBufferSource(); s.buffer=b; s.connect(g); active.push(s); rem--;
+            if(rem<=0) s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
+            else s.onended=()=>{ if(!stopped){ active.splice(active.indexOf(s),1); loopOne(); } };
+            if(hasDuration) s.start(0,tStart,dur); else s.start(0,tStart);
+          })();
+        }
+      })();
     } else if(p.mode==='playlist' || p.mode==='chain' || p.mode==='random'){ // Greift bei allen Playlist-Modi
       if(!p.files || !p.files.length){ onEnded&&onEnded(); return; }
       let pos=0;
@@ -3224,7 +3211,7 @@ function playComboStep(id,state,steps,stepIdx){
   const rawPads=steps[stepIdx].pads||[];
   const rawOpts=steps[stepIdx].chipOpts||[];
   const validEntries=rawPads.map((pid,i)=>({pid,opt:rawOpts[i]||null}))
-    .filter(({pid})=>pads[pid]&&(bufs[pid]||pads[pid].mode==='combo'));
+    .filter(({pid})=>!!pads[pid]);
   state.currentFgInstances=[];
   let fgRem=0;
 
@@ -3918,7 +3905,7 @@ async function onLibIconUpload(inp){
     if(!isSvg){ showToast('Only SVG files supported.'); continue; }
     const buf=await new Promise(r=>{const fr=new FileReader();fr.onload=e=>r(e.target.result);fr.readAsArrayBuffer(f);});
     const {isDuplicate,hash}=await addToLib(buf,f.name,'icon');
-    if(!isDuplicate){ iconSvgCache[hash]=new TextDecoder().decode(buf); added++; }
+    if(!isDuplicate){ iconSvgCache[hash]=new TextDecoder().decode(buf); libIconEntries.push({hash,name:f.name}); added++; }
   }
   if(added) showToast(`${added} icon${added===1?'':'s'} added to Library.`);
   renderLibIcons();
@@ -3927,6 +3914,7 @@ async function libDeleteIcon(hash){
   showConfirmDel('Delete this custom icon from the Library?\nPads using it will revert to the default icon.',async()=>{
     await libDelete(hash);
     delete iconSvgCache[hash];
+    libIconEntries=libIconEntries.filter(e=>e.hash!==hash);
     showToast('Icon deleted.');
     renderLibIcons();
   });
@@ -3934,8 +3922,10 @@ async function libDeleteIcon(hash){
 async function loadLibIcons(){
   const el=document.getElementById('lib-builtin-count'); if(el) el.textContent=BUILTIN_ICONS.length;
   const all=await libGetAll();
+  libIconEntries=[];
   for(const e of all.filter(e=>e.type==='icon')){
     if(e.buf) iconSvgCache[e.hash]=new TextDecoder().decode(e.buf);
+    libIconEntries.push({hash:e.hash,name:e.name||e.hash});
   }
 }
 
@@ -4037,6 +4027,41 @@ function openIconPicker(slot){
 
 function closeIconPicker(){ popEsc('icon-picker'); document.getElementById('icon-picker')?.classList.remove('open'); }
 
+function _updateIconPickerLib(q){
+  const grid=document.getElementById('ico-grid-lib'); if(!grid) return;
+  const lq=(q||'').toLowerCase().trim();
+  const entries=libIconEntries||[];
+  const selHash=eIcons[eIconSlot]?.h||null;
+  const filtered=lq?entries.filter(e=>(e.name||'').toLowerCase().includes(lq)):entries;
+  if(!filtered.length){ grid.innerHTML='<div style="color:var(--text-dim);font-size:calc(11px * var(--font-scale));padding:8px 0">No library icons</div>'; return; }
+  grid.innerHTML=filtered.map(e=>{
+    const thumb=(iconSvgCache[e.hash]||'').replace(/width="[^"]*"/,'width="26px"').replace(/height="[^"]*"/,'height="26px"');
+    return `<div class="ico-cell${selHash===e.hash?' selected':''}" title="${escHtml(e.name||'')}" onclick="pickLibIcon('${e.hash}')">${thumb}</div>`;
+  }).join('');
+}
+function pickBuiltinIcon(id){ eIcons[eIconSlot]={b:id}; updIconPreview(); closeIconPicker(); }
+function pickLibIcon(hash){ eIcons[eIconSlot]={h:hash}; updIconPreview(); closeIconPicker(); }
+function clearIconSlot(idx){ eIcons[idx]=null; updIconPreview(); }
+function updIconPreview(){
+  for(let i=0;i<4;i++){
+    const slot=document.getElementById(`islot-${i}`);
+    if(!slot) continue;
+    const ref=eIcons[i];
+    const icoEl=slot.querySelector('.icon-slot-ico');
+    if(ref?.b){
+      const f=BUILTIN_ICONS.find(x=>x.id===ref.b);
+      if(f){ slot.classList.add('has-icon'); icoEl.innerHTML=svgI(`<path d="${f.d}"/>`,f.v||'0 0 24 24'); continue; }
+    }
+    if(ref?.h && iconSvgCache[ref.h]){
+      slot.classList.add('has-icon');
+      icoEl.innerHTML=iconSvgCache[ref.h].replace(/width="[^"]*"/,'width="26px"').replace(/height="[^"]*"/,'height="26px"');
+      continue;
+    }
+    slot.classList.remove('has-icon');
+    icoEl.innerHTML='';
+  }
+}
+
 function renderIconGrid(filter){
   const q=(filter||'').toLowerCase().trim();
   const grid=document.getElementById('ico-grid-builtin'); if(!grid) return;
@@ -4053,11 +4078,6 @@ function renderIconGrid(filter){
     grid.className='';
     _renderGroupedIcons(BUILTIN_ICONS,'ico-grid-builtin',selectedId,true);
   }
-}
-
-function filterIconGrid(val){
-  renderIconGrid(val);
-  _updateIconPickerLib(val);
 }
 
 function filterIconGrid(val){
@@ -4906,11 +4926,7 @@ async function openEP(id){
   eIcons=[null,null,null,null];
   const _srcIcons=p?.icons?.length?p.icons:(p?.icon?[p.icon]:[]);
   _srcIcons.slice(0,4).forEach((ic,i)=>{ eIcons[i]=ic; });
-  if (typeof updIconPreview === 'function') {
   updIconPreview();
-} else {
-  logDebug("Warnung: updIconPreview fehlt im Code, wurde übersprungen.");
-}
   eMode=p?.mode||'once';
   eShuffle=p?.shuffle||false;
   eLoopCount=p?.loopCount||0;
@@ -4939,10 +4955,8 @@ async function openEP(id){
       }
       updFB();
     } catch (editorAudioError) {
-      console.error("Fehler beim Laden der Wellenformen im Editor-Modus:", editorAudioError);
-      // HIER NEU: Schreibt es sofort live auf dein iPhone!
-      logDebug("Editor-Audio-Warnung: " + editorAudioError.message, true);
-      updFB(); 
+      console.error("Editor waveform load failed:", editorAudioError);
+      updFB();
     }
   }
   // ─────────────────────────────────────────────
@@ -5716,15 +5730,12 @@ function updFB(){
     `<button class="pvbtn" onclick="${isPlaying?'pausePreview()':'previewFile('+ai+')'}">${isPlaying?'⏸':'▶'}</button>`+
     `<button class="pvbtn" onclick="stopPreview()" style="${previewFileIdx!==null?'':dim}">⏹</button>`;
   // Action buttons
-  const s12=`background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-size:calc(12px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px`;
-  const s12g=`background:none;border:1px solid var(--gold-dim);border-radius:2px;color:var(--gold);font-size:calc(12px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0;padding:3px 9px`;
-  const s12n=`background:none;border:none;color:var(--text-dim);font-size:calc(13px * var(--font-scale));cursor:pointer;font-family:var(--ff-label);letter-spacing:0`;
   actEl.innerHTML=isPlaylist
-    ?`<button onclick="appendFiles=true;document.getElementById('fi').click()" style="${s12}">+ ADD</button>`+
-     `<button onclick="openLibPicker(true)" style="${s12g}">⊞ FROM LIB</button>`+
-     `<button onclick="document.getElementById('fi').click()" style="${s12n}">↺ REPLACE</button>`
-    :`<button onclick="openLibPicker(false)" style="${s12g}">⊞ FROM LIB</button>`+
-     `<button onclick="document.getElementById('fi').click()" style="${s12n}">↺ CHANGE</button>`;
+    ?`<button class="ep-act" onclick="appendFiles=true;document.getElementById('fi').click()">+ ADD</button>`+
+     `<button class="ep-act-g" onclick="openLibPicker(true)">⊞ FROM LIB</button>`+
+     `<button class="ep-act-t" onclick="document.getElementById('fi').click()">↺ REPLACE</button>`
+    :`<button class="ep-act-g" onclick="openLibPicker(false)">⊞ FROM LIB</button>`+
+     `<button class="ep-act-t" onclick="document.getElementById('fi').click()">↺ CHANGE</button>`;
   initScrub();
   drawScrubber();
 }
@@ -6780,8 +6791,4 @@ if (typeof decodePad !== 'function') {
   </div>
 </div>
 </body>
-<!-- AUTOMATISCHES DEBUG-LOG FÜR IPHONE-TESTS -->
-<div id="debug-log" style="background: #111; color: #00ff00; font-family: monospace; font-size: 11px; padding: 10px; max-height: 120px; overflow-y: auto; border-top: 2px solid #333; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 999999; box-sizing: border-box; opacity: 0.9;">
-  <div>[SYSTEM] Debug-Log aktiv. Warte auf Events...</div>
-</div>
 </html>
