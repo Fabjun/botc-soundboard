@@ -1563,7 +1563,6 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         </div>
       </div>
 
-<!-- ③ TRIM SECTION -->
       <div class="ep-sub-toggle" id="trim-toggle" onclick="const b=document.getElementById('ep-trim'); const open=b.style.display==='none'; b.style.display=open?'':'none'; this.querySelector('.ep-sub-arrow').style.transform=open?'rotate(90deg)':'';">
         <span class="ep-sub-arrow" style="transition:transform 0.2s">▶</span>
         <span>TRIM / BESCHNEIDEN</span>
@@ -1571,15 +1570,14 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <div class="ep-sub-body" id="ep-trim" style="display:none; padding-top:8px;">
         <div class="fg">
           <label class="fl">STARTZEIT — <span id="ets-lbl">0.0</span>s</label>
-          <!-- Trigger real-time scrubber canvas re-draw on slider input -->
-          <input type="range" id="ets" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ets-lbl').textContent=this.value==='0'?'0.0':this.value; drawScrubber();" style="width:100%;accent-color:var(--gold)">
+          <input type="range" id="ets" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ets-lbl').textContent=this.value==='0'?'0.0':this.value" style="width:100%;accent-color:var(--gold)">
         </div>
         <div class="fg" style="margin-bottom:0">
           <label class="fl">ENDZEIT / DAUER — <span id="ete-lbl">Vollständig</span></label>
-          <!-- Trigger real-time scrubber canvas re-draw on slider input -->
-          <input type="range" id="ete" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ete-lbl').textContent=this.value==='0'?'Vollständig':(this.value+'s'); drawScrubber();" style="width:100%;accent-color:var(--gold)">
+          <input type="range" id="ete" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ete-lbl').textContent=this.value==='0'?'Vollständig':(this.value+'s')" style="width:100%;accent-color:var(--gold)">
         </div>
       </div>
+    </div>
 
     <!-- ③ BEHAVIOR -->
     <div class="ep-card">
@@ -2100,7 +2098,6 @@ function load(){
       currentBoardId=found.id;
       currentBoardName=found.name;
       pads=found.pads||[];
-      try{ console.log('[debug] load() loaded pads count:', pads.length); window._inpageErrors&&window._inpageErrors.push&&window._inpageErrors.push({type:'debug',message:'load() loaded pads count: '+pads.length}); }catch(e){}
       localStorage.setItem('last-board',currentBoardId);
       res();
     };
@@ -2857,97 +2854,71 @@ function fadeInGain(g, targetVol, fadeIn){
     g.gain.setValueAtTime(targetVol, ctx.currentTime);
   }
 }
-
-// Helper to compute a safe playback window for a buffer and trim settings.
-function safePlayWindowForBuffer(buf, trimStart, trimEnd){
-  const tStart = Number(trimStart) || 0;
-  const tEnd = Number(trimEnd) || 0;
-  const fileDur = buf ? (Number(buf.duration) || 0) : 0;
-  const dur = (tEnd > tStart && tEnd <= fileDur) ? (tEnd - tStart) : (fileDur - tStart);
-  const hasDuration = dur > 0;
-  return { tStart, tEnd, fileDur, dur, hasDuration };
-}
 function play(id){
-  const p = pads[id]; if(!p) return;
+  const p=pads[id]; if(!p) return;
+  if(p.mode==='combo'){ playCombo(id); return; }
   if(!bufs[id]||!bufs[id].length) return;
-  if(ctx?.state === 'suspended') ctx.resume().catch(()=>{});
+  if(ctx?.state==='suspended') ctx.resume().catch(()=>{});
   flash(id);
+  const vol=(p.volume||80)/100, fi=p.fadeIn||0;
 
-  const vol = (p.volume||80)/100, fi = p.fadeIn||0, fo = p.fadeOut||0;
+  // Read trim values and calculate duration
+  const tStart = p.trimStart || 0;
+  const tEnd = p.trimEnd || 0;
+  const hasDuration = tEnd > tStart;
+  const dur = hasDuration ? (tEnd - tStart) : undefined;
 
-  // Read trim values and calculate duration safely
-  const b = bufs[id]?.[0];
-  const tStart = Number(p.trimStart) || 0;
-  const tEnd = Number(p.trimEnd) || 0;
-  const fileDur = b ? b.duration : 0;
-  const dur = (tEnd > tStart && tEnd <= fileDur) ? (tEnd - tStart) : (fileDur - tStart);
-  const hasDuration = dur > 0;
-
-  if(p.mode === 'once'){
-    if(!b) return;
+  if(p.mode==='once'){
+    const b=bufs[id][0]; if(!b) return;
     stopPad(id,true);
-    const s = ctx.createBufferSource();
-    const g = ctx.createGain();
-    fadeInGain(g, vol, fi);
-    s.buffer = b; s.connect(g); _connectGainToMaster(id, g);
-
-    // Schedule dynamic fade-out only when we have a valid duration window
-    if(fo > 0 && hasDuration && fo < dur){
-      const startTime = ctx.currentTime;
-      const fadeOutStart = startTime + (dur - fo);
-      const endTime = startTime + dur;
-      try{ g.gain.setValueAtTime(vol, fadeOutStart); g.gain.linearRampToValueAtTime(0, endTime); }catch(e){}
-    }
-
-    // Start with precise trim settings (safe numbers only)
-    s.start(0, tStart, hasDuration?dur:undefined);
-    srcs[id] = [s]; gains[id] = g;
-    s.onended = ()=>{ _onPadStopped(id); delete srcs[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); };
-    updBtn(id, true, false); _onPadStarted(id); setNP(p.name);
-    return;
-  }
-
-  if(p.mode === 'loop'){
-    if(!b) return;
-    stopPad(id,true);
-    const lc = p.loopCount||0;
-    const g = ctx.createGain(); fadeInGain(g, vol, fi); _connectGainToMaster(id, g);
-    gains[id] = g;
-
-    if(lc === 0){
-      const s = ctx.createBufferSource();
-      s.buffer = b; s.loop = true; s.connect(g);
-      if(tEnd > tStart){ s.loopStart = tStart; s.loopEnd = tEnd; }
-      s.start(0, tStart);
-      srcs[id] = [s];
+    const s=ctx.createBufferSource(), g=ctx.createGain();
+    fadeInGain(g,vol,fi);
+    s.buffer=b; s.connect(g); _connectGainToMaster(id,g);
+    
+    // Start with precise trim settings
+    if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+    
+    srcs[id]=[s]; gains[id]=g;
+    s.onended=()=>{ _onPadStopped(id); delete srcs[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); };
+    updBtn(id,true,false); _onPadStarted(id); setNP(p.name);
+  } else if(p.mode==='loop'){
+    if(srcs[id]){ stopPad(id); return; }
+    const b=bufs[id][0]; if(!b) return;
+    const lc=p.loopCount||0;
+    const g=ctx.createGain();
+    fadeInGain(g,vol,fi); _connectGainToMaster(id,g);
+    gains[id]=g;
+    if(lc===0){
+      const s=ctx.createBufferSource();
+      s.buffer=b; s.loop=true; s.connect(g);
+      
+      // Pass duration for infinite loops to enforce the calculated clip window
+      if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+      
+      srcs[id]=[s];
     } else {
-      // mark pad active immediately
-      srcs[id] = [null];
-      let rem = lc;
+      srcs[id]=[null]; // mark active immediately
+      let rem=lc;
       (function loopOne(){
         if(!srcs[id]) return;
-        const s = ctx.createBufferSource(); s.buffer = b; s.connect(g);
-
-        // Fade-out for the final iteration within the trimmed window, safely
-        if(fo > 0 && hasDuration && rem === 1 && fo < dur){
-          const startTime = ctx.currentTime;
-          const fadeOutStart = startTime + (dur - fo);
-          const endTime = startTime + dur;
-          try{ g.gain.setValueAtTime(vol, fadeOutStart); g.gain.linearRampToValueAtTime(0, endTime); }catch(e){}
-        }
-
-        s.start(0, tStart, hasDuration?dur:undefined);
-        srcs[id] = [s]; rem--;
-
-        if(rem <= 0){
-          s.onended = ()=>{ if(srcs[id]){ _onPadStopped(id); delete srcs[id]; delete gains[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); } };
+        const s=ctx.createBufferSource();
+        s.buffer=b; s.connect(g);
+        
+        if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+        
+        srcs[id]=[s]; rem--;
+        if(rem<=0){
+          s.onended=()=>{ if(srcs[id]){ _onPadStopped(id); delete srcs[id]; delete gains[id]; _detachPadAnalyser(id); updBtn(id,false); chkNP(); } };
         } else {
-          s.onended = ()=>{ if(srcs[id]) loopOne(); };
+          s.onended=()=>{ if(srcs[id]) loopOne(); };
         }
       })();
     }
-
-    updBtn(id, true, true); _onPadStarted(id); setNP(p.name);
+    updBtn(id,true,lc===0); _onPadStarted(id); setNP(p.name+' ↻');
+  } else {
+    if(srcs[id]){ stopPad(id); return; }
+    const all=(bufs[id]||[]).filter(Boolean); if(!all.length) return;
+    _onPadStarted(id); playNext(id,all);
   }
 }
 function playNext(id,all){
@@ -2960,18 +2931,14 @@ function playNext(id,all){
     i=playPos[id];
     playPos[id]++;
   }
-  const s = ctx.createBufferSource(), g = ctx.createGain();
-  fadeInGain(g, (p.volume||80)/100, p.fadeIn||0);
-  const buf = all[i];
-  s.buffer = buf; s.connect(g); _connectGainToMaster(id, g);
-  // compute safe play window for this track
-  const win = safePlayWindowForBuffer(buf, p.trimStart, p.trimEnd);
-  s.start(0, win.tStart, win.hasDuration?win.dur:undefined);
-  srcs[id] = [s]; gains[id] = g;
-  updBtn(id, true, true);
-  const fn = (p.files[i]||{}).name||'';
-  setNP(p.name + (fn ? ' — '+fn : ''));
-  s.onended = ()=>{ if(srcs[id]) playNext(id, all); };
+  const s=ctx.createBufferSource(), g=ctx.createGain();
+  fadeInGain(g,(p.volume||80)/100,p.fadeIn||0);
+  s.buffer=all[i]; s.connect(g); _connectGainToMaster(id,g); s.start(0);
+  srcs[id]=[s]; gains[id]=g;
+  updBtn(id,true,true);
+  const fn=(p.files[i]||{}).name||'';
+  setNP(p.name+(fn?' — '+fn:''));
+  s.onended=()=>{ if(srcs[id]) playNext(id,all); };
 }
 function stopPad(id, immediate=false){
   if(pads[id]?.mode==='combo'){ stopCombo(id); return; }
@@ -3001,68 +2968,65 @@ function isInfiniteBg(p){ return p&&p.mode==='loop'&&(!p.loopCount||p.loopCount=
 // Creates a self-contained playable instance from a pad config.
 // onEnded is called when the pad finishes (not called for infinite bg loops).
 function createPadInstance(padId,volOverride,fadeOverride){
-  const p = pads[padId], padBufs = bufs[padId];
+  const p=pads[padId], padBufs=bufs[padId];
   if(!p||!padBufs||!padBufs.length) return null;
-  const g = ctx.createGain();
-  const vol = (volOverride!=null?volOverride:(p.volume||80))/100;
-  const fadeIn = fadeOverride!=null?fadeOverride:(p.fadeIn||0);
-  fadeInGain(g, vol, fadeIn);
+  const g=ctx.createGain();
+  const vol=(volOverride!=null?volOverride:(p.volume||80))/100;
+  const fadeIn=fadeOverride!=null?fadeOverride:(p.fadeIn||0);
+  fadeInGain(g,vol,fadeIn);
   g.connect(masterGain);
-  const active = []; let stopped = false;
+  const active=[]; let stopped=false;
 
-  // Use helper to compute the play window for the first buffer
-  const primary = padBufs[0];
-  const win = safePlayWindowForBuffer(primary, p.trimStart, p.trimEnd);
+  const tStart = p.trimStart || 0;
+  const tEnd = p.trimEnd || 0;
+  const hasDuration = tEnd > tStart;
+  const dur = hasDuration ? (tEnd - tStart) : undefined;
 
   function doStart(onEnded){
     if(p.mode==='once'){
-      if(!primary){ onEnded&&onEnded(); return; }
-      const s = ctx.createBufferSource();
-      s.buffer = primary; s.connect(g); active.push(s);
-      s.onended = ()=>{ if(!stopped) onEnded&&onEnded(); };
-      s.start(0, win.tStart, win.hasDuration?win.dur:undefined);
+      const b=padBufs[0]; if(!b){onEnded&&onEnded();return;}
+      const s=ctx.createBufferSource();
+      s.buffer=b; s.connect(g); active.push(s);
+      s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
+      if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
     } else if(p.mode==='loop'){
-      if(!primary){ onEnded&&onEnded(); return; }
-      const lc = p.loopCount||0;
+      const b=padBufs[0]; if(!b){onEnded&&onEnded();return;}
+      const lc=p.loopCount||0;
       if(lc===0){
-        const s = ctx.createBufferSource();
-        s.buffer = primary; s.loop = true; s.connect(g); active.push(s);
-        if(win.tEnd > win.tStart){ s.loopStart = win.tStart; s.loopEnd = win.tEnd; }
-        s.start(0, win.tStart);
+        const s=ctx.createBufferSource();
+        s.buffer=b; s.loop=true; s.connect(g); active.push(s); 
+        if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
       } else {
-        let rem = lc;
+        let rem=lc;
         (function loopOne(){
           if(stopped) return;
-          const s = ctx.createBufferSource(); s.buffer = primary; s.connect(g); active.push(s); rem--;
-          if(rem<=0) s.onended = ()=>{ if(!stopped) onEnded&&onEnded(); };
-          else s.onended = ()=>{ if(!stopped){ active.splice(active.indexOf(s),1); loopOne(); } };
-          s.start(0, win.tStart, win.hasDuration?win.dur:undefined);
+          const s=ctx.createBufferSource(); s.buffer=b; s.connect(g); active.push(s); rem--;
+          if(rem<=0) s.onended=()=>{ if(!stopped) onEnded&&onEnded(); };
+          else s.onended=()=>{ if(!stopped){ active.splice(active.indexOf(s),1); loopOne(); } };
+          if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
         })();
       }
     } else if(p.mode==='playlist'){
-      const all = padBufs.filter(Boolean);
-      if(!all.length){ onEnded&&onEnded(); return; }
-      let pos = 0;
+      const all=padBufs.filter(Boolean);
+      if(!all.length){onEnded&&onEnded();return;}
+      let pos=0;
       (function nextTrack(){
         if(stopped) return;
-        if(pos>=all.length){ onEnded&&onEnded(); return; }
-        const i = p.shuffle?Math.floor(Math.random()*all.length):pos; pos++;
-        const currentBuf = all[i];
-        const s = ctx.createBufferSource(); s.buffer = currentBuf; s.connect(g); active.push(s);
-        s.onended = ()=>{ if(stopped) return; active.splice(active.indexOf(s),1); nextTrack(); };
-
-        const trackWin = safePlayWindowForBuffer(currentBuf, p.trimStart, p.trimEnd);
-        s.start(0, trackWin.tStart, trackWin.hasDuration?trackWin.dur:undefined);
+        if(pos>=all.length){onEnded&&onEnded();return;}
+        const i=p.shuffle?Math.floor(Math.random()*all.length):pos; pos++;
+        const s=ctx.createBufferSource(); s.buffer=all[i]; s.connect(g); active.push(s);
+        s.onended=()=>{ if(stopped) return; active.splice(active.indexOf(s),1); nextTrack(); };
+        if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
       })();
     } else { onEnded&&onEnded(); }
   }
 
   function doStop(){
-    stopped = true;
-    [...active].forEach(s=>{ try{ s.onended = null; s.stop(); }catch(e){} });
-    active.length = 0;
+    stopped=true;
+    [...active].forEach(s=>{try{s.onended=null;s.stop();}catch(e){}});
+    active.length=0;
   }
-  return { start: doStart, stop: doStop };
+  return {start:doStart, stop:doStop};
 }
 
 function playCombo(id, onFinish=null){
@@ -4723,7 +4687,6 @@ function findNextPadId(){
 }
 function renderSetup(){
   const g=document.getElementById('pgrid'); g.innerHTML='';
-  try{ console.log('[debug] renderSetup start pads.length=', pads.length); window._inpageErrors&&window._inpageErrors.push&&window._inpageErrors.push({type:'debug',message:'renderSetup start pads.length='+pads.length}); }catch(e){}
   for(let i=0;i<pads.length;i++){
     const p=pads[i]; if(p==null) continue;
     const b=document.createElement('div');
@@ -4742,7 +4705,6 @@ function renderSetup(){
   add.onclick=()=>openPadTypePicker();
   g.appendChild(add);
   applyPadFilter();
-  try{ console.log('[debug] renderSetup finished DOM children=', g.childElementCount); window._inpageErrors&&window._inpageErrors.push&&window._inpageErrors.push({type:'debug',message:'renderSetup finished DOM children='+g.childElementCount}); }catch(e){}
 }
 
 // ── EDIT ──
@@ -4761,25 +4723,8 @@ async function openEP(id){
   document.getElementById('efo').value=p?.fadeOut??0;
   updFadeLabel('eft'); updFadeLabel('efo');
   
-  // Load saved trim values into inputs
-  const savedStart = p?.trimStart ?? 0;
-  const savedEnd = p?.trimEnd ?? 0;
-  document.getElementById('ets').value = savedStart;
-  document.getElementById('ete').value = savedEnd;
-
-  // Dynamically update trim text indicators on load
-  document.getElementById('ets-lbl').textContent = savedStart === 0 ? '0.0' : savedStart;
-  document.getElementById('ete-lbl').textContent = savedEnd === 0 ? 'Full Audio' : (savedEnd + 's');
-
-  // Automatically expand the trim accordion section if a custom trim exists
-  const hasTrim = savedStart > 0 || savedEnd > 0;
-  const trimBody = document.getElementById('ep-trim');
-  const trimToggle = document.getElementById('trim-toggle');
-  if(trimBody) trimBody.style.display = hasTrim ? '' : 'none';
-  if(trimToggle) {
-    const arrow = trimToggle.querySelector('.ep-sub-arrow');
-    if(arrow) arrow.style.transform = hasTrim ? 'rotate(90deg)' : '';
-  }
+  document.getElementById('ets').value=p?.trimStart??0;
+  document.getElementById('ete').value=p?.trimEnd??0;
 
   const hasFades=(p?.fadeIn??0)>0||(p?.fadeOut??0)>0;
   fadeSub=hasFades;
@@ -5182,7 +5127,6 @@ function _fmtTime(s){
   const m=Math.floor(s/60), sec=Math.floor(s%60);
   return `${m}:${sec.toString().padStart(2,'0')}`;
 }
-// Ensure decodeWaveform is fully closed and self-contained
 function decodeWaveform(fi){
   const f=eFiles[fi]; if(!f||!f.data) return;
   const tmpAC=new AudioContext();
@@ -5198,61 +5142,26 @@ function decodeWaveform(fi){
     }
     waveforms[fi]={peaks, duration:buf.duration};
     
-    // Dynamically adjust trim sliders to match the actual file duration
+
     const dur = buf.duration;
     const etsInput = document.getElementById('ets');
     const eteInput = document.getElementById('ete');
     if(etsInput && eteInput) {
       etsInput.max = dur;
       eteInput.max = dur;
-      
-      const currentStart = parseFloat(etsInput.value) || 0;
-      const currentEnd = parseFloat(eteInput.value) || 0;
-      
-      if (currentStart > 0 && currentStart <= dur) {
-        etsInput.value = currentStart;
-        document.getElementById('ets-lbl').textContent = currentStart;
-      } else {
-        etsInput.value = 0;
-        document.getElementById('ets-lbl').textContent = '0.0';
-      }
-
-      if (currentEnd > 0 && currentEnd <= dur) {
-        eteInput.value = currentEnd;
-        document.getElementById('ete-lbl').textContent = currentEnd + 's';
-      } else {
+      // Falls der Endwert noch auf 0 (oder dem alten Maximum) steht, setzen wir ihn visuell auf das Maximum
+      if(eteInput.value === '0' || parseFloat(eteInput.value) > dur) {
         eteInput.value = 0;
-        document.getElementById('ete-lbl').textContent = 'Full Audio';
+        document.getElementById('ete-lbl').textContent = 'Vollständig';
       }
     }
+
     drawScrubber();
   }).catch(()=>{ waveforms[fi]=null; });
 }
-
-// Global initialization function to bootstrap the application and layout
-function initBoard(){
-  initGridCtrl();
-  if(typeof renderPerf === 'function') {
-    renderPerf(); // Correctly trigger your real pad rendering sequence
-  }
-  try{ console.log('[debug] initBoard called, pads.length=', pads.length); window._inpageErrors&&window._inpageErrors.push&&window._inpageErrors.push({type:'debug',message:'initBoard called, pads.length='+ (pads?pads.length:0)}); }catch(e){}
-}
-
-// Guarantee that initBoard is automatically triggered as soon as the DOM loads
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initBoard);
-} else {
-  initBoard(); // DOM is already ready, run immediately
-}
 function drawScrubber(){
   const c=document.getElementById('scrub'); if(!c) return;
-  
-  // Check if the Editor Pad container is open/visible. 
-  // If it's closed, stop immediately and do NOT loop.
-  const ep = document.getElementById('ep');
-  if(!ep || !ep.classList.contains('open')) return;
-
-  const W=c.offsetWidth; if(!W) return;
+  const W=c.offsetWidth; if(!W){ requestAnimationFrame(drawScrubber); return; }
   if(c.width!==W) c.width=W;
   const H=c.height, g=c.getContext('2d');
   g.clearRect(0,0,W,H);
@@ -5271,71 +5180,25 @@ function drawScrubber(){
       g.fillStyle=i/wf.length<=frac?'rgba(122,95,40,0.85)':'rgba(74,74,122,0.7)';
       g.fillRect(x+0.5, mid-h, Math.max(bw-1,1), h*2);
     }
-    
-    // Trim overlay mask & boundaries calculation — robust/clamped
-    let tsX = 0;
-    let teX = W;
-    const rawTs = parseFloat(document.getElementById('ets')?.value || 0) || 0;
-    const rawTe = parseFloat(document.getElementById('ete')?.value || 0) || 0;
-    const ts = Number.isFinite(rawTs) ? Math.max(0, rawTs) : 0;
-    const te = Number.isFinite(rawTe) ? Math.max(0, rawTe) : 0;
-
-    if(dur>0 && Number.isFinite(dur) && dur>0){
-      const tsClamped = Math.min(ts, dur);
-      const teClamped = (te > tsClamped && te <= dur) ? te : dur;
-      tsX = (tsClamped / dur) * W;
-      teX = (teClamped / dur) * W;
-
-      // Draw dark semi-transparent mask over excluded start region
-      if(tsClamped > 0){
-        g.fillStyle = 'rgba(0, 0, 0, 0.55)';
-        g.fillRect(0, 0, tsX, H);
-        // Trim start boundary line
-        g.fillStyle = 'rgba(218, 165, 32, 0.8)';
-        g.fillRect(Math.round(tsX) - 1, 0, 2, H);
-      }
-
-      // Draw dark semi-transparent mask over excluded end region
-      if(teClamped > tsClamped && teClamped < dur){
-        g.fillStyle = 'rgba(0, 0, 0, 0.55)';
-        g.fillRect(teX, 0, W - teX, H);
-        // Trim end boundary line
-        g.fillStyle = 'rgba(218, 165, 32, 0.8)';
-        g.fillRect(Math.round(teX) - 1, 0, 2, H);
-      }
-    } else {
-      // Ensure sane defaults when duration unknown
-      tsX = 0; teX = W;
-    }
-
-    // Dynamic fade overlays relative to the trim window
-    // Dynamic fade overlays relative to the trim window (guarded)
-    const fi = +( document.getElementById('eft')?.value || 0 );
-    const fo = +( document.getElementById('efo')?.value || 0 );
-    const activeW = Number.isFinite(teX) && Number.isFinite(tsX) ? Math.max(0, teX - tsX) : 0;
-
-    if(dur>0 && Number.isFinite(dur) && activeW > 0){
+    // fade overlays
+    if(dur>0){
+      const fi=+( document.getElementById('eft')?.value||0);
+      const fo=+( document.getElementById('efo')?.value||0);
       if(fi>0){
-        const fiW = Math.min(Math.max(0, (fi / dur) * W), activeW);
-        if(fiW > 0 && Number.isFinite(fiW)){
-          const grad = g.createLinearGradient(tsX, 0, tsX + fiW, 0);
-          grad.addColorStop(0, 'rgba(200,50,210,0.38)');
-          grad.addColorStop(0.75, 'rgba(200,50,210,0.28)');
-          grad.addColorStop(1, 'rgba(200,50,210,0)');
-          g.fillStyle = grad;
-          g.fillRect(tsX, 0, fiW, H);
-        }
+        const fiW=Math.min(fi/dur,1)*W;
+        const grad=g.createLinearGradient(0,0,fiW,0);
+        grad.addColorStop(0,'rgba(200,50,210,0.38)');
+        grad.addColorStop(0.75,'rgba(200,50,210,0.28)');
+        grad.addColorStop(1,'rgba(200,50,210,0)');
+        g.fillStyle=grad; g.fillRect(0,0,fiW,H);
       }
       if(fo>0){
-        const foW = Math.min(Math.max(0, (fo / dur) * W), activeW);
-        if(foW > 0 && Number.isFinite(foW)){
-          const grad = g.createLinearGradient(teX - foW, 0, teX, 0);
-          grad.addColorStop(0, 'rgba(200,50,210,0)');
-          grad.addColorStop(0.25, 'rgba(200,50,210,0.28)');
-          grad.addColorStop(1, 'rgba(200,50,210,0.38)');
-          g.fillStyle = grad;
-          g.fillRect(teX - foW, 0, foW, H);
-        }
+        const foW=Math.min(fo/dur,1)*W;
+        const grad=g.createLinearGradient(W-foW,0,W,0);
+        grad.addColorStop(0,'rgba(200,50,210,0)');
+        grad.addColorStop(0.25,'rgba(200,50,210,0.28)');
+        grad.addColorStop(1,'rgba(200,50,210,0.38)');
+        g.fillStyle=grad; g.fillRect(W-foW,0,foW,H);
       }
     }
     if(dur>0||previewSeekPos>0){
@@ -5351,7 +5214,6 @@ function drawScrubber(){
   const tEl=document.getElementById('scrub-time');
   if(tEl) tEl.textContent=dur>0?`${_fmtTime(pos)} / ${_fmtTime(dur)}`:'';
 }
-
 function startScrubRAF(){
   if(scrubRAF) return;
   const tick=()=>{
@@ -5361,7 +5223,6 @@ function startScrubRAF(){
   };
   scrubRAF=requestAnimationFrame(tick);
 }
-
 function stopScrubRAF(){
   if(scrubRAF){ cancelAnimationFrame(scrubRAF); scrubRAF=null; }
 }
@@ -5380,7 +5241,7 @@ function initScrub(){
   }
   function getMode(frac){
     const dur=getDur(); if(!dur) return 'seek';
-    // Playhead always wins within ±8px hit zone
+    // playhead always wins within ±8px hit zone
     const seekFrac=previewAudio?.duration?(previewAudio.currentTime/previewAudio.duration):previewSeekPos;
     if(Math.abs(frac-seekFrac)*(c.offsetWidth||1)<8) return 'seek';
     const fi=+(document.getElementById('eft')?.value||0);
@@ -5390,21 +5251,7 @@ function initScrub(){
     return 'seek';
   }
 
-  c.addEventListener('pointerdown', e => {
-    c.setPointerCapture(e.pointerId);
-    const frac = relFrac(e);
-    dragMode = getMode(frac);
-    
-    // Trigger update immediately on click
-    const dur = getDur();
-    if(dragMode==='seek' && dur > 0) {
-      if(previewAudio && previewAudio.duration) previewAudio.currentTime = frac * previewAudio.duration;
-      else previewSeekPos = frac;
-    }
-    drawScrubber();
-  });
-
-c.addEventListener('pointermove', e => {
+  c.addEventListener('pointermove',e=>{
     const frac=relFrac(e);
     if(!dragMode){
       const m=getMode(frac);
@@ -5421,17 +5268,26 @@ c.addEventListener('pointermove', e => {
     } else if(dragMode==='seek'){
       if(previewAudio&&previewAudio.duration) previewAudio.currentTime=frac*previewAudio.duration;
       else previewSeekPos=frac;
+      drawScrubber();
     }
-    drawScrubber();
   });
 
-  c.addEventListener('pointerup', e => {
-    dragMode = null;
+  c.addEventListener('pointerdown',e=>{
+    if(!eFiles.length) return;
+    const frac=relFrac(e);
+    dragMode=getMode(frac);
+    c.setPointerCapture(e.pointerId);
+    if(dragMode==='seek'){
+      if(previewAudio&&previewAudio.duration){
+        previewAudio.currentTime=frac*previewAudio.duration;
+        if(!previewAudio.paused){ previewAudio.pause(); updFB(); }
+      } else { previewSeekPos=frac; }
+      drawScrubber();
+    }
   });
 
-  c.addEventListener('pointercancel', e => {
-    dragMode = null;
-  });
+  c.addEventListener('pointerup',  ()=>{ dragMode=null; });
+  c.addEventListener('pointercancel',()=>{ dragMode=null; });
 }
 function _cleanupPreview(){
   ++previewFadeGen;
@@ -5838,36 +5694,22 @@ function ico(p){
   return svgI('<path d="M11 22H9v-2H7v-2h2V6H7V4h2V2h2v20Zm8 0h-6v-2h6v2Zm2-2h-2v-2h2v2ZM7 18H5v-2h2v2Zm10 0h-4v-2h4v2Zm6 0h-2V6h2v12ZM5 10H3v4h2v2H1V8h4v2Zm14 6h-2V8h2v8Zm-4-2h-2v-4h2v4ZM7 8H5V6h2v2Zm10 0h-4V6h4v2Zm4-2h-2V4h2v2Zm-2-2h-6V2h6v2Z"/>');
 }
 function renderPerf(){
-  const grid = document.getElementById('grid');
-  if(!grid) return;
-  grid.innerHTML = '';
-
-  for(let i=0; i<64; i++){
-    const p = pads[i];
-    if(!p){
-      const b = document.createElement('button');
-      b.className = 'pbtn empty';
-      b.dataset.id = i;
-      b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
-      grid.appendChild(b);
-      continue;
-    }
-    const b = document.createElement('button');
-    b.className = 'pbtn';
-    b.dataset.id = i;
-    const isLoop = p.mode==='loop'||p.mode==='playlist'||p.mode==='combo';
-    
-    // Safely check against your real active sources array (srcs)
-    const isPlaying = typeof srcs !== 'undefined' && srcs && srcs[i];
-                      
-    if(isPlaying) b.classList.add(isLoop?'plooping':'playing');
-    
+  const g=document.getElementById('pgrid'); g.innerHTML='';
+  for(let i=0;i<pads.length;i++){
+    const p=pads[i]; if(p==null) continue;
+    const b=document.createElement('div');
+    b.className='pbtn';
+    b.dataset.id=i;
+    const isLoop=p.mode==='loop'||p.mode==='playlist'||p.mode==='combo';
+    if(srcs[i]) b.classList.add(isLoop?'plooping':'playing');
     b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
     if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
     b.innerHTML=`<div class="pnum">${p.keyLabel||p.key||''}</div>`+
-                `<div class="pname">${p.name||''}</div>`;
-    grid.appendChild(b);
+      renderPadIconArea(p)+
+      renderPadLabel(p,i);
+    g.appendChild(b);
   }
+  applyPadFilter();
 }
 
 function toggleEpFades(){
@@ -6728,124 +6570,5 @@ initTitleGlow();
     <button id="ob-next" onclick="nextOnboardSlide()" style="background:var(--gold);border-color:var(--gold);color:#000">NEXT →</button>
   </div>
 </div>
-</div>
-
-<!-- In-page error panel (captures uncaught errors, rejections, and console.errors) -->
-<!-- Dev restore helper: paste exported JSON to restore boards (temporary) -->
-<div id="dev-restore" style="position:fixed;left:12px;bottom:12px;width:360px;background:rgba(10,10,20,0.96);color:#fff;border:1px solid rgba(255,255,255,0.04);border-radius:8px;font-family:var(--ff-body);font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:9999;padding:8px">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-    <strong style="color:var(--gold)">DEV Restore</strong>
-    <button id="dev-restore-close" style="background:none;border:1px solid rgba(255,255,255,0.06);color:var(--text);padding:4px 8px;border-radius:4px;cursor:pointer">Close</button>
-  </div>
-  <textarea id="dev-restore-input" placeholder="Paste exported JSON here" style="width:100%;height:90px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--text);padding:6px;resize:vertical"></textarea>
-  <div style="display:flex;gap:8px;margin-top:6px">
-    <button id="dev-restore-do" style="flex:1;padding:6px;border-radius:4px;border:1px solid rgba(255,255,255,0.06);background:var(--gold);color:#000;cursor:pointer">Restore</button>
-    <button id="dev-restore-sample" style="padding:6px;border-radius:4px;border:1px solid rgba(255,255,255,0.06);background:none;color:var(--text);cursor:pointer">Show Info</button>
-  </div>
-</div>
-<div id="inpage-errors" style="position:fixed;right:12px;bottom:12px;width:360px;max-height:50vh;background:rgba(20,20,30,0.96);color:#fff;border:1px solid rgba(255,255,255,0.06);border-radius:8px;font-family:var(--ff-body);font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:9999;overflow:hidden;display:flex;flex-direction:column">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)">
-    <div style="display:flex;gap:8px;align-items:center">
-      <strong style="font-size:12px;color:var(--gold)">Errors</strong>
-      <span id="ipe-count" style="color:var(--text-dim);font-size:11px">0</span>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <button id="ipe-clear" style="background:none;border:1px solid rgba(255,255,255,0.06);color:var(--text);padding:4px 8px;border-radius:4px;cursor:pointer">Clear</button>
-      <button id="ipe-toggle" style="background:none;border:1px solid rgba(255,255,255,0.06);color:var(--text);padding:4px 8px;border-radius:4px;cursor:pointer">Close</button>
-    </div>
-  </div>
-  <div id="ipe-list" style="overflow:auto;padding:8px;flex:1;gap:6px;display:flex;flex-direction:column">
-    <!-- messages appended here -->
-  </div>
-</div>
-
-<script>
-  (function(){
-    const panel=document.getElementById('inpage-errors');
-    const list=document.getElementById('ipe-list');
-    const countEl=document.getElementById('ipe-count');
-    const btnClear=document.getElementById('ipe-clear');
-    const btnToggle=document.getElementById('ipe-toggle');
-    let open=true;
-    const msgs=[];
-
-    function render(){
-      list.innerHTML='';
-      msgs.slice().reverse().forEach(m=>{
-        const el=document.createElement('div');
-        el.style.padding='6px';
-        el.style.border='1px solid rgba(255,255,255,0.03)';
-        el.style.borderRadius='4px';
-        el.style.background='linear-gradient(180deg,rgba(255,255,255,0.01),transparent)';
-        el.style.color='var(--text)';
-        el.innerText = `[${m.type}] ${m.message}` + (m.stack?"\n"+m.stack.split('\n').slice(0,4).join('\n'):'');
-        list.appendChild(el);
-      });
-      countEl.textContent=msgs.length;
-      if(msgs.length>0){ panel.style.display='flex'; }
-      else { panel.style.display=open?'flex':'none'; }
-    }
-
-    function push(msg){ msgs.push(msg); if(msgs.length>200) msgs.shift(); render(); }
-
-    window.addEventListener('error', e=>{
-      try{ push({type:'error',message:e.message||String(e),stack:(e.error&&e.error.stack)||''}); }catch(err){}
-    });
-    window.addEventListener('unhandledrejection', e=>{
-      try{ const r=e.reason; push({type:'unhandledrejection',message:r&&r.message?r.message:String(r),stack:r&&r.stack?r.stack:''}); }catch(err){}
-    });
-
-    // proxy console.error to capture messages
-    ['error','warn','log','info'].forEach(level=>{
-      const orig=console[level];
-      console[level]=function(...args){
-        try{ push({type:'console.'+level,message:args.map(a=>(typeof a==='object'?JSON.stringify(a):String(a))).join(' ')}); }catch(e){}
-        try{ orig.apply(console,args); }catch(e){}
-      };
-    });
-
-    btnClear.addEventListener('click',()=>{ msgs.length=0; render(); });
-    btnToggle.addEventListener('click',()=>{ open=!open; panel.style.display=open?(msgs.length? 'flex':'none'):'none'; btnToggle.textContent=open?'Close':'Open'; });
-
-    // start hidden if no messages
-    panel.style.display='none';
-    // expose for manual use
-    window._inpageErrors = { push, clear: ()=>{ msgs.length=0; render(); } };
-  })();
-</script>
-
-<script>
-  // Dev restore logic — temporary helper
-  (function(){
-    const box=document.getElementById('dev-restore'); if(!box) return;
-    const inp=document.getElementById('dev-restore-input');
-    const btn=document.getElementById('dev-restore-do');
-    const btnInfo=document.getElementById('dev-restore-sample');
-    const btnClose=document.getElementById('dev-restore-close');
-
-    btnClose.addEventListener('click',()=>box.style.display='none');
-    btnInfo.addEventListener('click',()=>{
-      alert('Paste an exported library/board JSON (from Settings → DATA → Export) and click Restore. This will write entries into the app IndexedDB and reload.');
-    });
-
-    btn.addEventListener('click',async()=>{
-      const txt=inp.value.trim(); if(!txt){ alert('Paste JSON first'); return; }
-      let obj;
-      try{ obj = JSON.parse(txt); }catch(e){ alert('Invalid JSON: '+e.message); return; }
-      if(!obj || typeof obj!=='object'){ alert('Invalid export format'); return; }
-      try{
-        if(typeof openDB==='function') await openDB();
-        if(!window.db){ alert('Database not open'); return; }
-        const items = obj.p || obj.boards || [];
-        if(!items.length){ if(obj.p) items = obj.p; else { alert('No boards found in JSON'); return; } }
-        const tx = db.transaction('p','readwrite');
-        const store = tx.objectStore('p');
-        for(const it of items){ if(it && it.id) store.put(it); }
-        tx.oncomplete = ()=>{ alert('Restore complete — reloading'); location.reload(); };
-        tx.onerror = (e)=>{ alert('Restore failed'); console.error(e); };
-      }catch(e){ alert('Restore error: '+e.message); console.error(e); }
-    });
-  })();
-</script>
 </body>
 </html>
