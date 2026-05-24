@@ -1815,8 +1815,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 125;
+const APP_VERSION = 126;
 const CHANGELOG=[
+  {v:126,date:'2026-05-24',items:["Duration display: addToLib() now decodes audio on upload to store duration in IndexedDB (type-guarded: icons skipped); duration shown in Library audio card subLines (M:SS · size · date · in-use), library picker rows, and Library stats bar (N files · total-size · total-duration); updFB() already showed waveform duration — no change needed there"]},
   {v:125,date:'2026-05-24',items:["Fix lib preview pause: toggleLibPreview no longer accepts a btnEl DOM reference — it always calls document.getElementById('lpb-'+hash) after the async gap to get a fresh reference; the stale-reference bug occurred when the library list re-rendered between the function call and the await resolving"]},
   {v:124,date:'2026-05-24',items:["RAM management: LRU eviction for libBufs cache — max 20 decoded AudioBuffers held in RAM; least-recently-decoded entry evicted when limit is exceeded; _lruBufSet() called at every decode point (play, playNext, createPadInstance, preview); _lruBufDelete() used instead of bare delete to keep LRU state consistent; delete bufs[id] added to once-pad onended handler so next tap re-enters the cache-check path rather than holding a stale reference"]},
   {v:123,date:'2026-05-24',items:["iPhone reliability: -webkit-overflow-scrolling:touch and overscroll-behavior:contain on all scroll containers (.ep-body, .pgrid, #sidebar, #combo-body, #hint-body, #keymap-body); overscroll-behavior:none on fixed overlay panels (#ep, #combo-ov, #hint-ov, #icon-picker, #lib-picker, #import-ov, #changelog-ov, #onboard-ov, #pad-type-picker, #keymap-ov); blanket rule for inline overflow-y:auto elements; min-height:44px on .btn-p/.btn-s/.btn-g/.dlg-*; .ep-back min touch target 44×44px"]},
@@ -2051,6 +2052,14 @@ async function addToLib(buf,name,type='',folder=null){
   if(existing) return {hash,isDuplicate:true};
   const entry={hash,name,origName:name,buf,size:buf.byteLength,type,added:Date.now()};
   if(folder) entry.folder=folder;
+  if(type!=='icon'){
+    try{
+      const ac=ctx||new(window.AudioContext||window.webkitAudioContext)();
+      const decoded=await ac.decodeAudioData(buf.slice(0));
+      entry.duration=decoded.duration;
+      if(!ctx) ac.close();
+    } catch(e){}
+  }
   await libPut(entry);
   return {hash,isDuplicate:false};
 }
@@ -3552,7 +3561,8 @@ function renderLibList(entries,usedHashes){
                       libFilterMode==='unused'?entries.filter(e=>!usedHashes.has(e.hash)):entries;
   const folderFiltered=_libAudioFolder?scopeFiltered.filter(e=>e.folder===_libAudioFolder):scopeFiltered;
   const totalSize=entries.reduce((s,e)=>s+(e.size||0),0);
-  if(stats) stats.textContent=entries.length?`${entries.length} file${entries.length===1?'':'s'} · ${fmtSize(totalSize)}`:'Library is empty.';
+  const totalDur=entries.reduce((s,e)=>s+(e.duration||0),0);
+  if(stats) stats.textContent=entries.length?`${entries.length} file${entries.length===1?'':'s'} · ${fmtSize(totalSize)}${totalDur?' · '+_fmtTime(totalDur):''}`:'Library is empty.';
   const q=_libSsbQ.toLowerCase().trim();
   const searched=q?folderFiltered.filter(e=>e.name.toLowerCase().includes(q)):folderFiltered;
   const filtered=_sortItems(searched,_libSsbSort_k,e=>e.added,e=>e.name,e=>e.updatedAt);
@@ -3590,7 +3600,7 @@ function renderLibList(entries,usedHashes){
       subLines:[
         ...(folderChip?[folderChip]:[]),
         ...(e.origName&&e.origName!==e.name?[`<span style="opacity:.6;word-break:break-all">upload-name: ${escHtml(e.origName)}</span>`]:[]),
-        `${fmtSize(e.size||0)} · ${date} · ${inUseEl}`,
+        `${e.duration?_fmtTime(e.duration)+' · ':''}${fmtSize(e.size||0)} · ${date} · ${inUseEl}`,
         ...(inUse?[`<div id="lub-${h}" style="display:none;border-left:2px solid var(--active);padding-left:8px;margin-top:2px">${usedByRows}</div>`]:[]),
       ],
     });
@@ -4565,7 +4575,7 @@ function _lpRenderList(){
         style="background:none;border:1px solid ${playing?'var(--active)':'var(--border)'};color:${playing?'var(--active)':'var(--text-dim)'};font-family:var(--ff-label);font-size:calc(16px * var(--font-scale));width:32px;height:32px;border-radius:2px;cursor:pointer;flex-shrink:0;padding:0;letter-spacing:0;line-height:1">${playing?'■':'▶'}</button>
       <div style="flex:1;min-width:0">
         <div style="font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(e.name)}</div>
-        <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${fmtSize(e.size||0)} · ${date}${e.origName&&e.origName!==e.name?` · <span style="opacity:.55">← ${escHtml(e.origName)}</span>`:''}</div>
+        <div style="font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">${e.duration?_fmtTime(e.duration)+' · ':''}${fmtSize(e.size||0)} · ${date}${e.origName&&e.origName!==e.name?` · <span style="opacity:.55">← ${escHtml(e.origName)}</span>`:''}</div>
         ${usedHtml}
       </div>
     </div>`;
