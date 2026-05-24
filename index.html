@@ -1808,6 +1808,28 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
+  // ==========================================
+// CENTRAL DEBUG LOGGER FOR IPHONE
+// ==========================================
+function logDebug(message, isError = false) {
+  const logBox = document.getElementById('debug-log');
+  if (!logBox) return;
+  const time = new Date().toLocaleTimeString();
+  const color = isError ? '#ff4444' : '#00ff00';
+  logBox.innerHTML += `<div style="color: ${color}; margin-bottom: 2px;">[${time}] ${message}</div>`;
+  logBox.scrollTop = logBox.scrollHeight;
+}
+
+window.onerror = function(message, source, lineno, colno, error) {
+  const shortSource = source ? source.split('/').pop() : 'inline';
+  logDebug(`CRASH: ${message} (${shortSource}:${lineno})`, true);
+  return false;
+};
+
+window.onunhandledrejection = function(event) {
+  logDebug(`ASYNC-FEHLER: ${event.reason?.message || event.reason}`, true);
+};
+// ==========================================
 
 const APP_VERSION = 121;
 const CHANGELOG=[
@@ -4886,7 +4908,8 @@ async function openEP(id){
       updFB();
     } catch (editorAudioError) {
       console.error("Fehler beim Laden der Wellenformen im Editor-Modus:", editorAudioError);
-      // Der Fehler wird verschluckt, damit das Menü trotzdem benutzbar bleibt!
+      // HIER NEU: Schreibt es sofort live auf dein iPhone!
+      logDebug("Editor-Audio-Warnung: " + editorAudioError.message, true);
       updFB(); 
     }
   }
@@ -6704,4 +6727,8 @@ initTitleGlow();
   </div>
 </div>
 </body>
+<!-- AUTOMATISCHES DEBUG-LOG FÜR IPHONE-TESTS -->
+<div id="debug-log" style="background: #111; color: #00ff00; font-family: monospace; font-size: 11px; padding: 10px; max-height: 120px; overflow-y: auto; border-top: 2px solid #333; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 999999; box-sizing: border-box; opacity: 0.9;">
+  <div>[SYSTEM] Debug-Log aktiv. Warte auf Events...</div>
+</div>
 </html>
