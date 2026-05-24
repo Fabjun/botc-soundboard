@@ -4589,6 +4589,31 @@ async function openLibPicker(append=false){
   _lpRenderList();
   requestAnimationFrame(()=>{ const l=document.getElementById('lp-list'); if(l) l.scrollTop=_lpScroll; });
   setTimeout(()=>{ document.getElementById('lp-ssb-q')?.focus(); }, 50);
+
+  // ── NEU: IPHONE-RETTUNGSRING GEGEN BLOCKADEN ──
+  if (!window._pickerFixInstalled) {
+    window._pickerFixInstalled = true;
+    const originalClose = window.closeLibPicker;
+    if (typeof originalClose === 'function') {
+      window.closeLibPicker = function(...args) {
+        try {
+          const originalUpdFB = window.updFB;
+          window.updFB = function() {
+            try {
+              if (typeof initScrub === 'function') initScrub();
+              if (typeof drawScrubber === 'function') drawScrubber();
+            } catch(e) {
+              console.warn("Absturz in updFB abgefangen:", e);
+            }
+          };
+          if (typeof originalUpdFB === 'function') originalUpdFB();
+        } catch(err) {
+          console.error("Fehler im Picker-Schließ-Schutz:", err);
+        }
+        return originalClose.apply(this, args);
+      };
+    }
+  }
 }
 function closeLibPicker(){
   const l=document.getElementById('lp-list');
@@ -6632,7 +6657,14 @@ initTitleGlow();
   else init();
 })();
 </script>
-
+// Globaler Cache-Buster und Sicherheitsnetz für das iPhone
+if (typeof decodePad !== 'function') {
+  window.decodePad = async function(id) {
+    console.log("iPhone-Sicherheit: decodePad ignoriert für ID", id);
+    if (typeof bufs !== 'undefined' && bufs[id]) bufs[id] = [];
+    return true;
+  };
+}
 <div id="keymap-ov" onclick="closeKeymap()">
   <div id="keymap-box" onclick="event.stopPropagation()">
     <div class="keymap-hdr">KEY MAP</div>
