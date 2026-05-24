@@ -605,7 +605,10 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .combo-step{background:var(--surface);border:1px solid var(--border);
   border-radius:3px;margin-bottom:8px}
 .combo-step-hdr{display:flex;align-items:center;padding:6px 8px;
-  border-bottom:1px solid rgba(42,42,74,.5);gap:6px}
+  border-bottom:1px solid rgba(42,42,74,.5);gap:6px;cursor:grab}
+.combo-step-hdr:active{cursor:grabbing}
+.combo-step.step-drop-before{border-top:2px solid var(--mode-accent)}
+.combo-step.step-drop-after{border-bottom:2px solid var(--mode-accent)}
 .combo-step-lbl{font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;
   color:var(--text-dim);flex:1}
 .combo-step-body{min-height:40px;padding:6px 8px;display:flex;flex-wrap:wrap;
@@ -1863,8 +1866,13 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 140;
+const APP_VERSION = 141;
 const CHANGELOG=[
+  {v:141,date:'2026-05-24',items:[
+    "Combo editor drag-and-drop: pad chips can now be dragged between steps — pointer-capture drag removes the chip from its source step and appends it to the target step; a chip dragged onto its own step is a no-op; empty steps remain after removal (intentional)",
+    "Combo editor step reorder: the step header (entire STEP N bar) is now a drag handle — dragging over another step shows a top/bottom drop-indicator line (before/after half-height threshold); release reorders comboSteps[] and re-renders",
+    "Bug fix: comboChipExpanded keys (si-pi) are cleared on both chip-move and step-reorder so expanded chip-option panels never appear on the wrong chip after a DnD operation"
+  ]},
   {v:140,date:'2026-05-24',items:["Fix libFolderDropdown onclick injection: two libCard() calls (audio tab line ~3656, pads tab line ~3907) used bare JSON.stringify() for the currentFolder argument in inline onclick attributes — a folder name containing a double-quote character would terminate the HTML attribute early, breaking the button silently; fixed by wrapping with escHtml() to match the pattern already used correctly elsewhere (v120)"]},
   {v:139,date:'2026-05-24',items:[
     "A1: libPut now rejects with a real Error instead of undefined — callers get actionable IDB error messages; libDelete logs IDB errors to console instead of silently swallowing them",
@@ -2068,6 +2076,8 @@ let libIconEntries = [];
 const playPos = {};
 // Combo editor state
 let comboSteps = [], comboKey = '', comboKeyLabel = '', comboEditId = null, comboDragId = null;
+let _chipDragSrc = null; // {si,pi} — pad chip being dragged between steps
+let _stepDragSrc = null; // step index being dragged to reorder
 const comboChipExpanded = new Set();
 // Combo runtime state: comboState[padId] = {stopped, bgInstances, currentFgInstances}
 const comboState = {};
@@ -5162,7 +5172,7 @@ function renderComboSteps(){
     const chips=step.pads.map((padId,pi)=>{
       const p=pads[padId];
       if(!p){
-        return `<span class="combo-chip" style="border-color:var(--blood);color:var(--blood-bright)">⚠ Pad ${padId+1} (deleted)<button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button></span>`;
+        return `<span class="combo-chip" data-si="${si}" data-pi="${pi}" data-name="Pad ${padId+1}" style="border-color:var(--blood);color:var(--blood-bright)">⚠ Pad ${padId+1} (deleted)<button class="combo-chip-del" onclick="removePadFromStep(${si},${pi})">×</button></span>`;
       }
       const isCombo=p.mode==='combo';
       const isBg=isInfiniteBg(p);
@@ -5179,7 +5189,7 @@ function renderComboSteps(){
         <input class="chip-inp" type="number" min="0" max="10" step="0.5" placeholder="${p.fadeIn??0}" value="${opt?.fade??''}"
           oninput="setChipOpt(${si},${pi},'fade',this.value)" onclick="event.stopPropagation()">
       </div>`:'';
-      return `<span class="${chipClass}"><div class="combo-chip-top">
+      return `<span class="${chipClass}" data-si="${si}" data-pi="${pi}" data-name="${escHtml(p.name||'Pad '+(padId+1))}"><div class="combo-chip-top">
         ${!isCombo?`<button class="chip-exp-btn" onclick="toggleChipExpand(${si},${pi})">⚙</button>`:''}
         ${isBg?'<span>⬤</span>':''}${isCombo?`<span style="color:var(--gold);line-height:1">${ico(p)}</span>`:''}
         <span>${lbl}</span>
@@ -5204,9 +5214,9 @@ function renderComboSteps(){
 
     return `<div class="combo-ins" onclick="insertComboStep(${si})">+</div>`+
            `<div class="combo-step" data-step="${si}">
-      <div class="combo-step-hdr">
+      <div class="combo-step-hdr" data-si="${si}">
         <span class="combo-step-lbl">STEP ${si+1}</span>
-        <button onclick="removeComboStep(${si})" style="background:none;border:none;color:var(--blood);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1">×</button>
+        <button onclick="removeComboStep(${si})" style="background:none;border:none;color:var(--blood);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1;cursor:pointer">×</button>
       </div>
       <div class="combo-step-body" data-step="${si}">${stepBody}</div>
     </div>`;
@@ -5215,6 +5225,8 @@ function renderComboSteps(){
   document.querySelectorAll('.combo-step-body').forEach(zone=>{
     zone.addEventListener('dragover',e=>e.preventDefault());
   });
+  initComboChipDrag();
+  initComboStepDrag();
 }
 
 function comboCycles(candidateId, editingId){
@@ -5331,6 +5343,122 @@ function initComboPaletteDrag(){
       item.classList.remove('cpal-dragging');
       document.querySelectorAll('.combo-step-body').forEach(z=>z.classList.remove('drag-over'));
       comboDragId=null;
+    });
+  });
+}
+
+function initComboChipDrag(){
+  document.querySelectorAll('.combo-chip[data-si]').forEach(chip=>{
+    chip.addEventListener('pointerdown',e=>{
+      if(e.target.closest('.combo-chip-del,.chip-exp-btn,.chip-inp')) return;
+      e.preventDefault();
+      _chipDragSrc={si:+chip.dataset.si, pi:+chip.dataset.pi};
+      chip.setPointerCapture(e.pointerId);
+      const ghost=document.getElementById('combo-ghost');
+      ghost.textContent=chip.dataset.name||'Pad';
+      ghost.style.display='block';
+      ghost.style.left=(e.clientX-40)+'px'; ghost.style.top=(e.clientY-16)+'px';
+    });
+    chip.addEventListener('pointermove',e=>{
+      if(!_chipDragSrc) return;
+      const ghost=document.getElementById('combo-ghost');
+      ghost.style.left=(e.clientX-40)+'px'; ghost.style.top=(e.clientY-16)+'px';
+      document.querySelectorAll('.combo-step-body').forEach(zone=>{
+        const r=zone.getBoundingClientRect();
+        zone.classList.toggle('drag-over',
+          e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom);
+      });
+    });
+    chip.addEventListener('pointerup',e=>{
+      if(!_chipDragSrc) return;
+      document.getElementById('combo-ghost').style.display='none';
+      const src=_chipDragSrc; _chipDragSrc=null;
+      let dropped=false;
+      document.querySelectorAll('.combo-step-body').forEach(zone=>{
+        zone.classList.remove('drag-over');
+        if(dropped) return;
+        const r=zone.getBoundingClientRect();
+        if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
+          const tsi=+zone.dataset.step;
+          if(tsi===src.si){ dropped=true; return; } // same step — no-op
+          const srcStep=comboSteps[src.si];
+          const [padId]=srcStep.pads.splice(src.pi,1);
+          const chipOpts=srcStep.chipOpts||[];
+          const [opt]=chipOpts.splice(src.pi,1);
+          srcStep.chipOpts=chipOpts;
+          const tgt=comboSteps[tsi];
+          tgt.pads.push(padId);
+          if(!tgt.chipOpts) tgt.chipOpts=[];
+          tgt.chipOpts.push(opt||null);
+          comboChipExpanded.clear();
+          dropped=true;
+          renderComboSteps();
+        }
+      });
+    });
+    chip.addEventListener('pointercancel',()=>{
+      _chipDragSrc=null;
+      document.getElementById('combo-ghost').style.display='none';
+      document.querySelectorAll('.combo-step-body').forEach(z=>z.classList.remove('drag-over'));
+    });
+  });
+}
+
+function initComboStepDrag(){
+  document.querySelectorAll('.combo-step-hdr').forEach(hdr=>{
+    const stepEl=hdr.closest('.combo-step');
+    const si=+hdr.dataset.si;
+    hdr.addEventListener('pointerdown',e=>{
+      if(e.target.closest('button')) return;
+      e.preventDefault();
+      _stepDragSrc=si;
+      hdr.setPointerCapture(e.pointerId);
+      stepEl.style.opacity='0.45';
+      const ghost=document.getElementById('combo-ghost');
+      ghost.textContent=`STEP ${si+1}`;
+      ghost.style.display='block';
+      ghost.style.left=(e.clientX-40)+'px'; ghost.style.top=(e.clientY-16)+'px';
+    });
+    hdr.addEventListener('pointermove',e=>{
+      if(_stepDragSrc===null) return;
+      const ghost=document.getElementById('combo-ghost');
+      ghost.style.left=(e.clientX-40)+'px'; ghost.style.top=(e.clientY-16)+'px';
+      document.querySelectorAll('.combo-step').forEach(s=>{
+        s.classList.remove('step-drop-before','step-drop-after');
+        if(+s.dataset.step===_stepDragSrc) return;
+        const r=s.getBoundingClientRect();
+        if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
+          s.classList.toggle('step-drop-before', e.clientY<r.top+r.height/2);
+          s.classList.toggle('step-drop-after',  e.clientY>=r.top+r.height/2);
+        }
+      });
+    });
+    hdr.addEventListener('pointerup',e=>{
+      if(_stepDragSrc===null) return;
+      document.getElementById('combo-ghost').style.display='none';
+      stepEl.style.opacity='';
+      const src=_stepDragSrc; _stepDragSrc=null;
+      let targetSi=null, before=true;
+      document.querySelectorAll('.combo-step').forEach(s=>{
+        const b=s.classList.contains('step-drop-before');
+        const a=s.classList.contains('step-drop-after');
+        s.classList.remove('step-drop-before','step-drop-after');
+        if(b||a){ targetSi=+s.dataset.step; before=b; }
+      });
+      if(targetSi===null||targetSi===src) return;
+      const [moved]=comboSteps.splice(src,1);
+      // Recalculate target index after splice
+      let insertAt=targetSi>src?targetSi-1:targetSi;
+      if(!before) insertAt++;
+      comboSteps.splice(Math.max(0,Math.min(comboSteps.length,insertAt)),0,moved);
+      comboChipExpanded.clear();
+      renderComboSteps();
+    });
+    hdr.addEventListener('pointercancel',()=>{
+      _stepDragSrc=null;
+      stepEl.style.opacity='';
+      document.getElementById('combo-ghost').style.display='none';
+      document.querySelectorAll('.combo-step').forEach(s=>s.classList.remove('step-drop-before','step-drop-after'));
     });
   });
 }
