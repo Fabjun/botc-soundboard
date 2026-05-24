@@ -524,6 +524,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 #qr-ov{position:fixed;inset:0;z-index:460;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center}
 #qr-ov.open{display:flex}
+#pv-ov{position:fixed;inset:0;z-index:460;display:none}
+#pv-ov.open{display:block}
+#pv-box{position:fixed;background:var(--raised);border:1px solid var(--gold);border-radius:4px;padding:12px 14px;width:160px;box-sizing:border-box;box-shadow:0 4px 20px rgba(0,0,0,.7)}
 
 /* KEYMAP OVERLAY */
 #keymap-ov{position:fixed;inset:0;z-index:200;background:rgba(10,10,20,.85);
@@ -952,6 +955,19 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   </div>
 </div>
 
+
+<!-- PAD VOLUME QUICK-SLIDER -->
+<div id="pv-ov" onclick="if(event.target===this)closePadVolSlider()">
+  <div id="pv-box" onclick="event.stopPropagation()">
+    <div style="font-family:var(--ff-label);font-size:calc(10px*var(--font-scale));color:var(--text-dim);letter-spacing:.05em;margin-bottom:8px">VOLUME</div>
+    <input type="range" id="pv-slider" min="0" max="100" step="1" oninput="_pvUpdate(+this.value)"
+      style="width:100%;accent-color:var(--gold);cursor:pointer;margin-bottom:8px;touch-action:none">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span id="pv-lbl" style="font-family:var(--ff-label);font-size:calc(13px*var(--font-scale));color:var(--gold)">80%</span>
+      <button onclick="closePadVolSlider()" class="lca-pos" style="padding:4px 10px">✓</button>
+    </div>
+  </div>
+</div>
 
 <!-- QUICK RENAME OVERLAY -->
 <div id="qr-ov" onclick="if(event.target===this)closeQuickRename()">
@@ -1847,8 +1863,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 129;
+const APP_VERSION = 130;
 const CHANGELOG=[
+  {v:130,date:'2026-05-24',items:["Pad volume quick-slider: 500ms long press on a currently-playing PAD in GAME mode opens a mini volume slider (#pv-ov) positioned above or below the pad; range input 0–100%, gain updated in real-time via g.gain.setTargetAtTime(); on close the new volume is saved back to pads[id].volume and save() is called; _pvTimer/_pvId globals; timer cancelled on movement >8px or pointerup like the SETUP long-press"]},
   {v:129,date:'2026-05-24',items:["Quick-rename on long press: 500ms long press on any occupied PAD in SETUP mode opens a centered RENAME PAD overlay (#qr-ov) instead of opening the full editor; timer is cancelled if movement exceeds 8px (drag takes over) or on pointerup; Enter saves, Escape cancels; Escape routed through the _escStack like all other overlays; _qrTimer / _qrId globals added"]},
   {v:128,date:'2026-05-24',items:["Auto-stop after inactivity: Settings → CONTROLS → AUTO-STOP toggle (default OFF) + minute input (default 30, range 1–999); timer resets on every touchstart/mousedown/keydown and on every play() call; timer pauses when nothing is playing (Object.keys(srcs).length === 0); stopAll()/fadeOutAll() cancel the timer; on timeout: stopAll() + toast 'AUTO-STOP: inactivity timeout.'; settings keys auto-stop-enabled and auto-stop-minutes added to SETTINGS_KEYS for export/import"]},
   {v:127,date:'2026-05-24',items:["Code hygiene: all German comments translated to English or deleted; German string 'Vollständig' → 'Full' in trim-end slider; dead code block outside </script> tag removed (decodePad safety-net stub that was unreachable HTML text); 7 trivial 'GEÄNDERT:' / what-the-code-does comments deleted; dead console.log and stale change-marker comments removed throughout"]},
@@ -2032,6 +2049,7 @@ const klog = [];
 let dragSrc=null, dragGhost=null, dragMoved=false;
 let dragStartX=0, dragStartY=0, dragGhostW=0, dragGhostH=0;
 let _qrTimer=null, _qrId=null;
+let _pvTimer=null, _pvId=null;
 let _dragInsertAt=null, _dragSwapWith=null;
 
 // ── DB ──
@@ -6095,6 +6113,15 @@ function onPadPointerDown(e, id){
       _openQuickRename(id);
     }, 500);
   }
+  if(locked && pads[id] && srcs[id]){
+    _pvTimer=setTimeout(()=>{
+      _pvTimer=null;
+      dragSrc=null;
+      document.removeEventListener('pointermove', onDragMove);
+      document.removeEventListener('pointerup', onDragEnd);
+      _openPadVolSlider(id);
+    }, 500);
+  }
   document.addEventListener('pointermove', onDragMove, {passive:false});
   document.addEventListener('pointerup', onDragEnd);
 }
@@ -6103,6 +6130,7 @@ function onDragMove(e){
   if(!dragMoved){
     if(Math.hypot(e.clientX-dragStartX, e.clientY-dragStartY)<8) return;
     if(_qrTimer){ clearTimeout(_qrTimer); _qrTimer=null; }
+    if(_pvTimer){ clearTimeout(_pvTimer); _pvTimer=null; }
     dragMoved=true;
     const src=document.querySelector(`.pbtn[data-id="${dragSrc}"]`);
     const r=src.getBoundingClientRect();
@@ -6162,6 +6190,7 @@ function onDragMove(e){
 }
 function onDragEnd(e){
   if(_qrTimer){ clearTimeout(_qrTimer); _qrTimer=null; }
+  if(_pvTimer){ clearTimeout(_pvTimer); _pvTimer=null; }
   document.removeEventListener('pointermove', onDragMove);
   document.removeEventListener('pointerup', onDragEnd);
   if(!dragMoved){
@@ -6355,6 +6384,40 @@ function _initAutoStopUI(){
 document.addEventListener('touchstart',_resetAutoStop,{passive:true});
 document.addEventListener('mousedown',_resetAutoStop);
 document.addEventListener('keydown',_resetAutoStop);
+
+// ── PAD VOLUME QUICK-SLIDER ──
+function _openPadVolSlider(id){
+  _pvId=id;
+  const vol=Math.round((pads[id]?.volume??1)*100);
+  document.getElementById('pv-slider').value=vol;
+  document.getElementById('pv-lbl').textContent=vol+'%';
+  // Position box near the pad
+  const padEl=document.querySelector(`.pbtn[data-id="${id}"]`);
+  if(padEl){
+    const r=padEl.getBoundingClientRect();
+    const bw=160, bh=90;
+    const left=Math.max(10,Math.min(window.innerWidth-bw-10,r.left+r.width/2-bw/2));
+    const top=r.top>bh+10?r.top-bh-8:r.bottom+8;
+    document.getElementById('pv-box').style.cssText=`left:${left}px;top:${Math.max(10,top)}px`;
+  }
+  document.getElementById('pv-ov').classList.add('open');
+  pushEsc(closePadVolSlider);
+}
+function _pvUpdate(v){
+  document.getElementById('pv-lbl').textContent=v+'%';
+  if(_pvId===null) return;
+  const g=gains[_pvId]; if(!g) return;
+  try{ g.gain.setTargetAtTime(v/100,ctx.currentTime,0.01); }catch(e){}
+}
+function closePadVolSlider(){
+  document.getElementById('pv-ov').classList.remove('open');
+  if(_pvId===null) return;
+  const v=+(document.getElementById('pv-slider').value);
+  const id=_pvId; _pvId=null;
+  if(!pads[id]) return;
+  pads[id].volume=v/100;
+  save();
+}
 
 // ── QUICK RENAME ──
 function _openQuickRename(id){
