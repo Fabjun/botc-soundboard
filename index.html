@@ -1863,8 +1863,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 135;
+const APP_VERSION = 136;
 const CHANGELOG=[
+  {v:136,date:'2026-05-24',items:["Dismiss button on hint banners: both the export-hint and backup-hint banners now have a small × button on the left edge; tapping it hides the banner for the current session (_exportHintDismissed / _backupHintDismissed flags prevent checkExportHint/checkBackupHint from re-showing it)"]},
   {v:135,date:'2026-05-24',items:["Bug fixes — stopPad: chkNP() was missing from the immediate (non-fade) path so 'No sound active' and edge-glow stayed stale after stopping a single pad","stopAll: _playStack.filter treated numeric pad IDs as combo-state objects, throwing TypeError on state.currentFgInstances.forEach whenever any regular pad was playing; audio stopped correctly but combo cleanup and chkNP were skipped; replaced broken filter with Object.keys(comboState) loop + _playStack=[]","Pad volume quick-slider: stored volume in 0–1 fraction format but app uses 0–100 integers; opening slider showed 100% regardless of actual volume; saving reduced gain to ~1% on next play; fixed init to use pads[id].volume??80 and save as integer v (not v/100)","importPadTemplate: volume:pd.volume??1 defaulted to 1 in 0–100 scale (~1% gain); changed to pd.volume so undefined is preserved and play() falls back to its own 80 default","closeQuickRename / closePadVolSlider: both opened with pushEsc but closed without popEsc, leaking stale Escape handlers that accumulated on repeated use; fixed by calling popEsc before removing the open class"]},
   {v:134,date:'2026-05-24',items:["Fix critical script parse break: CHANGELOG v127 entry contained the closing script tag sequence inside a JS string — the HTML parser terminated the script block at that point, so unlock(), play(), and all other functions were never defined; TAP TO START did nothing; template literals appeared unevaluated in the DOM; fix: escape the sequence as '<\\/script>' so the HTML tokenizer does not match it"]},
   {v:133,date:'2026-05-24',items:["Version label color: #ver-label color changed from var(--mist) (#4a4a7a) to var(--text-dim) (#8a8098) — contrast ratio was ~2.5:1 against the dark background, making the version number and changelog icon nearly invisible"]},
@@ -4254,8 +4255,11 @@ function updateExportAge(){
   else if(h<3){ el.textContent=`Last export: ${h}h ago`; el.style.color='var(--gold)'; }
   else { el.textContent=`Last export: ${h}h ago`; el.style.color='var(--blood-bright)'; }
 }
+let _exportHintDismissed=false;
+function dismissExportHint(){ _exportHintDismissed=true; document.getElementById('export-hint').classList.remove('visible'); }
 function checkExportHint(){
   const el=document.getElementById('export-hint'); if(!el) return;
+  if(_exportHintDismissed){ el.classList.remove('visible'); return; }
   // Only show on devices without File System Access (e.g. iPhone)
   if(hasFileSystemAccess()){ el.classList.remove('visible'); return; }
   const ts=parseInt(localStorage.getItem('last-export-ts')||'0',10);
@@ -4504,9 +4508,12 @@ function updateAutoBackupBtn(){
   }
   checkBackupHint();
 }
+let _backupHintDismissed=false;
+function dismissBackupHint(){ _backupHintDismissed=true; document.getElementById('backup-hint').classList.remove('visible'); }
 function checkBackupHint(){
   const el=document.getElementById('backup-hint'); if(!el) return;
-  el.classList.toggle('visible', hasFileSystemAccess()&&!_autoBackupDirHandle);
+  if(!_backupHintDismissed) el.classList.toggle('visible', hasFileSystemAccess()&&!_autoBackupDirHandle);
+  else el.classList.remove('visible');
   checkExportHint();
 }
 
@@ -6863,10 +6870,12 @@ initTitleGlow();
 </div>
 
 <div id="backup-hint">
+  <button onclick="dismissBackupHint()" style="background:none;border:none;color:var(--text-dim);font-size:16px;line-height:1;cursor:pointer;padding:2px 4px;flex-shrink:0;opacity:.7" title="Dismiss">×</button>
   <span>⚠ No auto-backup configured — data could be lost if the browser clears its storage.</span>
   <button onclick="toggleAutoBackup()" style="background:var(--gold);color:#000;border:none;border-radius:2px;font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));padding:5px 14px;cursor:pointer;white-space:nowrap;flex-shrink:0">ACTIVATE BACKUP</button>
 </div>
 <div id="export-hint">
+  <button onclick="dismissExportHint()" style="background:none;border:none;color:var(--text-dim);font-size:16px;line-height:1;cursor:pointer;padding:2px 4px;flex-shrink:0;opacity:.7" title="Dismiss">×</button>
   <span>⚠ No recent export — tap below to back up your data now.</span>
   <button onclick="doExportLibrary()" style="background:var(--blood-bright);color:#fff;border:none;border-radius:2px;font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));padding:5px 14px;cursor:pointer;white-space:nowrap;flex-shrink:0">EXPORT NOW</button>
 </div>
