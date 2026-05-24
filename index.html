@@ -2100,6 +2100,7 @@ function load(){
       currentBoardId=found.id;
       currentBoardName=found.name;
       pads=found.pads||[];
+      try{ console.log('[debug] load() loaded pads count:', pads.length); window._inpageErrors&&window._inpageErrors.push&&window._inpageErrors.push({type:'debug',message:'load() loaded pads count: '+pads.length}); }catch(e){}
       localStorage.setItem('last-board',currentBoardId);
       res();
     };
@@ -4722,6 +4723,7 @@ function findNextPadId(){
 }
 function renderSetup(){
   const g=document.getElementById('pgrid'); g.innerHTML='';
+  try{ console.log('[debug] renderSetup start pads.length=', pads.length); window._inpageErrors&&window._inpageErrors.push&&window._inpageErrors.push({type:'debug',message:'renderSetup start pads.length='+pads.length}); }catch(e){}
   for(let i=0;i<pads.length;i++){
     const p=pads[i]; if(p==null) continue;
     const b=document.createElement('div');
@@ -4740,6 +4742,7 @@ function renderSetup(){
   add.onclick=()=>openPadTypePicker();
   g.appendChild(add);
   applyPadFilter();
+  try{ console.log('[debug] renderSetup finished DOM children=', g.childElementCount); window._inpageErrors&&window._inpageErrors.push&&window._inpageErrors.push({type:'debug',message:'renderSetup finished DOM children='+g.childElementCount}); }catch(e){}
 }
 
 // ── EDIT ──
@@ -5232,6 +5235,7 @@ function initBoard(){
   if(typeof renderPerf === 'function') {
     renderPerf(); // Correctly trigger your real pad rendering sequence
   }
+  try{ console.log('[debug] initBoard called, pads.length=', pads.length); window._inpageErrors&&window._inpageErrors.push&&window._inpageErrors.push({type:'debug',message:'initBoard called, pads.length='+ (pads?pads.length:0)}); }catch(e){}
 }
 
 // Guarantee that initBoard is automatically triggered as soon as the DOM loads
