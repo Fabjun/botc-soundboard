@@ -1076,6 +1076,21 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       </div>
     </div>
 
+    <div class="sg-sub">AUTO-STOP</div>
+    <div class="sec-body">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="trow" style="flex-shrink:0">
+          <div class="topt" id="as-on" onclick="setAutoStop(true)">ON</div>
+          <div class="topt" id="as-off" onclick="setAutoStop(false)">OFF</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="as-min" min="1" max="999" value="30" oninput="setAutoStopMinutes(+this.value)" style="width:60px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));padding:4px 8px;border-radius:2px;text-align:center">
+          <span style="font-size:calc(11px * var(--font-scale));color:var(--text-dim)">min</span>
+        </div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">Stops all audio after this many minutes without any tap or key press. Timer resets on every interaction and pauses when nothing is playing.</p>
+    </div>
+
     <!-- KEYBINDING -->
     <div class="sg-hdr">KEYBINDING</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
@@ -1815,8 +1830,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 127;
+const APP_VERSION = 128;
 const CHANGELOG=[
+  {v:128,date:'2026-05-24',items:["Auto-stop after inactivity: Settings → CONTROLS → AUTO-STOP toggle (default OFF) + minute input (default 30, range 1–999); timer resets on every touchstart/mousedown/keydown and on every play() call; timer pauses when nothing is playing (Object.keys(srcs).length === 0); stopAll()/fadeOutAll() cancel the timer; on timeout: stopAll() + toast 'AUTO-STOP: inactivity timeout.'; settings keys auto-stop-enabled and auto-stop-minutes added to SETTINGS_KEYS for export/import"]},
   {v:127,date:'2026-05-24',items:["Code hygiene: all German comments translated to English or deleted; German string 'Vollständig' → 'Full' in trim-end slider; dead code block outside </script> tag removed (decodePad safety-net stub that was unreachable HTML text); 7 trivial 'GEÄNDERT:' / what-the-code-does comments deleted; dead console.log and stale change-marker comments removed throughout"]},
   {v:126,date:'2026-05-24',items:["Duration display: addToLib() now decodes audio on upload to store duration in IndexedDB (type-guarded: icons skipped); duration shown in Library audio card subLines (M:SS · size · date · in-use), library picker rows, and Library stats bar (N files · total-size · total-duration); updFB() already showed waveform duration — no change needed there"]},
   {v:125,date:'2026-05-24',items:["Fix lib preview pause: toggleLibPreview no longer accepts a btnEl DOM reference — it always calls document.getElementById('lpb-'+hash) after the async gap to get a fresh reference; the stale-reference bug occurred when the library list re-rendered between the function call and the await resolving"]},
@@ -1908,7 +1924,7 @@ const CHANGELOG=[
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
 console.assert(CHANGELOG[0].v===APP_VERSION,'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes'];
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
 //  grep for "// ── SECTION" to jump to any area
@@ -2878,7 +2894,7 @@ function fadeInGain(g, targetVol, fadeIn){
 }
 async function play(id){
   const p=pads[id]; if(!p) return;
-
+  _resetAutoStop();
   if(p.mode==='combo'){ playCombo(id); return; }
 
   const isPlaylist = p.mode !== 'once' && p.mode !== 'loop';
@@ -3230,6 +3246,7 @@ function playComboStep(id,state,steps,stepIdx){
 }
 
 function fadeOutAll(fadeTime) {
+  _cancelAutoStop();
   if (!ctx || ctx.state === 'suspended') return;
   
   Object.keys(gains).forEach(id => {
@@ -3292,6 +3309,7 @@ function pauseAllAudio(){
 }
 
 function stopAll(exceptComboId = null, isFade = false){
+  _cancelAutoStop();
   Object.keys(srcs).forEach(id=>{
     const pid=+id;
     if (!isFade) {
@@ -4678,7 +4696,7 @@ function updateMenuBackupBtns(){
 // ── SCREEN CONFIG — one entry per sub-menu screen ──
 const SCREEN_CONFIG = {
   sp:  { title: null,            hasSidebar: true,  accent: 'mode', hints: ['sp'],  onShow: ()=>{ renderBoard(); if(locked) focusKB(); } },
-  sa:  { title: 'SETTINGS',      hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); _initPadLevelUI(); _initWakeLockUI(); } },
+  sa:  { title: 'SETTINGS',      hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); _initPadLevelUI(); _initWakeLockUI(); _initAutoStopUI(); } },
   sli: { title: 'LIBRARY',       hasSidebar: true,  accent: 'gold', hints: ['sli'], onShow: ()=>{ _libSsbUpdateSortUI(); if(libMainTab==='icons') renderLibIcons(); else if(libMainTab==='boards') loadBoardsMeta().then(renderBoardList); else if(libMainTab==='pads') renderLibPads(); else initLibScreen(); } },
   st:  { title: 'TIPS & TRICKS', hasSidebar: false, accent: 'gold', hints: null    },
   sab: { title: 'ABOUT',         hasSidebar: false, accent: 'gold', hints: null    },
@@ -6269,6 +6287,44 @@ function _initWakeLockUI(){
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&locked) _acquireWakeLock();
 });
+
+// ── AUTO-STOP ──
+let _autoStopTimer = null;
+function _autoStopEnabled(){ return localStorage.getItem('auto-stop-enabled')==='1'; }
+function _autoStopMs(){ return Math.max(1,+(localStorage.getItem('auto-stop-minutes')||30))*60000; }
+function _cancelAutoStop(){ if(_autoStopTimer){ clearTimeout(_autoStopTimer); _autoStopTimer=null; } }
+function _resetAutoStop(){
+  if(!_autoStopEnabled()) return;
+  if(!Object.keys(srcs).length) return;
+  _cancelAutoStop();
+  _autoStopTimer=setTimeout(()=>{
+    _autoStopTimer=null;
+    if(!Object.keys(srcs).length) return;
+    stopAll();
+    showToast('AUTO-STOP: inactivity timeout.');
+  }, _autoStopMs());
+}
+function setAutoStop(v){
+  localStorage.setItem('auto-stop-enabled',v?'1':'0');
+  _initAutoStopUI();
+  if(!v) _cancelAutoStop(); else _resetAutoStop();
+}
+function setAutoStopMinutes(v){
+  const n=Math.max(1,Math.min(999,+v||30));
+  localStorage.setItem('auto-stop-minutes',String(n));
+  const inp=document.getElementById('as-min'); if(inp) inp.value=n;
+  if(_autoStopTimer) _resetAutoStop();
+}
+function _initAutoStopUI(){
+  const on=_autoStopEnabled();
+  const a=document.getElementById('as-on'); if(a) a.classList.toggle('al',on);
+  const b=document.getElementById('as-off'); if(b) b.classList.toggle('al',!on);
+  const inp=document.getElementById('as-min');
+  if(inp){ inp.value=+(localStorage.getItem('auto-stop-minutes')||30); inp.disabled=!on; inp.style.opacity=on?'1':'0.4'; }
+}
+document.addEventListener('touchstart',_resetAutoStop,{passive:true});
+document.addEventListener('mousedown',_resetAutoStop);
+document.addEventListener('keydown',_resetAutoStop);
 
 // ── HINTS OVERLAY ──
 function openHints(screens){
