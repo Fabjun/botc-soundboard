@@ -57,7 +57,7 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 /* iOS: momentum scrolling + bounce prevention for all scroll containers */
 [style*="overflow-y:auto"],[style*="overflow-y: auto"]{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 /* iOS: prevent pull-to-refresh and rubber-band from leaking through fullscreen overlays */
-#hint-ov,#icon-picker,#lib-picker,#import-ov,#changelog-ov,#onboard-ov,#pad-type-picker,#keymap-ov{overscroll-behavior:none}
+#hint-ov,#icon-picker,#lib-picker,#import-ov,#changelog-ov,#onboard-ov,#pad-type-picker,#keymap-ov,#dbg-ov{overscroll-behavior:none}
 .screen{display:none;width:100%;height:100%;flex-direction:column}
 .screen.active{display:flex;animation:screen-in 90ms ease-out}
 .sc-wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box}
@@ -689,6 +689,25 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .fs-title-mode{color:var(--mode-accent)}
 #changelog-ov{position:fixed;inset:0;z-index:215;background:var(--deep);display:none;flex-direction:column}
 #changelog-ov.open{display:flex}
+/* DEBUG LOG OVERLAY */
+#dbg-ov{position:fixed;inset:0;z-index:215;background:var(--deep);display:none;flex-direction:column}
+#dbg-ov.open{display:flex}
+#dbg-tabs{display:flex;gap:4px}
+.dbg-tab{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));padding:4px 12px;border-radius:2px;cursor:pointer;letter-spacing:.05em}
+.dbg-tab.al{border-color:var(--gold);color:var(--gold)}
+.dbg-panel{flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:0 0 20px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.dbg-actions{display:flex;gap:8px;padding:8px 0;flex-shrink:0}
+.dbg-act-btn{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:4px 10px;border-radius:2px;cursor:pointer;letter-spacing:.05em}
+.dbg-act-btn:active{color:var(--gold);border-color:var(--gold)}
+.dbg-entry{display:grid;grid-template-columns:56px 40px 1fr;gap:4px;padding:3px 0;border-bottom:1px solid var(--raised);font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));line-height:1.5;word-break:break-all}
+.dbg-ts{color:var(--text-dim);flex-shrink:0}
+.dbg-lvl{font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));flex-shrink:0}
+.dbg-msg{color:var(--text)}
+.dbg-stat-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--raised);font-size:calc(11px * var(--font-scale))}
+.dbg-stat-k{color:var(--text-dim);font-family:var(--ff-label);letter-spacing:.04em}
+.dbg-stat-v{color:var(--text);font-family:var(--ff-body)}
+.dbg-refresh-btn{align-self:flex-start;margin-bottom:8px;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:4px 12px;border-radius:2px;cursor:pointer;letter-spacing:.05em;flex-shrink:0}
+.dbg-refresh-btn:active{color:var(--gold);border-color:var(--gold)}
 .cl-entry{margin-bottom:20px}
 /* ONBOARDING */
 #onboard-ov{position:fixed;inset:0;z-index:300;background:var(--deep);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px}
@@ -1235,6 +1254,19 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Run if pads lost their sounds after an update.</p>
       <button onclick="doResetAllData()" class="sa-btn sa-del" style="margin-top:4px">RESET ALL DATA</button>
       <p style="font-size:calc(10px * var(--font-scale));color:var(--blood-bright);margin:0;line-height:1.6">Deletes all boards, pads, and Library files. Cannot be undone.</p>
+    </div>
+    <!-- DEVELOPER -->
+    <div class="sg-hdr">DEVELOPER</div>
+    <div class="sg-sub">DEBUG LOG</div>
+    <div class="sec-body">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="trow" style="flex-shrink:0">
+          <div class="topt" id="dbg-on" onclick="setDebugLog(true)">ON</div>
+          <div class="topt" id="dbg-off" onclick="setDebugLog(false)">OFF</div>
+        </div>
+        <button id="dbg-view-btn" onclick="openDbgOv()" style="display:none;background:none;border:1px solid var(--mode-accent-dim);color:var(--mode-accent);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:.04em;padding:6px 14px;border-radius:2px;cursor:pointer">VIEW LOG</button>
+      </div>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.6">Captures all console output to an in-app buffer (last 200 entries). Use to inspect errors on iPhone without DevTools. Disabled by default — no overhead when OFF.</p>
     </div>
    </div><!-- /.cx -->
   </div>
@@ -1866,8 +1898,12 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 144;
+const APP_VERSION = 145;
 const CHANGELOG=[
+  {v:145,date:'2026-05-25',items:[
+    "Add DEVELOPER section to Settings: DEBUG LOG toggle (default OFF) + VIEW LOG button; console intercept stores last 200 entries in a circular buffer with zero overhead when disabled; log overlay has three tabs — LOG (timestamped entries, COPY ALL + CLEAR), STATS (IDB audio count, total size, boards, pads, LRU state, app/SW version), LRU (decoded audio buffers in cache with sizes)",
+    "Add CLAUDE.md to project root: permanent guidelines file covering architecture rules, iPhone/iOS memory constraints (banned and required patterns), design language, coding standards, and workflow; Claude Code self-maintains this file when permanent standards change"
+  ]},
   {v:144,date:'2026-05-25',items:[
     "Memory audit — fix all libGetAll() RAM spikes: replaced libGetAll() with libGetAllMeta() (omits audio buf) at 9 call sites: initLibScreen, renderLibIcons, renderLibPads (templates section), loadLibIcons, openLibPicker, libRenameStart, libRenamePadTemplateStart, _libConfirmFolderRename, libDeleteFolder; these functions only need metadata (hash, name, type, size, folder, dates) not audio data, so libGetAll() was loading 150-240 MB into RAM unnecessarily on every Library open, folder rename, and lib picker open",
     "Memory audit — loadLibIcons: switched to libGetAllMeta() for enumeration, then lazy-loads each icon's buf via libGet(hash) only when not already in iconSvgCache; icons are SVG text (~1-10 KB each) so individual loads are negligible, while the old libGetAll() loaded all audio files alongside icons",
@@ -2008,6 +2044,30 @@ const CHANGELOG=[
 ];
 console.assert(CHANGELOG[0].v===APP_VERSION,'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
 const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes'];
+// ── DEBUG LOG ──
+let _debugLogEnabled = localStorage.getItem('debug-log') === '1';
+const _DEBUG_LOG_MAX = 200;
+let _debugLog = [];
+let _swVersion = null;
+(function _installConsoleIntercept(){
+  const orig = {};
+  ['log','warn','error','info'].forEach(lvl => {
+    orig[lvl] = console[lvl].bind(console);
+    console[lvl] = function(...args){
+      orig[lvl](...args);
+      if(!_debugLogEnabled) return;
+      try{
+        const msg = args.map(a => {
+          if(typeof a === 'string') return a;
+          if(a instanceof Error) return a.message + (a.stack ? '\n' + a.stack : '');
+          try{ return JSON.stringify(a); }catch(e){ return String(a); }
+        }).join(' ');
+        _debugLog.push({ts: Date.now(), lvl, msg});
+        if(_debugLog.length > _DEBUG_LOG_MAX) _debugLog.shift();
+      }catch(e){}
+    };
+  });
+})();
 // ════════════════════════════════════════════════════════════════════
 //  SOUNDBOARD OF STORYTELLING — JavaScript
 //  grep for "// ── SECTION" to jump to any area
@@ -4855,7 +4915,7 @@ function updateMenuBackupBtns(){
 // ── SCREEN CONFIG — one entry per sub-menu screen ──
 const SCREEN_CONFIG = {
   sp:  { title: null,            hasSidebar: true,  accent: 'mode', hints: ['sp'],  onShow: ()=>{ renderBoard(); if(locked) focusKB(); } },
-  sa:  { title: 'SETTINGS',      hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); _initPadLevelUI(); _initWakeLockUI(); _initAutoStopUI(); } },
+  sa:  { title: 'SETTINGS',      hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); _initPadLevelUI(); _initWakeLockUI(); _initAutoStopUI(); _initDebugLogUI(); } },
   sli: { title: 'LIBRARY',       hasSidebar: true,  accent: 'gold', hints: ['sli'], onShow: ()=>{ _libSsbUpdateSortUI(); if(libMainTab==='icons') renderLibIcons(); else if(libMainTab==='boards') loadBoardsMeta().then(renderBoardList); else if(libMainTab==='pads') renderLibPads(); else initLibScreen(); } },
   st:  { title: 'TIPS & TRICKS', hasSidebar: false, accent: 'gold', hints: null    },
   sab: { title: 'ABOUT',         hasSidebar: false, accent: 'gold', hints: null    },
@@ -6987,11 +7047,120 @@ function swuConfirmReload(){
   }
 }
 
+// ── DEBUG LOG UI ──
+function setDebugLog(v){
+  _debugLogEnabled = !!v;
+  localStorage.setItem('debug-log', v ? '1' : '0');
+  _initDebugLogUI();
+}
+function _initDebugLogUI(){
+  const on = _debugLogEnabled;
+  const a = document.getElementById('dbg-on'); if(a) a.classList.toggle('al', on);
+  const b = document.getElementById('dbg-off'); if(b) b.classList.toggle('al', !on);
+  const vb = document.getElementById('dbg-view-btn'); if(vb) vb.style.display = on ? '' : 'none';
+}
+function openDbgOv(){
+  const ov = document.getElementById('dbg-ov'); if(!ov) return;
+  pushEsc(closeDbgOv);
+  ov.classList.add('open');
+  dbgTab('log');
+}
+function closeDbgOv(){
+  popEsc('dbg-ov');
+  document.getElementById('dbg-ov')?.classList.remove('open');
+}
+let _dbgCurTab = 'log';
+function dbgTab(name){
+  _dbgCurTab = name;
+  ['log','stats','lru'].forEach(t => {
+    document.getElementById('dbg-tab-'+t)?.classList.toggle('al', t === name);
+    const p = document.getElementById('dbg-'+t+'-panel');
+    if(p) p.style.display = t === name ? 'flex' : 'none';
+  });
+  if(name === 'log') dbgRefreshLog();
+  else if(name === 'stats') dbgRefreshStats();
+  else dbgRefreshLru();
+}
+function dbgRefreshLog(){
+  const el = document.getElementById('dbg-log-list'); if(!el) return;
+  if(!_debugLog.length){
+    el.innerHTML = '<div style="color:var(--text-dim);padding:12px 0;font-family:var(--ff-body);font-size:calc(11px * var(--font-scale))">No entries yet.</div>';
+    return;
+  }
+  const colors = {log:'var(--text-dim)', warn:'var(--gold)', error:'var(--blood-bright)', info:'var(--active)'};
+  el.innerHTML = [..._debugLog].reverse().map(e => {
+    const t = new Date(e.ts).toTimeString().slice(0, 8);
+    const c = colors[e.lvl] || 'var(--text-dim)';
+    return `<div class="dbg-entry"><span class="dbg-ts">${t}</span><span class="dbg-lvl" style="color:${c}">${e.lvl.toUpperCase()}</span><span class="dbg-msg">${escHtml(e.msg)}</span></div>`;
+  }).join('');
+}
+function dbgCopyLog(){
+  const text = _debugLog.map(e => `[${new Date(e.ts).toISOString()}] ${e.lvl.toUpperCase()} ${e.msg}`).join('\n');
+  navigator.clipboard?.writeText(text)
+    .then(() => showToast('Log copied to clipboard.'))
+    .catch(() => showToast('Copy failed — use SHARE instead.'));
+}
+function dbgClearLog(){
+  _debugLog = [];
+  dbgRefreshLog();
+  showToast('Log cleared.');
+}
+async function dbgRefreshStats(){
+  const el = document.getElementById('dbg-stats-content'); if(!el) return;
+  el.innerHTML = '<div style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));padding:8px 0">Loading…</div>';
+  try{
+    const meta = await libGetAllMeta();
+    const audio = meta.filter(e => !e.type || e.type === 'audio');
+    const icons = meta.filter(e => e.type === 'icon');
+    const padTmpl = meta.filter(e => e.type === 'pad');
+    const totalBytes = audio.reduce((s, e) => s + (e.size || 0), 0);
+    const boards = await new Promise(r => {
+      const req = db.transaction('p','readonly').objectStore('p').getAll();
+      req.onsuccess = e => r(e.target.result || []);
+      req.onerror = () => r([]);
+    });
+    const padCount = boards.reduce((s, b) => s + (b.pads || []).filter(Boolean).length, 0);
+    const rows = [
+      ['Audio files', audio.length],
+      ['Total audio (compressed)', fmtSize(totalBytes)],
+      ['Custom icons', icons.length],
+      ['PAD templates', padTmpl.length],
+      ['Boards', boards.length],
+      ['Pads (all boards)', padCount],
+      ['LRU decoded audio', fmtSize(_libBufBytes) + ' / ' + fmtSize(LRU_BUF_MAX_BYTES)],
+      ['LRU entries', _libBufLru.length],
+      ['Log entries', _debugLog.length + ' / ' + _DEBUG_LOG_MAX],
+      ['App version', APP_VERSION],
+      ['SW version', _swVersion !== null ? _swVersion : '(not received yet)'],
+    ];
+    el.innerHTML = rows.map(([k, v]) =>
+      `<div class="dbg-stat-row"><span class="dbg-stat-k">${k}</span><span class="dbg-stat-v">${escHtml(String(v))}</span></div>`
+    ).join('');
+  } catch(e){
+    el.innerHTML = `<div style="color:var(--blood-bright);font-family:var(--ff-body);font-size:calc(11px * var(--font-scale))">${escHtml(String(e))}</div>`;
+  }
+}
+function dbgRefreshLru(){
+  const el = document.getElementById('dbg-lru-content'); if(!el) return;
+  if(!_libBufLru.length){
+    el.innerHTML = '<div style="color:var(--text-dim);font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));padding:8px 0">LRU cache is empty — no audio decoded yet.</div>';
+    return;
+  }
+  const rows = [..._libBufLru].reverse().map((hash, i) => {
+    const buf = libBufs[hash];
+    const bytes = _bufDecodedBytes(buf);
+    return `<div class="dbg-stat-row"><span class="dbg-stat-k">${escHtml(hash.slice(0, 12))}…</span><span class="dbg-stat-v">${fmtSize(bytes)}</span></div>`;
+  });
+  const totalRow = `<div class="dbg-stat-row" style="border-top:1px solid var(--gold-dim);margin-top:4px"><span class="dbg-stat-k" style="color:var(--text)">TOTAL</span><span class="dbg-stat-v" style="color:var(--gold)">${fmtSize(_libBufBytes)}</span></div>`;
+  el.innerHTML = rows.join('') + totalRow;
+}
+
 // Register Service Worker; listen for update messages from new SW
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
   navigator.serviceWorker.addEventListener('message', e=>{
     if(e.data?.type==='SW_UPDATED'){
+      _swVersion = e.data.version;
       if(e.data.version!==APP_VERSION) console.warn(`SW version mismatch: SW=${e.data.version}, App=${APP_VERSION}`);
       showSwUpdate(e.data.version);
     }
@@ -7112,6 +7281,39 @@ initTitleGlow();
   </div>
   <div style="flex:1;overflow-y:auto">
     <div class="cx" id="changelog-content" style="padding:16px 0 32px"></div>
+  </div>
+</div>
+
+<div id="dbg-ov">
+  <div class="fs-hdr">
+    <button class="fs-back" onclick="closeDbgOv()">←</button>
+    <span class="fs-title">DEBUG</span>
+    <div id="dbg-tabs" style="display:flex;gap:4px;margin-left:auto">
+      <button class="dbg-tab" id="dbg-tab-log" onclick="dbgTab('log')">LOG</button>
+      <button class="dbg-tab" id="dbg-tab-stats" onclick="dbgTab('stats')">STATS</button>
+      <button class="dbg-tab" id="dbg-tab-lru" onclick="dbgTab('lru')">LRU</button>
+    </div>
+  </div>
+  <div class="cx" style="flex:1;display:flex;flex-direction:column;min-height:0">
+    <!-- LOG panel -->
+    <div id="dbg-log-panel" class="dbg-panel">
+      <div class="dbg-actions">
+        <button class="dbg-act-btn" onclick="dbgCopyLog()">COPY ALL</button>
+        <button class="dbg-act-btn" onclick="dbgClearLog()">CLEAR</button>
+        <button class="dbg-act-btn" onclick="dbgRefreshLog()">REFRESH</button>
+      </div>
+      <div id="dbg-log-list"></div>
+    </div>
+    <!-- STATS panel -->
+    <div id="dbg-stats-panel" class="dbg-panel" style="display:none">
+      <button class="dbg-refresh-btn" onclick="dbgRefreshStats()">REFRESH</button>
+      <div id="dbg-stats-content"></div>
+    </div>
+    <!-- LRU panel -->
+    <div id="dbg-lru-panel" class="dbg-panel" style="display:none">
+      <button class="dbg-refresh-btn" onclick="dbgRefreshLru()">REFRESH</button>
+      <div id="dbg-lru-content"></div>
+    </div>
   </div>
 </div>
 
