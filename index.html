@@ -4878,7 +4878,11 @@ async function openEP(id){
   eIcons=[null,null,null,null];
   const _srcIcons=p?.icons?.length?p.icons:(p?.icon?[p.icon]:[]);
   _srcIcons.slice(0,4).forEach((ic,i)=>{ eIcons[i]=ic; });
+  if (typeof updIconPreview === 'function') {
   updIconPreview();
+} else {
+  logDebug("Warnung: updIconPreview fehlt im Code, wurde übersprungen.");
+}
   eMode=p?.mode||'once';
   eShuffle=p?.shuffle||false;
   eLoopCount=p?.loopCount||0;
