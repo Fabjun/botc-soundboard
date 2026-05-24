@@ -2847,6 +2847,22 @@ function fadeInGain(g, targetVol, fadeIn){
 }
 async function play(id){
   const p=pads[id]; if(!p) return;
+
+  // ── SCHARFER TÜRSTEHER FÜR DEN SETUP-MODUS ──
+  // Wir prüfen alle gängigen Variablen deiner App. Falls keine definiert ist,
+  // schauen wir direkt ins HTML, ob die App im Setup- oder Edit-Modus läuft.
+  const isSetupMode = 
+    (typeof mode !== 'undefined' && mode === 'setup') ||
+    (typeof currentMode !== 'undefined' && currentMode === 'setup') ||
+    (typeof setupMode !== 'undefined' && setupMode === true) ||
+    (document.body.classList.contains('setup-mode') || document.getElementById('pgrid')?.classList.contains('edit-mode'));
+
+  if (isSetupMode) {
+    openEP(id); // Öffnet sofort dein Bearbeitungsmenü für dieses Pad!
+    return;
+  }
+  // ───────────────────────────────────────────
+
   if(p.mode==='combo'){ playCombo(id); return; }
 
   // ── SONDERFALL PLAYLIST / CHAIN MODUS (Echtes fortlaufendes On-Demand) ──
