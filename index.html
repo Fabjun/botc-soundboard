@@ -1580,8 +1580,8 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
           <input type="range" id="ets" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ets-lbl').textContent=this.value==='0'?'0.0':this.value" style="width:100%;accent-color:var(--gold)">
         </div>
         <div class="fg" style="margin-bottom:0">
-          <label class="fl">ENDZEIT / DAUER — <span id="ete-lbl">Vollständig</span></label>
-          <input type="range" id="ete" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ete-lbl').textContent=this.value==='0'?'Vollständig':(this.value+'s')" style="width:100%;accent-color:var(--gold)">
+          <label class="fl">ENDZEIT / DAUER — <span id="ete-lbl">Full</span></label>
+          <input type="range" id="ete" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ete-lbl').textContent=this.value==='0'?'Full':(this.value+'s')" style="width:100%;accent-color:var(--gold)">
         </div>
       </div>
     </div>
@@ -1815,8 +1815,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 126;
+const APP_VERSION = 127;
 const CHANGELOG=[
+  {v:127,date:'2026-05-24',items:["Code hygiene: all German comments translated to English or deleted; German string 'Vollständig' → 'Full' in trim-end slider; dead code block outside </script> tag removed (decodePad safety-net stub that was unreachable HTML text); 7 trivial 'GEÄNDERT:' / what-the-code-does comments deleted; dead console.log and stale change-marker comments removed throughout"]},
   {v:126,date:'2026-05-24',items:["Duration display: addToLib() now decodes audio on upload to store duration in IndexedDB (type-guarded: icons skipped); duration shown in Library audio card subLines (M:SS · size · date · in-use), library picker rows, and Library stats bar (N files · total-size · total-duration); updFB() already showed waveform duration — no change needed there"]},
   {v:125,date:'2026-05-24',items:["Fix lib preview pause: toggleLibPreview no longer accepts a btnEl DOM reference — it always calls document.getElementById('lpb-'+hash) after the async gap to get a fresh reference; the stale-reference bug occurred when the library list re-rendered between the function call and the await resolving"]},
   {v:124,date:'2026-05-24',items:["RAM management: LRU eviction for libBufs cache — max 20 decoded AudioBuffers held in RAM; least-recently-decoded entry evicted when limit is exceeded; _lruBufSet() called at every decode point (play, playNext, createPadInstance, preview); _lruBufDelete() used instead of bare delete to keep LRU state consistent; delete bufs[id] added to once-pad onended handler so next tap re-enters the cache-check path rather than holding a stale reference"]},
@@ -2866,11 +2867,7 @@ function unlock(){
     showToast('Database error — please reload the app. If the problem persists, use Settings → Reset.');
   });
 }
-function decodeAll(){ 
-  // Komplett geleert! Wir laden nichts mehr im Voraus beim Start,
-  // damit das iPhone nicht abstürzt. Alles läuft jetzt On-Demand.
-  console.log("Audio On-Demand aktiv: Vorladen übersprungen.");
-}
+function decodeAll(){ /* no-op: all audio is loaded on-demand to avoid crashing on iPhone */ }
 function fadeInGain(g, targetVol, fadeIn){
   if(fadeIn>0){
     g.gain.setValueAtTime(0, ctx.currentTime);
@@ -2884,23 +2881,14 @@ async function play(id){
 
   if(p.mode==='combo'){ playCombo(id); return; }
 
-  // ── SONDERFALL PLAYLIST / CHAIN MODUS (Echtes fortlaufendes On-Demand) ──
-  // Wenn das Pad eine Playlist/Kette ist, laden wir hier beim ersten Klick NICHT alle Songs vorab!
   const isPlaylist = p.mode !== 'once' && p.mode !== 'loop';
-  
-  if (isPlaylist) {
+  if(isPlaylist){
     if(!p.files || !p.files.length) return;
-    if(srcs[id]){ stopPad(id); return; } // Falls sie schon läuft, stoppen
-    
+    if(srcs[id]){ stopPad(id); return; }
     _onPadStarted(id);
-    
-    // Wir übergeben der playNext-Funktion nicht mehr die fertigen Buffer,
-    // sondern nur noch die Hashes (Dateinamen) der Songs!
-    playNext(id, p.files); 
-    return; 
+    playNext(id, p.files);
+    return;
   }
-
-  // ── STANDARD MODUS (Für "once" und "loop" - lädt nur den einen Song) ──
   if(!bufs[id] || !bufs[id].length || !bufs[id][0]){
     if(!p.files || !p.files.length) return;
     
@@ -2983,8 +2971,6 @@ async function play(id){
 async function playNext(id, allHashes){
   const p=pads[id]; if(!p) return;
   let i;
-  
-  // 1. Richtigen Index ermitteln (Shuffle oder der Reihe nach)
   if(p.shuffle){
     i=Math.floor(Math.random()*allHashes.length);
   } else {
@@ -2992,32 +2978,25 @@ async function playNext(id, allHashes){
     i=playPos[id];
     playPos[id]++;
   }
-  
-  const hash = typeof allHashes[i]==='string' ? allHashes[i] : null;
-  if(!hash) {
-    // Falls ein Eintrag ungültig ist, springe direkt zum nächsten
-    if(srcs[id]) playNext(id, allHashes);
-    return;
-  }
 
-  // Visual Feedback: Button bekommt eine Mini-Lade-Animation während des On-Demand-Ladens
-  const btn = document.querySelector(`[data-id="${id}"]`);
+  const hash=typeof allHashes[i]==='string'?allHashes[i]:null;
+  if(!hash){ if(srcs[id]) playNext(id,allHashes); return; }
+
+  const btn=document.querySelector(`[data-id="${id}"]`);
   if(btn) btn.classList.add('loading-audio');
 
-  let buf = null;
-  try {
-    // 2. Genau DIESEN einen Song aus der IndexedDB holen, falls er nicht geladen ist
+  let buf=null;
+  try{
     if(!libBufs[hash]){
-      const entry = await libGet(hash);
-      if(!entry?.buf) throw new Error("Track nicht in DB gefunden");
-      libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash);
+      const entry=await libGet(hash);
+      if(!entry?.buf) throw new Error('Track not in DB');
+      libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash);
     }
-    buf = libBufs[hash];
-  } catch(e) {
-    console.warn("On-demand playlist decode failed for hash: " + hash, e);
+    buf=libBufs[hash];
+  } catch(e){
+    console.warn('On-demand playlist decode failed:',hash,e);
     if(btn) btn.classList.remove('loading-audio');
-    // Fehler? Dann versuche den nächsten Track, damit die Playlist nicht stirbt
-    if(srcs[id]) playNext(id, allHashes);
+    if(srcs[id]) playNext(id,allHashes);
     return;
   } finally {
     if(btn) btn.classList.remove('loading-audio');
@@ -3025,28 +3004,14 @@ async function playNext(id, allHashes){
 
   if(!buf) return;
 
-  // 3. Audio-Knotenpunkte erstellen und abspielen
   const s=ctx.createBufferSource(), g=ctx.createGain();
   fadeInGain(g,(p.volume||80)/100,p.fadeIn||0);
   s.buffer=buf; s.connect(g); _connectGainToMaster(id,g); s.start(0);
-  
   srcs[id]=[s]; gains[id]=g;
   updBtn(id,true,true);
-  
-  // Songname anzeigen (falls im System hinterlegt, sonst nutzen wir den Hash-Namen)
-  const fn = (p.files && p.files[i] && p.files[i].name) || hash.substring(0, 8) + '...';
-  setNP(p.name + ' — ' + fn);
-  
-  // 4. Wenn der Song endet: RAM säubern und nächsten Titel laden!
-  s.onended=()=>{ 
-    if(srcs[id]) {
-      // IPHONE RAM-PROTECT: Wir werfen den gerade abgespielten Buffer aktiv aus dem 
-      // Speicher, bevor wir den nächsten laden. Das hält den RAM dauerhaft flach!
-      _lruBufDelete(hash); 
-      
-      playNext(id, allHashes); 
-    } 
-  };
+  setNP(p.name+' — '+(hash.substring(0,8)+'…'));
+  // Evict buffer after playback to keep RAM flat, then load next track
+  s.onended=()=>{ if(srcs[id]){ _lruBufDelete(hash); playNext(id,allHashes); } };
 }
 function stopPad(id, immediate=false){
   if(pads[id]?.mode==='combo'){ stopCombo(id); return; }
@@ -3147,60 +3112,44 @@ function createPadInstance(padId,volOverride,fadeOverride){
           })();
         }
       })();
-    } else if(p.mode==='playlist' || p.mode==='chain' || p.mode==='random'){ // Greift bei allen Playlist-Modi
+    } else if(p.mode==='playlist' || p.mode==='chain' || p.mode==='random'){
       if(!p.files || !p.files.length){ onEnded&&onEnded(); return; }
       let pos=0;
-      
-      // Asynchrone Kette für das schrittweise Laden innerhalb der Instanz
       (async function nextTrack(){
         if(stopped) return;
         if(pos >= p.files.length){ onEnded&&onEnded(); return; }
-        
-        const i = p.shuffle ? Math.floor(Math.random() * p.files.length) : pos; 
+        const i=p.shuffle?Math.floor(Math.random()*p.files.length):pos;
         pos++;
-        
-        const hash = typeof p.files[i]==='string' ? p.files[i] : null;
-        if(!hash) { nextTrack(); return; }
-        
-        let buf = null;
-        try {
-          // Track on-demand aus der DB decodieren
+        const hash=typeof p.files[i]==='string'?p.files[i]:null;
+        if(!hash){ nextTrack(); return; }
+        let buf=null;
+        try{
           if(!libBufs[hash]){
             const entry = await libGet(hash);
             if(entry?.buf){
               libBufs[hash] = await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash);
             }
           }
-          buf = libBufs[hash];
-        } catch(e) {
-          console.warn("Combo engine playlist decode failed:", e);
-          nextTrack(); // Bei Fehler direkt weiter zum nächsten Track
+          buf=libBufs[hash];
+        } catch(e){
+          console.warn('Combo playlist decode failed:',e);
+          nextTrack();
           return;
         }
-        
-        if(!buf || stopped) { nextTrack(); return; }
-        
-        const s=ctx.createBufferSource(); 
-        s.buffer=buf; 
-        s.connect(g); 
-        active.push(s);
-        
-        s.onended=()=>{ 
-          if(stopped) return; 
-          active.splice(active.indexOf(s),1); 
-          
-          // RAM-Säuberung: Alten Track löschen, bevor das nächste geladen wird
-          _lruBufDelete(hash); 
-          
-          nextTrack(); 
+        if(!buf||stopped){ nextTrack(); return; }
+        const s=ctx.createBufferSource();
+        s.buffer=buf; s.connect(g); active.push(s);
+        s.onended=()=>{
+          if(stopped) return;
+          active.splice(active.indexOf(s),1);
+          _lruBufDelete(hash); // evict before loading next to keep RAM flat
+          nextTrack();
         };
-        
-        if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
+        if(hasDuration) s.start(0,tStart,dur); else s.start(0,tStart);
       })();
     } else { onEnded&&onEnded(); }
   }
 
-  // Rückgabe-Objekt der Instanz (falls dein Code das erwartet, lass es so wie es im Original war)
   return {
     start: doStart,
     stop: () => {
@@ -3294,7 +3243,7 @@ function fadeOutAll(fadeTime) {
     }
   });
 
-  // Sobald das Ausblenden fertig ist, beenden wir die Sounds im Hintergrund sauber
+  // Clean up after fade completes
   setTimeout(() => {
     _playStack = [];
     Object.keys(srcs).forEach(id => {
@@ -3883,8 +3832,7 @@ async function importPadTemplate(hash){
   Object.keys(newPad).forEach(k=>{ if(newPad[k]===undefined) delete newPad[k]; });
   if(empty!==-1) pads[empty]=newPad; else pads.push(newPad);
   
-  // GEÄNDERT: decodePad entfernt, stattdessen Cache für dieses Pad leeren
-  if(bufs[newId]) bufs[newId] = []; 
+  if(bufs[newId]) bufs[newId] = [];
   
   await save();
   showToast(`"${escHtml(pd.name)}" added to current board.`);
@@ -4035,8 +3983,7 @@ function _renderGroupedIcons(icons, containerId, selectedId, isPicker){
         }
         grid.style.display='';
       } else {
-        // RADIKALER IPHONE RAM-PROTECT: Wenn eine Kategorie geschlossen wird, 
-        // löschen wir die SVGs sofort aus dem HTML, um den RAM zu leeren!
+        // Free SVG DOM nodes on collapse to keep RAM flat on iPhone
         grid.innerHTML='';
         grid._rendered=false;
         grid.style.display='none';
@@ -4101,13 +4048,11 @@ function renderIconGrid(filter){
   const selectedId=eIcons[eIconSlot]?.b||null;
   
   if(q){
-    // Bei einer Suche filtern wir das Array. Ergebnisse sind kurz, das packt das iPhone flach.
     const icons=BUILTIN_ICONS.filter(ic=>ic.id.includes(q)||ic.label.toLowerCase().includes(q));
     grid.className=iconNamesVisible?'ico-grid ico-names-on':'ico-grid';
     grid.innerHTML=icons.map(ic=>renderIconCell(ic,selectedId,true)).join('');
   } else {
-    // Ohne Filter übergeben wir alle Icons. Die Gruppen-Logik sorgt dafür, 
-    // dass im DOM nur die Überschriften landen, solange nichts angeklickt wird.
+    // No filter: render grouped icons — only section headers show until a group is expanded.
     grid.className='';
     _renderGroupedIcons(BUILTIN_ICONS,'ico-grid-builtin',selectedId,true);
   }
@@ -4661,7 +4606,7 @@ async function openLibPicker(append=false){
           };
           if (typeof originalUpdFB === 'function') originalUpdFB();
         } catch(err) {
-          console.error("Fehler im Picker-Schließ-Schutz:", err);
+          console.error("Picker close guard error:", err);
         }
         return originalClose.apply(this, args);
       };
@@ -4971,7 +4916,6 @@ async function openEP(id){
   document.getElementById('ebk').classList.add('open');
   document.querySelectorAll('#pgrid [data-id]').forEach(c=>c.classList.toggle('ed',+c.dataset.id===id));
   
-  // ── ABGESICHERTER AUDIO-LOAD FÜR DEN EDITOR ──
   if(p?.files?.length){
     try {
       for(const f of p.files){
@@ -4982,7 +4926,6 @@ async function openEP(id){
           eFiles.push({name:f.name,data:f.data});
         }
       }
-      // Berechne Wellenformen nur, wenn eFiles auch wirklich befüllt wurde
       if(eFiles.length > 0) {
         eFiles.forEach((_,i)=>decodeWaveform(i));
       }
@@ -5025,7 +4968,6 @@ function openComboEditor(editId=null){
     ck.value=p.keyLabel||p.key||''; ck.dataset.code=p.key||'';
     comboKey=p.key||''; comboKeyLabel=p.keyLabel||p.key||'';
     
-    // GEÄNDERT: Jetzt nehmen wir stopAll und fadeOutAll beim Laden wieder mit in die Arbeitsliste auf!
     comboSteps=(p.steps||[]).map(s=>({
       pads:[...s.pads],
       dur:s.dur||0,
@@ -5190,7 +5132,6 @@ function comboCycles(candidateId, editingId){
 function renderComboPalette(){
   const el=document.getElementById('combo-palette'); if(!el) return;
   
-  // Hier fügen wir den neuen "FADE OUT ALL"-Button direkt neben den Stop-Button ein
   let items = `
     <div class="cpal-item" data-action="stopAll" style="background:var(--blood); border-color:var(--blood-bright); color:#fff; font-weight:bold;">🛑 STOP ALL</div>
     <div class="cpal-item" data-action="fadeOutAll" style="background:var(--gold-dim); border-color:var(--gold); color:#fff; font-weight:bold;">⏳ FADE OUT ALL</div>
@@ -5233,7 +5174,6 @@ function initComboPaletteDrag(){
         return;
       }
       
-      // Erkennt, ob ein normaler Sound oder eine der beiden globalen Aktionen gezogen wird
       if (item.dataset.action === 'stopAll' || item.dataset.action === 'fadeOutAll') {
         comboDragId = item.dataset.action; 
       } else {
@@ -5330,7 +5270,6 @@ function doSaveCombo(){
     const opts=(s.chipOpts||[]).map(o=>o&&Object.keys(o).length?{...o}:null);
     return {
       pads:[...s.pads],
-      // Hier werden jetzt beide Flags sauber für die Zukunft abgespeichert
       ...(s.stopAll ? {stopAll: true} : {}),
       ...(s.fadeOutAll ? {fadeOutAll: true} : {}),
       ...(s.dur>0?{dur:s.dur}:{}),
@@ -5384,10 +5323,10 @@ function decodeWaveform(fi){
     if(etsInput && eteInput) {
       etsInput.max = dur;
       eteInput.max = dur;
-      // Falls der Endwert noch auf 0 (oder dem alten Maximum) steht, setzen wir ihn visuell auf das Maximum
+      // Reset trim-end to 0 (= full) when unset or when loaded file is shorter than previous value
       if(eteInput.value === '0' || parseFloat(eteInput.value) > dur) {
         eteInput.value = 0;
-        document.getElementById('ete-lbl').textContent = 'Vollständig';
+        document.getElementById('ete-lbl').textContent = 'Full';
       }
     }
 
@@ -5880,26 +5819,17 @@ async function doSave(){
     loopCount:eMode==='loop'?eLoopCount:undefined,
     volume:vol,fadeIn,fadeOut,trimStart,trimEnd,files:fileHashes,icons:(eIcons.filter(Boolean).length?eIcons.filter(Boolean):undefined)};
   
-  // GEÄNDERT: decodePad entfernt. Wir löschen stattdessen den alten Buffer-Cache des Pads,
-  // damit beim nächsten Abspielen die frisch gespeicherten Dateien On-Demand geladen werden!
-  if(bufs[eId]) bufs[eId] = [];
-  
+  if(bufs[eId]) bufs[eId] = []; // clear cache so next playback reloads freshly saved files on demand
   await save(); closeEP(); renderSetup();
 }
 function delPad(){
   const name=pads[eId]?.name||'this pad';
-  // Wir machen die Pfeilfunktion hier drin 'async', damit wir 'await save()' nutzen können!
   showConfirmDel(`Delete pad "${name}"?`, async () => {
-    stopPad(eId); 
-    pads[eId]=null; 
-    
-    // Cache-Säuberung: Wir löschen sowohl den Buffer als auch den Key im bufs-Objekt
+    stopPad(eId);
+    pads[eId]=null;
     if (bufs[eId]) bufs[eId] = [];
     delete bufs[eId];
-    
-    await save(); // Jetzt wird das Löschen GARANTIERT erst fertig in die DB geschrieben...
-    closeEP();    // ...und erst DANN schließt sich das Fenster...
-    renderSetup(); // ...und das Grid wird fehlerfrei aktualisiert!
+    await save(); closeEP(); renderSetup();
   });
 }
 
@@ -6701,14 +6631,6 @@ initTitleGlow();
   else init();
 })();
 </script>
-// Globaler Cache-Buster und Sicherheitsnetz für das iPhone
-if (typeof decodePad !== 'function') {
-  window.decodePad = async function(id) {
-    console.log("iPhone-Sicherheit: decodePad ignoriert für ID", id);
-    if (typeof bufs !== 'undefined' && bufs[id]) bufs[id] = [];
-    return true;
-  };
-}
 <div id="keymap-ov" onclick="closeKeymap()">
   <div id="keymap-box" onclick="event.stopPropagation()">
     <div class="keymap-hdr">KEY MAP</div>
