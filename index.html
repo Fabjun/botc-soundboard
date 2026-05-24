@@ -4867,18 +4867,31 @@ async function openEP(id){
   document.getElementById('ep').classList.add('open');
   document.getElementById('ebk').classList.add('open');
   document.querySelectorAll('#pgrid [data-id]').forEach(c=>c.classList.toggle('ed',+c.dataset.id===id));
+  
+  // ── ABGESICHERTER AUDIO-LOAD FÜR DEN EDITOR ──
   if(p?.files?.length){
-    for(const f of p.files){
-      if(typeof f==='string'){
-        const entry=await libGet(f);
-        if(entry) eFiles.push({name:entry.name,data:entry.buf,hash:f});
-      } else if(f?.data){
-        eFiles.push({name:f.name,data:f.data});
+    try {
+      for(const f of p.files){
+        if(typeof f==='string'){
+          const entry=await libGet(f);
+          if(entry) eFiles.push({name:entry.name,data:entry.buf,hash:f});
+        } else if(f?.data){
+          eFiles.push({name:f.name,data:f.data});
+        }
       }
+      // Berechne Wellenformen nur, wenn eFiles auch wirklich befüllt wurde
+      if(eFiles.length > 0) {
+        eFiles.forEach((_,i)=>decodeWaveform(i));
+      }
+      updFB();
+    } catch (editorAudioError) {
+      console.error("Fehler beim Laden der Wellenformen im Editor-Modus:", editorAudioError);
+      // Der Fehler wird verschluckt, damit das Menü trotzdem benutzbar bleibt!
+      updFB(); 
     }
-    eFiles.forEach((_,i)=>decodeWaveform(i));
-    updFB();
   }
+  // ─────────────────────────────────────────────
+  
   _epSnap=_snapshotEP();
 }
 function closeEP(){
