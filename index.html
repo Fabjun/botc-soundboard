@@ -1815,8 +1815,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 124;
+const APP_VERSION = 125;
 const CHANGELOG=[
+  {v:125,date:'2026-05-24',items:["Fix lib preview pause: toggleLibPreview no longer accepts a btnEl DOM reference — it always calls document.getElementById('lpb-'+hash) after the async gap to get a fresh reference; the stale-reference bug occurred when the library list re-rendered between the function call and the await resolving"]},
   {v:124,date:'2026-05-24',items:["RAM management: LRU eviction for libBufs cache — max 20 decoded AudioBuffers held in RAM; least-recently-decoded entry evicted when limit is exceeded; _lruBufSet() called at every decode point (play, playNext, createPadInstance, preview); _lruBufDelete() used instead of bare delete to keep LRU state consistent; delete bufs[id] added to once-pad onended handler so next tap re-enters the cache-check path rather than holding a stale reference"]},
   {v:123,date:'2026-05-24',items:["iPhone reliability: -webkit-overflow-scrolling:touch and overscroll-behavior:contain on all scroll containers (.ep-body, .pgrid, #sidebar, #combo-body, #hint-body, #keymap-body); overscroll-behavior:none on fixed overlay panels (#ep, #combo-ov, #hint-ov, #icon-picker, #lib-picker, #import-ov, #changelog-ov, #onboard-ov, #pad-type-picker, #keymap-ov); blanket rule for inline overflow-y:auto elements; min-height:44px on .btn-p/.btn-s/.btn-g/.dlg-*; .ep-back min touch target 44×44px"]},
   {v:122,date:'2026-05-24',items:["Fix icon picker: 5 missing functions restored (updIconPreview, pickBuiltinIcon, pickLibIcon, clearIconSlot, _updateIconPickerLib); libIconEntries populated on load and kept in sync on add/delete; duplicate filterIconGrid definition removed","Fix combo playback: pads filter in playComboStep no longer requires bufs[] to be pre-loaded — on-demand audio works in all combo steps","Fix combo engine: once/loop pads in createPadInstance now load audio on-demand from IndexedDB (same pattern as playlist branch) instead of failing silently when bufs[] is empty","Remove dead code: isSetupMode block in play() referenced CSS classes that are never set — removed 18-line block","Refactor: hardcoded inline styles s12/s12g/s12n in updFB() replaced with CSS classes .ep-act/.ep-act-g/.ep-act-t","Remove debug overlay: logDebug(), window.onerror/onunhandledrejection handlers and #debug-log div removed"]},
@@ -2664,7 +2665,7 @@ async function initBoardScreen(){
 function libCard({nameId,preHtml='',badge=null,nameHtml,nameStyle='',actions=[],subLines=[],active=false,extraClass=''}){
   const badgeHtml=badge?`<span class="lib-card-badge" style="color:${badge.color};border-color:${badge.color}">${badge.label}</span>`:'';
   const actHtml=actions.map(a=>{
-    if(a.type==='preview') return `<button id="lpb-${a.hash}" class="lca-icon lib-prev-btn" onclick="toggleLibPreview('${a.hash}',this)" title="Preview">▶</button>`;
+    if(a.type==='preview') return `<button id="lpb-${a.hash}" class="lca-icon lib-prev-btn" onclick="toggleLibPreview('${a.hash}')" title="Preview">▶</button>`;
     if(a.type==='rename') return `<button class="lca-rename" onclick="${a.onclick}" title="Rename">✎</button>`;
     if(a.type==='dim')  return `<button class="lca-dim" onclick="${a.onclick}">${a.label}</button>`;
     if(a.type==='acc')  return `<button class="lca-acc" onclick="${a.onclick}">${a.label}</button>`;
@@ -3489,7 +3490,7 @@ function getComboFirstFileHash(steps){
   return null;
 }
 
-async function toggleLibPreview(hash, btnEl){
+async function toggleLibPreview(hash){
   if(_libPreviewHash===hash){ stopLibPreview(); return; }
   stopLibPreview();
   if(!ctx) return;
@@ -3503,7 +3504,9 @@ async function toggleLibPreview(hash, btnEl){
   node.connect(ctx.destination);
   node.start(0);
   _libPreviewHash=hash; _libPreviewNode=node;
-  if(btnEl){ btnEl.textContent='⏸'; btnEl.style.color='var(--active)'; }
+  // Always look up fresh — btnEl would be stale after any async gap + list re-render
+  const btn=document.getElementById('lpb-'+hash);
+  if(btn){ btn.textContent='⏸'; btn.style.color='var(--active)'; }
   node.onended=()=>{ if(_libPreviewHash===hash) stopLibPreview(); };
 }
 async function initLibScreen(){
