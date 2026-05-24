@@ -3862,7 +3862,10 @@ async function importPadTemplate(hash){
     steps:pd.steps?JSON.parse(JSON.stringify(pd.steps)):undefined};
   Object.keys(newPad).forEach(k=>{ if(newPad[k]===undefined) delete newPad[k]; });
   if(empty!==-1) pads[empty]=newPad; else pads.push(newPad);
-  await decodePad(newId);
+  
+  // GEÄNDERT: decodePad entfernt, stattdessen Cache für dieses Pad leeren
+  if(bufs[newId]) bufs[newId] = []; 
+  
   await save();
   showToast(`"${escHtml(pd.name)}" added to current board.`);
   renderLibPads();
@@ -5800,20 +5803,34 @@ async function doSave(){
     if(f.hash){ fileHashes.push(f.hash); }
     else if(f.data){ const {hash}=await addToLib(f.data,f.name||'audio',f.type||''); fileHashes.push(hash); }
   }
- const trimStart = parseFloat(document.getElementById('ets').value) || 0;
+  const trimStart = parseFloat(document.getElementById('ets').value) || 0;
   const trimEnd = parseFloat(document.getElementById('ete').value) || 0;
 
   pads[eId]={id:eId,name,key,keyLabel,mode:eMode,
     shuffle:eMode==='playlist'?eShuffle:undefined,
     loopCount:eMode==='loop'?eLoopCount:undefined,
     volume:vol,fadeIn,fadeOut,trimStart,trimEnd,files:fileHashes,icons:(eIcons.filter(Boolean).length?eIcons.filter(Boolean):undefined)};
-  await decodePad(eId); await save(); closeEP(); renderSetup();
+  
+  // GEÄNDERT: decodePad entfernt. Wir löschen stattdessen den alten Buffer-Cache des Pads,
+  // damit beim nächsten Abspielen die frisch gespeicherten Dateien On-Demand geladen werden!
+  if(bufs[eId]) bufs[eId] = [];
+  
+  await save(); closeEP(); renderSetup();
 }
 function delPad(){
   const name=pads[eId]?.name||'this pad';
-  showConfirmDel(`Delete pad "${name}"?`,()=>{
-    stopPad(eId); pads[eId]=null; delete bufs[eId];
-    save(); closeEP(); renderSetup();
+  // Wir machen die Pfeilfunktion hier drin 'async', damit wir 'await save()' nutzen können!
+  showConfirmDel(`Delete pad "${name}"?`, async () => {
+    stopPad(eId); 
+    pads[eId]=null; 
+    
+    // Cache-Säuberung: Wir löschen sowohl den Buffer als auch den Key im bufs-Objekt
+    if (bufs[eId]) bufs[eId] = [];
+    delete bufs[eId];
+    
+    await save(); // Jetzt wird das Löschen GARANTIERT erst fertig in die DB geschrieben...
+    closeEP();    // ...und erst DANN schließt sich das Fenster...
+    renderSetup(); // ...und das Grid wird fehlerfrei aktualisiert!
   });
 }
 
