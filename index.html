@@ -6724,5 +6724,78 @@ initTitleGlow();
     <button id="ob-next" onclick="nextOnboardSlide()" style="background:var(--gold);border-color:var(--gold);color:#000">NEXT →</button>
   </div>
 </div>
+</div>
+
+<!-- In-page error panel (captures uncaught errors, rejections, and console.errors) -->
+<div id="inpage-errors" style="position:fixed;right:12px;bottom:12px;width:360px;max-height:50vh;background:rgba(20,20,30,0.96);color:#fff;border:1px solid rgba(255,255,255,0.06);border-radius:8px;font-family:var(--ff-body);font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:9999;overflow:hidden;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)">
+    <div style="display:flex;gap:8px;align-items:center">
+      <strong style="font-size:12px;color:var(--gold)">Errors</strong>
+      <span id="ipe-count" style="color:var(--text-dim);font-size:11px">0</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="ipe-clear" style="background:none;border:1px solid rgba(255,255,255,0.06);color:var(--text);padding:4px 8px;border-radius:4px;cursor:pointer">Clear</button>
+      <button id="ipe-toggle" style="background:none;border:1px solid rgba(255,255,255,0.06);color:var(--text);padding:4px 8px;border-radius:4px;cursor:pointer">Close</button>
+    </div>
+  </div>
+  <div id="ipe-list" style="overflow:auto;padding:8px;flex:1;gap:6px;display:flex;flex-direction:column">
+    <!-- messages appended here -->
+  </div>
+</div>
+
+<script>
+  (function(){
+    const panel=document.getElementById('inpage-errors');
+    const list=document.getElementById('ipe-list');
+    const countEl=document.getElementById('ipe-count');
+    const btnClear=document.getElementById('ipe-clear');
+    const btnToggle=document.getElementById('ipe-toggle');
+    let open=true;
+    const msgs=[];
+
+    function render(){
+      list.innerHTML='';
+      msgs.slice().reverse().forEach(m=>{
+        const el=document.createElement('div');
+        el.style.padding='6px';
+        el.style.border='1px solid rgba(255,255,255,0.03)';
+        el.style.borderRadius='4px';
+        el.style.background='linear-gradient(180deg,rgba(255,255,255,0.01),transparent)';
+        el.style.color='var(--text)';
+        el.innerText = `[${m.type}] ${m.message}` + (m.stack?"\n"+m.stack.split('\n').slice(0,4).join('\n'):'');
+        list.appendChild(el);
+      });
+      countEl.textContent=msgs.length;
+      if(msgs.length>0){ panel.style.display='flex'; }
+      else { panel.style.display=open?'flex':'none'; }
+    }
+
+    function push(msg){ msgs.push(msg); if(msgs.length>200) msgs.shift(); render(); }
+
+    window.addEventListener('error', e=>{
+      try{ push({type:'error',message:e.message||String(e),stack:(e.error&&e.error.stack)||''}); }catch(err){}
+    });
+    window.addEventListener('unhandledrejection', e=>{
+      try{ const r=e.reason; push({type:'unhandledrejection',message:r&&r.message?r.message:String(r),stack:r&&r.stack?r.stack:''}); }catch(err){}
+    });
+
+    // proxy console.error to capture messages
+    ['error','warn','log','info'].forEach(level=>{
+      const orig=console[level];
+      console[level]=function(...args){
+        try{ push({type:'console.'+level,message:args.map(a=>(typeof a==='object'?JSON.stringify(a):String(a))).join(' ')}); }catch(e){}
+        try{ orig.apply(console,args); }catch(e){}
+      };
+    });
+
+    btnClear.addEventListener('click',()=>{ msgs.length=0; render(); });
+    btnToggle.addEventListener('click',()=>{ open=!open; panel.style.display=open?(msgs.length? 'flex':'none'):'none'; btnToggle.textContent=open?'Close':'Open'; });
+
+    // start hidden if no messages
+    panel.style.display='none';
+    // expose for manual use
+    window._inpageErrors = { push, clear: ()=>{ msgs.length=0; render(); } };
+  })();
+</script>
 </body>
 </html>
