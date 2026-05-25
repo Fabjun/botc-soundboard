@@ -1,8 +1,14 @@
 'use strict';
 
-const APP_VERSION = '1.5.6';
+const APP_VERSION = '1.5.7';
 
 const CHANGELOG = [
+  { v: '1.5.7', date: '2026-05-25', items: [
+    'Slice 4: Audio Playback — GAME mode pad taps play/stop audio via audio.js engine',
+    'audio.js: LRU buffer cache (150 MB max), in-flight dedup, iOS silent-switch bypass',
+    'Stop All button in GAME mode top bar',
+    'Pad is-playing active state (visual highlight + ring)',
+  ]},
   { v: '1.5.6', date: '2026-05-25', items: [
     'Scrollbar styling: global ::-webkit-scrollbar + html scrollbar-color using design tokens (--border, --sunk, --gold-dim)',
   ]},
@@ -977,6 +983,7 @@ function boardHTML() {
     <div class="bd-title-area">
       <span class="bd-board-name" id="bd-board-name" data-action="bd-rename-board" title="Tap to rename">—</span>
     </div>
+    ${isGame ? `<button class="bd-stop-all-btn" data-action="bd-stop-all" title="Stop all sounds">■ STOP ALL</button>` : ''}
     <div class="bd-mode-toggle">
       <button class="bd-mode-btn${isSetup ? ' is-active' : ''}" data-action="bd-mode" data-mode="setup">SETUP</button>
       <button class="bd-mode-btn${isGame  ? ' is-active' : ''}" data-action="bd-mode" data-mode="game">GAME</button>
@@ -1061,7 +1068,8 @@ function renderPadGrid() {
 
 /** @param {Object} pad @returns {string} */
 function padCellHTML(pad) {
-  return `<div class="pad is-assigned" data-pad-slot="${pad.slot}" data-action="bd-pad-tap">
+  const playing = audioIsPlaying(pad.id);
+  return `<div class="pad is-assigned${playing ? ' is-playing' : ''}" data-pad-slot="${pad.slot}" data-pad-id="${escAttr(pad.id)}" data-action="bd-pad-tap">
     <div class="pad-wave">${_waveMiniFromHash(pad.hash)}</div>
     <div class="pad-name">${escHtml(pad.name || '—')}</div>
     ${pad.hotkey ? `<span class="pad-hotkey">${escHtml(pad.hotkey)}</span>` : ''}
@@ -1282,10 +1290,27 @@ async function handleBdMode(mode) {
 }
 
 async function handleBdPadTap(slot) {
-  if (S.boardMode !== 'setup') return; // GAME mode playback: Slice 4
   const pad = _bdScene?.pads.find(p => p.slot === slot);
-  if (pad) openPadOpts(slot);
-  else openPadPicker(slot);
+  if (S.boardMode === 'setup') {
+    if (pad) openPadOpts(slot);
+    else openPadPicker(slot);
+    return;
+  }
+  // GAME mode
+  if (!pad?.hash) return;
+  const el = document.querySelector(`[data-pad-id="${CSS.escape(pad.id)}"]`);
+  if (audioIsPlaying(pad.id)) {
+    audioStop(pad.id, { fade: pad.fadeOut || 0 });
+    el?.classList.remove('is-playing');
+  } else {
+    audioPlay(pad.id, pad.hash, {
+      type:    pad.type || 'single',
+      volume:  pad.volume  ?? 80,
+      fadeIn:  pad.fadeIn  || 0,
+      fadeOut: pad.fadeOut || 0,
+    });
+    el?.classList.add('is-playing');
+  }
 }
 
 async function handleBdRenameBoard() {
@@ -1482,6 +1507,7 @@ function handleAction(action, el) {
     case 'bd-scene-add':      handleBdSceneAdd(); break;
     case 'bd-scene-opts':     handleBdSceneOpts(el.dataset.sceneId); break;
     case 'bd-pad-tap':        handleBdPadTap(+el.dataset.padSlot); break;
+    case 'bd-stop-all':       audioStopAll(0); document.querySelectorAll('.pad.is-playing').forEach(e => e.classList.remove('is-playing')); break;
     case 'bd-rename-board':   handleBdRenameBoard(); break;
 
     // pad picker
@@ -1542,3 +1568,9 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// When audio ends naturally, remove the is-playing class from the pad cell
+document.addEventListener('audio:ended', e => {
+  const el = document.querySelector(`[data-pad-id="${CSS.escape(e.detail.padId)}"]`);
+  el?.classList.remove('is-playing');
+});

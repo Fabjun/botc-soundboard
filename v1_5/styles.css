@@ -401,6 +401,12 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
 .bd-mode-btn:hover{border-color:var(--border);color:var(--text-dim)}
 .bd-mode-btn.is-active{border-color:var(--mode-setup);color:var(--mode-setup)}
 .bd-mode-btn[data-mode="game"].is-active{border-color:var(--mode-game);color:var(--mode-game)}
+.bd-stop-all-btn{
+  font-family:var(--font-ui);font-size:12px;letter-spacing:1px;
+  padding:5px 10px;cursor:pointer;background:rgba(139,26,26,.18);
+  border:1px solid var(--blood);color:var(--blood-bright);
+  clip-path:var(--cc);transition:background .15s,border-color .15s;flex-shrink:0}
+.bd-stop-all-btn:hover{background:rgba(192,57,43,.28);border-color:var(--blood-bright)}
 
 /* scene tabs */
 .bd-scene-bar{
@@ -447,6 +453,10 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
 .pad.is-assigned{border-color:rgba(212,178,92,.2);background:var(--pad-single-soft)}
 .pad.is-assigned:hover{background:var(--raised);border-color:var(--pad-single)}
 .pad.is-assigned:active{background:var(--top)}
+.pad.is-playing{
+  border-color:var(--mode-game);background:rgba(212,178,92,.12);
+  box-shadow:0 0 0 1px var(--mode-game) inset}
+.pad.is-playing .pad-name{color:var(--mode-game)}
 .pad-wave{opacity:.75;flex-shrink:0}
 .pad-name{
   font-family:var(--font-ui);font-size:11px;color:var(--text);

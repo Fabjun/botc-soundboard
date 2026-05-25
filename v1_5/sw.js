@@ -1,9 +1,10 @@
-const VERSION = '1.5.6';
+const VERSION = '1.5.7';
 const CACHE = `sos-v1_5-${VERSION}`;
 const ASSETS = [
   './index.html',
   './styles.css',
   './app.js',
+  './audio.js',
   './flame.js',
   './manifest.json',
   '../fonts/press-start-2p.woff2',
