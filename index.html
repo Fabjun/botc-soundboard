@@ -756,6 +756,13 @@ body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
 .pf-tab.pf-act{background:var(--screen-accent-dim);border-color:var(--screen-accent-dim);color:var(--screen-accent)}
 /* SEARCH + SORT BAR (ssb) — Library tabs and lib-picker */
 .ssb{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+#cue-strip{display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid var(--border-soft);background:var(--deep);flex-shrink:0;min-height:36px}
+#cue-lbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--gold-dim);flex-shrink:0;letter-spacing:.08em}
+#cue-items{display:flex;gap:5px;flex:1;flex-wrap:wrap}
+.cue-pill{padding:3px 10px;background:var(--raised);border:1px solid var(--pad-color,var(--border));border-radius:2px;font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--text);cursor:pointer;flex-shrink:0}
+.cue-pill:active{background:var(--top,var(--surface))}
+#cue-clear{padding:2px 8px;background:none;border:1px solid var(--border);border-radius:2px;font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));color:var(--text-dim);cursor:pointer;flex-shrink:0;min-height:28px}
+#cue-clear:active{color:var(--blood-bright)}
 .ssb-search{flex:1;position:relative;min-width:0}
 .ssb-input{width:100%;background:var(--deep);border:1px solid var(--border);color:var(--text);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:5px 26px 5px 8px;border-radius:2px;outline:none;box-sizing:border-box}
 .ssb-input:focus{border-color:var(--screen-accent-dim)}
@@ -1286,12 +1293,14 @@ body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
       <div class="trow">
         <div class="topt" id="lp-vol" onclick="setLongPressAction('vol')">VOLUME</div>
         <div class="topt" id="lp-rename" onclick="setLongPressAction('rename')">RENAME</div>
+        <div class="topt" id="lp-cue" onclick="setLongPressAction('cue')">CUE</div>
         <div class="topt" id="lp-off" onclick="setLongPressAction('off')">OFF</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
         What a 500 ms long-press on a PAD does in GAME mode.
         <b style="color:var(--text)">VOLUME</b> opens the quick volume slider (only when the pad is playing) ·
         <b style="color:var(--text)">RENAME</b> opens the quick rename overlay ·
+        <b style="color:var(--text)">CUE</b> adds the PAD to the cue queue — press TAB to fire the next ·
         <b style="color:var(--text)">OFF</b> disables long-press.
       </p>
     </div>
@@ -2051,6 +2060,11 @@ body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
       </div>
     </div>
   </div>
+  <div id="cue-strip" style="display:none">
+    <span id="cue-lbl">CUE</span>
+    <div id="cue-items"></div>
+    <button id="cue-clear" onclick="_clearCue()">×</button>
+  </div>
   <div class="pgrid" id="pgrid"></div>
   <div id="np">
     <canvas id="eq-cv" height="25"></canvas>
@@ -2252,8 +2266,11 @@ body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 167;
+const APP_VERSION = 168;
 const CHANGELOG=[
+  {v:168,date:'2026-05-25',items:[
+    "Cue Stack (Phase 5): CUE added as 4th LONG-PRESS ACTION option; long-pressing a PAD in GAME mode queues it (max 3); TAB key fires the next PAD in the queue; visual cue strip above #pgrid shows queued PADs as type-colored pills; tapping a pill plays and removes it immediately; × button clears all; selecting a different lp-action clears the queue; _addToCue/fireCue/clearCue/renderCueStrip/tapCueItem JS functions"
+  ]},
   {v:167,date:'2026-05-25',items:[
     "Atmosphere effects (Phase 4): 4 new toggles in Settings → VISUALS → ATMOSPHERE; NOW-PLAYING AURA (default ON) — pad-aura keyframe replaces breathe-gold with wider outer glow in pad type color; BREATHING PADS (default OFF) — LOOP-type pads scale 1→1.018 while plooping via pad-breathe keyframe; combined aura+breathing rule for plooping[data-mode=loop]; HEARTH GLOW (default ON) — radial gradient on #pgrid::before, adapts via --gold-soft; AMBIENT EMBERS (default OFF) — 18 absolutely-positioned .ember divs in #sp, random left/bottom/duration/delay, float-up via ember-float keyframe using --flame color; _applyEmbers creates divs lazily on first enable; _initAtmosphereUI() called at startup and on sa-vis.onShow; aura/breathing/hearth/embers added to SETTINGS_KEYS"
   ]},
@@ -4050,10 +4067,49 @@ function stopAll(exceptComboId = null, isFade = false){
 function togglePad(id){ if(srcs[id]) stopPad(id); else play(id); }
 function setLongPressAction(v){
   localStorage.setItem('lp-action',v);
-  ['vol','rename','off'].forEach(k=>document.getElementById('lp-'+k)?.classList.toggle('al',k===v));
+  ['vol','rename','cue','off'].forEach(k=>document.getElementById('lp-'+k)?.classList.toggle('al',k===v));
+  if(v!=='cue') _clearCue();
 }
 function _initLongPressUI(){
   setLongPressAction(localStorage.getItem('lp-action')||'vol');
+}
+
+// ── CUE STACK ──
+let _cueStack=[];
+const CUE_MAX=3;
+function _addToCue(id){
+  if(!pads[id]) return;
+  if(_cueStack.includes(id)||_cueStack.length>=CUE_MAX) return;
+  _cueStack.push(id);
+  _renderCueStrip();
+}
+function _fireCue(){
+  if(!_cueStack.length) return;
+  const id=_cueStack.shift();
+  play(id);
+  _renderCueStrip();
+}
+function _clearCue(){
+  _cueStack=[];
+  _renderCueStrip();
+}
+function _renderCueStrip(){
+  const strip=document.getElementById('cue-strip');
+  const items=document.getElementById('cue-items');
+  if(!strip||!items) return;
+  if(!_cueStack.length){ strip.style.display='none'; return; }
+  strip.style.display='flex';
+  items.innerHTML=_cueStack.map((id,i)=>{
+    const p=pads[id]; if(!p) return '';
+    const [tc]=_padTypeVars(p.mode);
+    return `<div class="cue-pill" style="--pad-color:${tc}" onclick="_tapCueItem(${i})" title="Tap to play, long-press to remove">${escHtml(p.name||'PAD '+(id+1))}</div>`;
+  }).join('');
+}
+function _tapCueItem(i){
+  if(i>=_cueStack.length) return;
+  const id=_cueStack.splice(i,1)[0];
+  play(id);
+  _renderCueStrip();
 }
 
 function _getComboDefaultDelay(){ return +(localStorage.getItem('combo-delay')??1); }
@@ -7298,7 +7354,14 @@ function onPadPointerDown(e, id){
   }
   if(locked && pads[id]){
     const lp=localStorage.getItem('lp-action')||'vol';
-    if((lp==='vol'&&srcs[id])||lp==='rename'){
+    if(lp==='cue'){
+      _pvTimer=setTimeout(()=>{
+        _pvTimer=null; dragSrc=null;
+        document.removeEventListener('pointermove', onDragMove);
+        document.removeEventListener('pointerup', onDragEnd);
+        _addToCue(id);
+      }, 500);
+    } else if((lp==='vol'&&srcs[id])||lp==='rename'){
       _pvTimer=setTimeout(()=>{
         _pvTimer=null; dragSrc=null;
         document.removeEventListener('pointermove', onDragMove);
@@ -7820,6 +7883,7 @@ document.addEventListener('keydown', e=>{
   if(locked){
     e.preventDefault();
     if(cur==='sp'){
+      if(code==='Tab' && _cueStack.length){ _fireCue(); return; }
       const id=pads.findIndex(p=>p&&p.key===code);
       if(id!==-1) playFromKey(id);
     }
