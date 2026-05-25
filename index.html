@@ -16,9 +16,9 @@
 @font-face{font-family:'DotGothic16';font-style:normal;font-weight:400;font-display:swap;src:url('./fonts/dotgothic16.woff2') format('woff2')}
 @font-face{font-family:'Uncial Antiqua';font-style:normal;font-weight:400;font-display:swap;src:url('./fonts/uncial-antiqua.woff2') format('woff2')}
 :root {
-  --night:#08081A; --deep:#0E0E22; --surface:#16162E; --raised:#22224A;
-  --border:#383868; --gold:#D4B25C; --gold-dim:#8A6E34; --blood:#A02828;
-  --blood-bright:#D04545; --mist:#4a4a7a; --text:#F0E8D0; --text-dim:#B8B0C8;
+  --night:#0a0a14; --deep:#0f0f1e; --surface:#16162a; --raised:#1e1e35;
+  --border:#2a2a4a; --gold:#D4B25C; --gold-dim:#7a5f28; --blood:#A02828;
+  --blood-bright:#c0392b; --mist:#4a4a7a; --text:#d4ccbc; --text-dim:#B8B0C8;
   --cx-max:900px; --active:#4fc3f7; --emerald:#3ca870; --emerald-dim:#1c6040;
   --pad-sz:90px; --pad-gap:8px; --pad-radius:8px;
   --ff-title:'Press Start 2P',monospace;
@@ -2416,14 +2416,8 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 179;
+const APP_VERSION = 177;
 const CHANGELOG=[
-  {v:179,date:'2026-05-25',items:[
-    "Fix v178: restore icons.js script tag — icons.js contains BUILTIN_ICONS (used by _iconRefSvg/renderPadIconArea) in addition to the pixelIcon function; removing it broke PAD icon rendering and app init"
-  ]},
-  {v:178,date:'2026-05-25',items:[
-    "Phase 1 token harmonization: 8 WCAG-optimized base token values updated (--night #08081A, --deep #0E0E22, --surface #16162E, --raised #22224A, --border #383868, --text #F0E8D0, --gold-dim #8A6E34, --blood-bright #D04545); icons.js external load removed (incorrect — reverted in v179)"
-  ]},
   {v:177,date:'2026-05-25',items:[
     "Code review fixes: remove redundant entry.buf.slice(0) in lib-preview (toggleLibPreview) and lpPlay — IDB get() returns a structured clone so the copy is unnecessary, saves 5-8 MB per call; add await to decodeWaveform(fi) in _processFilesSerial fallback path — without it, multiple concurrent decodes could fire when addToLib peak-computation fails for several files in a row"
   ]},
