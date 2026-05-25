@@ -2,6 +2,18 @@
 
 const APP_VERSION = '1.5.0';
 
+const CHANGELOG = [
+  { v: '1.5.0', date: '2026-05-25', items: [
+    'Slice 1: Skeleton + Home Screen — index.html shell, styles.css with canonical tokens (--font-*, --mode-*), app.js with central state S + set() setters + pub/sub bus, pixelIcon system (8 icons), event delegation via data-target/data-action',
+    'Intro screen: 140px cold-reactive AnimatedFlame, title and button color react to cold state via lerpColor',
+    'Menu screen: 84px interactive flame, 5 pixel-icon menu rows with staggered gold tints, backup/import row',
+    'Stub screens for unimplemented destinations (board, library, settings, tips, about)',
+    'Service worker (cache-first) and PWA manifest',
+    '3 themes: verdant, neon, crimson',
+  ] },
+];
+console.assert(CHANGELOG[0].v === APP_VERSION, 'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
+
 /* ── STATE ──────────────────────────────────────────────────── */
 
 /** @typedef {'intro'|'menu'|'board'|'library'|'settings'|'tips'|'about'} ScreenId */
