@@ -487,6 +487,17 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
   width:52px;flex-shrink:0}
 .pad-opts-actions{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap}
 
+/* ── SW UPDATE BANNER ────────────────────────────────────────── */
+.sw-banner{
+  position:fixed;top:0;left:0;right:0;z-index:300;
+  background:var(--mode-setup);color:var(--night);
+  font-family:var(--font-ui);font-size:13px;letter-spacing:.5px;
+  padding:7px 14px;display:flex;align-items:center;justify-content:center;gap:12px}
+.sw-banner-btn{
+  background:var(--night);color:var(--mode-setup);border:none;
+  font-family:var(--font-ui);font-size:12px;letter-spacing:1px;
+  padding:3px 10px;cursor:pointer;clip-path:var(--cc)}
+
 /* ── CHANGELOG MODAL ─────────────────────────────────────────── */
 .cl-overlay{
   position:fixed;inset:0;background:rgba(8,8,26,.75);

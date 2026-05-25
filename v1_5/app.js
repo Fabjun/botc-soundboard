@@ -1,8 +1,14 @@
 'use strict';
 
-const APP_VERSION = '1.5.4';
+const APP_VERSION = '1.5.5';
 
 const CHANGELOG = [
+  { v: '1.5.5', date: '2026-05-25', items: [
+    'Fix blank screen: openDB() now handles onblocked (DB upgrade blocked by another tab) and rejects with a clear message',
+    'Fix blank screen: init() wrapped in try-catch — shows an error screen instead of silent blank',
+    'Fix reload loop: replaced controllerchange-based auto-reload with updatefound+waiting banner (no reload loop)',
+    'SW update banner: shows "UPDATE AVAILABLE — RELOAD" strip at top when a new SW is waiting',
+  ]},
   { v: '1.5.4', date: '2026-05-25', items: [
     'Changelog modal: clicking version label in menu opens full changelog overlay',
     'Modal closes on backdrop click or × button; Escape key supported',
@@ -170,6 +176,7 @@ function openDB() {
     };
     r.onsuccess = e => { db = e.target.result; res(); };
     r.onerror   = e => rej(e.target.error || new Error('IndexedDB failed to open'));
+    r.onblocked = () => rej(new Error('DB upgrade blocked — please close other tabs using this app, then reload'));
   });
 }
 
@@ -1487,19 +1494,47 @@ function handleAction(action, el) {
 
 /* ── INIT ───────────────────────────────────────────────────── */
 
+function _showSwUpdateBanner(waitingSW) {
+  const b = document.createElement('div');
+  b.className = 'sw-banner';
+  b.innerHTML = `Update available — <button class="sw-banner-btn" id="sw-banner-btn">RELOAD</button>`;
+  document.body.prepend(b);
+  document.getElementById('sw-banner-btn').onclick = () => {
+    waitingSW.postMessage({ type: 'SKIP_WAITING' });
+  };
+}
+
 async function init() {
   applyTheme(S.theme);
-  await openDB();
+  try {
+    await openDB();
+  } catch (err) {
+    document.getElementById('app').innerHTML =
+      `<div class="screen screen-intro"><div class="su-wrap" style="gap:16px">
+        <p style="color:var(--blood-bright);font-family:var(--font-mono);font-size:12px;max-width:300px;text-align:center;line-height:1.7">
+          ${escHtml(err.message)}
+        </p>
+        <button class="unlock-btn" style="margin-top:8px" onclick="location.reload()">RELOAD</button>
+      </div></div>`;
+    return;
+  }
   renderScreen(S.screen);
   if ('serviceWorker' in navigator) {
-    const hadController = !!navigator.serviceWorker.controller;
-    // Auto-reload page when a new SW takes control (skipWaiting + clients.claim in sw.js)
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (hadController) window.location.reload();
-    });
-    navigator.serviceWorker.register('./sw.js').then(reg => {
-      reg.update(); // proactively check for a newer sw.js on every load
-    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    try {
+      const reg = await navigator.serviceWorker.register('./sw.js');
+      await reg.update();
+      if (reg.waiting) _showSwUpdateBanner(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            _showSwUpdateBanner(nw);
+          }
+        });
+      });
+    } catch (e) { /* SW not critical */ }
   }
 }
 
