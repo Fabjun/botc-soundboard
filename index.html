@@ -63,6 +63,35 @@ body.theme-modern .km-bar{border-radius:12px}
 body.theme-modern .badge{border-radius:6px}
 body.theme-modern .s-hdr h2,body.theme-modern .tips-hdr{letter-spacing:.03em}
 body.theme-modern .trow .topt{font-weight:500}
+body.theme-modern.mode-edit .pbtn:not(.empty){border-style:solid}
+body.theme-verdant{
+  --night:#07120D; --deep:#0B1E16; --surface:#102A20; --raised:#18402F;
+  --top:#1F5240; --sunk:#050E0A;
+  --border:#2A5640; --border-soft:#1A382B; --border-strong:#3A7A5C; --border-gold:#C9A04F;
+  --text:#EFE6C8; --text-dim:#ACB5A6; --text-mute:#6F7E73;
+  --flame:#D8893A; --gold:#C9A04F; --gold-bright:#F2CC5C;
+  --pad-loop:#4FA67A; --pad-loop-soft:rgba(79,166,122,.16); --pad-loop-glow:rgba(95,200,144,.55);
+}
+body.theme-neon{
+  --night:#050816; --deep:#0A1228; --surface:#111E40; --raised:#1A2C5E;
+  --top:#233A7C; --sunk:#050A18;
+  --border:#2B4382; --border-soft:#1B2A52; --border-strong:#4564B5; --border-gold:#3DD4F0;
+  --text:#E2F0FF; --text-dim:#9DB5D6; --text-mute:#5F7AA2;
+  --flame:#FF3D8B; --gold:#3DD4F0; --gold-bright:#6EF0FF;
+  --pad-single:#FF5FA8; --pad-single-soft:rgba(255,95,168,.16); --pad-single-glow:rgba(255,95,168,.55);
+  --pad-loop:#3DD4F0; --pad-loop-soft:rgba(61,212,240,.16); --pad-loop-glow:rgba(61,212,240,.55);
+  --pad-playlist:#B988FF; --pad-playlist-soft:rgba(185,136,255,.16); --pad-playlist-glow:rgba(185,136,255,.55);
+  --pad-combo:#FFD256; --pad-combo-soft:rgba(255,210,86,.16); --pad-combo-glow:rgba(255,210,86,.55);
+}
+body.theme-crimson{
+  --night:#0A0606; --deep:#16090A; --surface:#20121A; --raised:#2E1A22;
+  --top:#44232E; --sunk:#0A0404;
+  --border:#523040; --border-soft:#2E1820; --border-strong:#804052; --border-gold:#D63A3A;
+  --text:#F2DDD2; --text-dim:#C09A95; --text-mute:#835A55;
+  --flame:#B5302E; --gold:#D63A3A; --gold-bright:#F26666;
+  --pad-loop:#C04C75; --pad-loop-soft:rgba(192,76,117,.16); --pad-loop-glow:rgba(192,76,117,.55);
+  --pad-playlist:#7A5295; --pad-playlist-soft:rgba(122,82,149,.16); --pad-playlist-glow:rgba(122,82,149,.55);
+}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch-action:manipulation;
   font-family:var(--ff-body);overflow:hidden;user-select:none}
@@ -1275,9 +1304,17 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
         <div class="topt" id="th-retro" onclick="setTheme('retro')">RETRO</div>
         <div class="topt" id="th-modern" onclick="setTheme('modern')">MODERN</div>
       </div>
+      <div class="trow" style="margin-top:6px">
+        <div class="topt" id="th-verdant" onclick="setTheme('verdant')">VERDANT</div>
+        <div class="topt" id="th-neon" onclick="setTheme('neon')">NEON</div>
+        <div class="topt" id="th-crimson" onclick="setTheme('crimson')">CRIMSON</div>
+      </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        <b style="color:var(--text)">RETRO</b> — pixel aesthetic with monospace fonts, sharp corners ·
-        <b style="color:var(--text)">MODERN</b> — clean dark UI with system font and rounded elements.
+        <b style="color:var(--text)">RETRO</b> — pixel aesthetic, monospace fonts, sharp corners ·
+        <b style="color:var(--text)">MODERN</b> — system font, rounded elements ·
+        <b style="color:var(--text)">VERDANT</b> — forest green, D&amp;D warmth ·
+        <b style="color:var(--text)">NEON</b> — cyberpunk cyan/pink ·
+        <b style="color:var(--text)">CRIMSON</b> — horror gothic, deep red.
       </p>
     </div>
     <div class="sg-sub">CONTENT WIDTH</div>
@@ -2156,8 +2193,11 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 165;
+const APP_VERSION = 166;
 const CHANGELOG=[
+  {v:166,date:'2026-05-25',items:[
+    "3 new themes (Phase 3): VERDANT (forest green, D&D warmth — overrides night/surface/raised/border/text/gold/pad-loop), NEON (cyberpunk cyan/pink — full PAD type color override, --gold becomes cyan), CRIMSON (horror gothic deep red — overrides night/surface/raised/border/text/gold/pad-loop/pad-playlist); setTheme() updated to handle all 5 themes (modern/verdant/neon/crimson); theme picker in Settings → APPEARANCE split into two rows (base themes + color themes); body.theme-modern.mode-edit override keeps solid borders (no dashed in modern theme)"
+  ]},
   {v:165,date:'2026-05-25',items:[
     "PAD type colors + depth (Phase 2): _padTypeVars(mode) injects --pad-color/--pad-glow CSS custom properties on each .pbtn element; SINGLE=gold, LOOP=teal, PLAYLIST/CHAIN/RANDOM=violet, COMBO=copper; left-edge 4px spine via inset box-shadow always visible; depth bevel via inset 1px and -1px box-shadows; .pbtn background upgraded from --surface to --raised; playing/plooping states use --pad-color for border and --pad-glow for outer glow; breathe-gold keyframes updated to include spine + use CSS variable glow color; .pnum text color follows --pad-color when playing; SETUP mode: non-empty pads get dashed border with --border-strong to signal drag-ready state; data-mode attribute set on all pads for future breathing animation (Phase 4)"
   ]},
@@ -3367,10 +3407,9 @@ function initTheme(){
 }
 function setTheme(t){
   localStorage.setItem('theme',t);
-  document.body.classList.toggle('theme-modern',t==='modern');
-  ['retro','modern'].forEach(k=>{
-    const el=document.getElementById('th-'+k);
-    if(el) el.classList.toggle('al',k===t);
+  ['modern','verdant','neon','crimson'].forEach(k=>document.body.classList.toggle('theme-'+k,k===t));
+  ['retro','modern','verdant','neon','crimson'].forEach(k=>{
+    document.getElementById('th-'+k)?.classList.toggle('al',k===t);
   });
 }
 function setFontScale(v){
