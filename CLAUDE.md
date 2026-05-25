@@ -25,6 +25,7 @@
 - **Preferences**: `localStorage` only
 - **PWA**: `manifest.json` + `sw.js`. Bump `VERSION` in `sw.js` with every significant `index.html` change so the service worker updates.
 - **Versioning**: `APP_VERSION` in `index.html` must match `CHANGELOG[0].v`. The `console.assert` guard at the bottom of the script block enforces this — never break it.
+- **V1.5 versioning**: same rule applies — `APP_VERSION` in `v1_5/app.js` must match `CHANGELOG[0].v`; `console.assert` guard after the array enforces it. Always add a CHANGELOG entry when bumping `APP_VERSION`.
 - **No `</script>` in JS strings**: the HTML parser terminates the script block on that byte sequence. Use `<\/script>` if the literal must appear (e.g., in CHANGELOG text).
 
 ---
