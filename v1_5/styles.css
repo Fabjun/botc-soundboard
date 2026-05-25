@@ -696,6 +696,17 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
 .sett-theme-btn:hover{border-color:var(--border-strong);color:var(--text)}
 .sett-theme-btn.is-active{
   border-color:var(--gold);color:var(--gold);background:var(--gold-soft)}
+.sett-btn-group{display:flex;gap:0}
+.sett-seg-btn{
+  font-family:var(--font-ui);font-size:12px;letter-spacing:.06em;
+  padding:4px 10px;background:var(--raised);color:var(--text-mute);
+  border:1px solid var(--border);cursor:pointer;transition:border-color .1s,color .1s;
+  margin-left:-1px}
+.sett-seg-btn:first-child{margin-left:0;clip-path:none;border-radius:0}
+.sett-seg-btn:hover{color:var(--text);border-color:var(--border-strong);z-index:1}
+.sett-seg-btn.is-active{
+  color:var(--mode-setup);border-color:var(--mode-setup);
+  background:rgba(109,181,184,.12);z-index:1}
 .sett-about{display:flex;flex-direction:column;gap:6px}
 .sett-about-line{
   font-family:var(--font-mono);font-size:12px;color:var(--text-dim);

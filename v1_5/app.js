@@ -1,8 +1,14 @@
 'use strict';
 
-const APP_VERSION = '1.5.12';
+const APP_VERSION = '1.5.13';
 
 const CHANGELOG = [
+  { v: '1.5.13', date: '2026-05-25', items: [
+    'Wake lock: keep screen on during game sessions (toggle in Settings)',
+    'Start mode: board can open directly in GAME mode (setting: SETUP / GAME / REMEMBER)',
+    'Auto-stop: stop all audio after N idle minutes (toggle + duration in Settings)',
+    'Fix: board delete now also removes associated sets from IDB (data leak)',
+  ]},
   { v: '1.5.12', date: '2026-05-25', items: [
     'Board create: replace prompt() with bottom sheet (matches scene/set add UX)',
     'Loop pads: show ↻ badge on pad cell in GAME mode',
@@ -117,7 +123,7 @@ const set = {
   /** @param {string|null} v */
   boardId(v)   { S.boardId = v;   localStorage.setItem('sos-board', v || ''); },
   /** @param {'setup'|'game'} v */
-  boardMode(v) { S.boardMode = v; },
+  boardMode(v) { S.boardMode = v; localStorage.setItem('sos-last-mode', v); },
 };
 
 /* ── PUB/SUB ────────────────────────────────────────────────── */
@@ -542,8 +548,50 @@ function navigate(screenId) {
   if (S.screen === 'board' && screenId !== 'board') {
     audioStopAll(0);
     document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
+    _releaseWakeLock();
+    _cancelAutoStop();
   }
   set.screen(screenId);
+}
+
+/* ── WAKE LOCK ──────────────────────────────────────────────── */
+
+let _wakeLock = null;
+
+function _wakeLockEnabled() { return localStorage.getItem('sos-wake-lock') === '1'; }
+
+async function _acquireWakeLock() {
+  if (!('wakeLock' in navigator) || _wakeLock) return;
+  try {
+    _wakeLock = await navigator.wakeLock.request('screen');
+    _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+  } catch (_) { _wakeLock = null; }
+}
+
+function _releaseWakeLock() {
+  if (_wakeLock) { _wakeLock.release(); _wakeLock = null; }
+}
+
+/* ── AUTO-STOP ──────────────────────────────────────────────── */
+
+let _autoStopTimer = null;
+
+function _autoStopEnabled() { return localStorage.getItem('sos-auto-stop') === '1'; }
+function _autoStopMs() { return Math.max(1, +(localStorage.getItem('sos-auto-stop-min') || 30)) * 60000; }
+
+function _resetAutoStop() {
+  if (_autoStopTimer) { clearTimeout(_autoStopTimer); _autoStopTimer = null; }
+  if (!_autoStopEnabled()) return;
+  _autoStopTimer = setTimeout(() => {
+    _autoStopTimer = null;
+    audioStopAll(0);
+    document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
+    showToast('Auto-stop — all audio stopped.');
+  }, _autoStopMs());
+}
+
+function _cancelAutoStop() {
+  if (_autoStopTimer) { clearTimeout(_autoStopTimer); _autoStopTimer = null; }
 }
 
 /* ── SCREEN: INTRO ──────────────────────────────────────────── */
@@ -1063,9 +1111,8 @@ async function handleBlDelete(id) {
   if (_blDeleteCfm === id) {
     _blDeleteCfm = null;
     const board = _blBoards.find(b => b.id === id);
-    if (board?.scenes) {
-      for (const s of board.scenes) await sceneDelete(s.id);
-    }
+    if (board?.scenes) { for (const s of board.scenes) await sceneDelete(s.id); }
+    if (board?.sets)   { for (const st of board.sets)   await setDelete(st.id); }
     await boardDelete(id);
     if (S.boardId === id) set.boardId(null);
     await _blRefresh();
@@ -1144,6 +1191,16 @@ async function mountBoard() {
   _bdSet = setId ? await setGet(setId) : null;
 
   if (!_libEntries.length) await _libRefresh();
+
+  const sm = localStorage.getItem('sos-start-mode') || 'setup';
+  if      (sm === 'game')     set.boardMode('game');
+  else if (sm === 'remember') set.boardMode(localStorage.getItem('sos-last-mode') || 'setup');
+  else                        set.boardMode('setup');
+
+  if (S.boardMode === 'game') {
+    if (_wakeLockEnabled()) _acquireWakeLock();
+    _resetAutoStop();
+  }
 
   renderBoardUI();
 }
@@ -1553,6 +1610,7 @@ async function handleQaPadTap(slot) {
       fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
     });
     el?.classList.add('is-playing');
+    _resetAutoStop();
   }
 }
 
@@ -1850,6 +1908,13 @@ async function handleBdMode(mode) {
   closeSceneAdd();
   closeSetOpts();
   closeSetAdd();
+  if (mode === 'game') {
+    if (_wakeLockEnabled()) _acquireWakeLock();
+    _resetAutoStop();
+  } else {
+    _releaseWakeLock();
+    _cancelAutoStop();
+  }
   renderTopBar();
   renderSceneBar();
   renderPadGrid();
@@ -1877,6 +1942,7 @@ async function handleBdPadTap(slot) {
       fadeOut: pad.fadeOut || 0,
     });
     el?.classList.add('is-playing');
+    _resetAutoStop();
   }
 }
 
@@ -2189,16 +2255,22 @@ async function executeImport() {
 
 /** @returns {string} */
 function settingsHTML() {
-  const theme      = S.theme || '';
-  const defVol     = localStorage.getItem('sos-def-volume')  ?? '80';
-  const defFadeIn  = localStorage.getItem('sos-def-fadein')  ?? '0';
-  const defFadeOut = localStorage.getItem('sos-def-fadeout') ?? '0';
+  const theme       = S.theme || '';
+  const defVol      = localStorage.getItem('sos-def-volume')    ?? '80';
+  const defFadeIn   = localStorage.getItem('sos-def-fadein')    ?? '0';
+  const defFadeOut  = localStorage.getItem('sos-def-fadeout')   ?? '0';
+  const startMode   = localStorage.getItem('sos-start-mode')    || 'setup';
+  const wakeLock    = localStorage.getItem('sos-wake-lock')     === '1';
+  const autoStop    = localStorage.getItem('sos-auto-stop')     === '1';
+  const autoStopMin = localStorage.getItem('sos-auto-stop-min') || '30';
   const themes = [
     { id: '',        label: 'DEFAULT' },
     { id: 'verdant', label: 'VERDANT' },
     { id: 'neon',    label: 'NEON'    },
     { id: 'crimson', label: 'CRIMSON' },
   ];
+  const seg = (action, key, val, label, active) =>
+    `<button class="sett-seg-btn${active ? ' is-active' : ''}" data-action="${action}" data-${key}="${val}">${label}</button>`;
   return `
   <div class="lib-top-bar">
     <div class="lib-top-col">
@@ -2215,6 +2287,41 @@ function settingsHTML() {
       <div class="sett-title">${pi('flame', 12, 'var(--gold)')} THEME</div>
       <div class="sett-theme-picker">
         ${themes.map(t => `<button class="sett-theme-btn${theme === t.id ? ' is-active' : ''}" data-action="sett-theme" data-theme="${t.id}">${t.label}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="sett-section">
+      <div class="sett-title">${pi('rune', 12, 'var(--gold)')} BOARD</div>
+      <div class="sett-row">
+        <label class="sett-label">Start mode</label>
+        <div class="sett-btn-group">
+          ${seg('sett-start-mode','mode','setup','SETUP',   startMode==='setup')}
+          ${seg('sett-start-mode','mode','game', 'GAME',    startMode==='game')}
+          ${seg('sett-start-mode','mode','remember','REMEMBER', startMode==='remember')}
+        </div>
+      </div>
+    </div>
+
+    <div class="sett-section">
+      <div class="sett-title">${pi('keyboard', 12, 'var(--gold)')} SESSION</div>
+      <div class="sett-row">
+        <label class="sett-label">Keep screen on</label>
+        <div class="sett-btn-group">
+          ${seg('sett-wake-lock','val','1','ON',  wakeLock)}
+          ${seg('sett-wake-lock','val','0','OFF', !wakeLock)}
+        </div>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Auto-stop</label>
+        <div class="sett-btn-group" style="margin-right:8px">
+          ${seg('sett-auto-stop','val','1','ON',  autoStop)}
+          ${seg('sett-auto-stop','val','0','OFF', !autoStop)}
+        </div>
+        <input class="audio-name-input sett-input" id="sett-auto-stop-min" type="number"
+               min="1" max="120" value="${escAttr(autoStopMin)}" style="width:48px;text-align:right">
+        <span class="sett-unit">min</span>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-left:8px"
+                data-action="sett-auto-stop-save">SET</button>
       </div>
     </div>
 
@@ -2602,7 +2709,39 @@ function handleAction(action, el) {
         b.classList.toggle('is-active', b.dataset.type === el.dataset.type));
       break;
 
-    // settings
+    // settings — board + session
+    case 'sett-start-mode':
+      localStorage.setItem('sos-start-mode', el.dataset.mode);
+      document.querySelectorAll('[data-action="sett-start-mode"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.mode === el.dataset.mode));
+      break;
+    case 'sett-wake-lock': {
+      const on = el.dataset.val === '1';
+      localStorage.setItem('sos-wake-lock', on ? '1' : '0');
+      document.querySelectorAll('[data-action="sett-wake-lock"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.val === el.dataset.val));
+      if (on && S.screen === 'board' && S.boardMode === 'game') _acquireWakeLock();
+      else _releaseWakeLock();
+      break;
+    }
+    case 'sett-auto-stop': {
+      const on = el.dataset.val === '1';
+      localStorage.setItem('sos-auto-stop', on ? '1' : '0');
+      document.querySelectorAll('[data-action="sett-auto-stop"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.val === el.dataset.val));
+      if (on && S.screen === 'board' && S.boardMode === 'game') _resetAutoStop();
+      else _cancelAutoStop();
+      break;
+    }
+    case 'sett-auto-stop-save': {
+      const min = Math.max(1, Math.min(120, +(document.getElementById('sett-auto-stop-min')?.value ?? 30)));
+      localStorage.setItem('sos-auto-stop-min', String(min));
+      if (_autoStopEnabled() && S.screen === 'board' && S.boardMode === 'game') _resetAutoStop();
+      showToast(`Auto-stop: ${min} min`);
+      break;
+    }
+
+    // settings — theme + defaults
     case 'sett-theme':
       set.theme(el.dataset.theme);
       document.querySelectorAll('.sett-theme-btn').forEach(b =>
@@ -2668,6 +2807,16 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// Re-acquire wake lock after the page returns to foreground (iOS releases it on hide)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible'
+      && _wakeLockEnabled()
+      && S.screen === 'board'
+      && S.boardMode === 'game') {
+    _acquireWakeLock();
+  }
+});
 
 // When audio ends naturally, remove the is-playing class from the pad cell
 document.addEventListener('audio:ended', e => {
