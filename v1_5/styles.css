@@ -671,6 +671,17 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
   pointer-events:none;z-index:500;white-space:nowrap}
 .sos-toast.is-visible{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* ── DRAG-TO-REORDER ─────────────────────────────────────────── */
+.pad.is-dragging,.set-pad.is-dragging{
+  opacity:.25;border-style:dashed}
+.pad.is-drop-target,.set-pad.is-drop-target{
+  border-color:var(--mode-setup);
+  box-shadow:0 0 0 2px var(--mode-setup) inset}
+.pad-drag-ghost{
+  opacity:.88;transform:scale(1.06);
+  box-shadow:0 6px 24px rgba(0,0,0,.7);
+  transition:none !important}
+
 /* ── QUICK VOLUME SLIDER ─────────────────────────────────────── */
 .pad-vol-slider{
   position:fixed;z-index:600;

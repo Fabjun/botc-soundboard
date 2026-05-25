@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.17';
+const APP_VERSION = '1.5.18';
 
 const CHANGELOG = [
+  { v: '1.5.18', date: '2026-05-26', items: [
+    'Pad drag-to-reorder: drag an assigned pad to any other slot in SETUP mode to swap/move it',
+    'Ghost follows cursor; drop target highlighted; click after drag suppressed',
+    'Works for both scene grid pads and set-strip pads',
+  ]},
   { v: '1.5.17', date: '2026-05-26', items: [
     'Per-pad quick volume: long-press (500ms) on a playing pad in GAME mode opens a live gain slider',
     'Slider updates gain in real-time; saves new volume to pad on close',
@@ -1247,6 +1252,19 @@ let _lpSlot   = null;
 let _lpIsSet  = false;
 let _lpNewVol = null;
 
+// Drag-to-reorder state (SETUP mode)
+let _dragSlot     = null;
+let _dragIsSet    = false;
+let _dragActive   = false;
+let _dragDidDrop  = false;
+let _dragStartX   = 0;
+let _dragStartY   = 0;
+let _dragOffX     = 0;
+let _dragOffY     = 0;
+let _dragGhost    = null;
+let _dragTarget   = null;
+let _dragSourceEl = null;
+
 /** @returns {string} */
 function boardHTML() {
   if (!S.boardId) {
@@ -2265,6 +2283,37 @@ function handleBdRenameBoard() {
   input.addEventListener('blur', commit, { once: true });
 }
 
+/* ── DRAG-TO-REORDER ────────────────────────────────────────── */
+
+function _dragCancel() {
+  _dragGhost?.remove();
+  _dragGhost = null;
+  document.querySelectorAll('.pad.is-dragging,.pad.is-drop-target,.set-pad.is-dragging,.set-pad.is-drop-target')
+    .forEach(el => el.classList.remove('is-dragging', 'is-drop-target'));
+  _dragSlot     = null;
+  _dragSourceEl = null;
+  _dragTarget   = null;
+  _dragActive   = false;
+}
+
+async function _dragSwap(slotA, slotB, isSet) {
+  if (isSet && _bdSet) {
+    const pA = _bdSet.pads.find(p => p.slot === slotA);
+    const pB = _bdSet.pads.find(p => p.slot === slotB);
+    if (pA) pA.slot = slotB;
+    if (pB) pB.slot = slotA;
+    await setPut(_bdSet);
+    renderSetStrip();
+  } else if (!isSet && _bdScene) {
+    const pA = _bdScene.pads.find(p => p.slot === slotA);
+    const pB = _bdScene.pads.find(p => p.slot === slotB);
+    if (pA) pA.slot = slotB;
+    if (pB) pB.slot = slotA;
+    await scenePut(_bdScene);
+    renderPadGrid();
+  }
+}
+
 /* ── QUICK VOLUME SLIDER ────────────────────────────────────── */
 
 /**
@@ -2940,6 +2989,85 @@ document.addEventListener('keydown', e => {
   }
 });
 
+/* ── PAD DRAG-TO-REORDER EVENTS ────────────────────────────── */
+
+document.addEventListener('pointerdown', e => {
+  if (S.screen !== 'board' || S.boardMode !== 'setup') return;
+  const padEl    = e.target.closest('[data-pad-slot]');
+  const setpadEl = e.target.closest('[data-set-pad-slot]');
+  const targetEl = padEl || setpadEl;
+  if (!targetEl) return;
+  // Only assigned pads are draggable
+  const isSet = !!setpadEl;
+  const slot  = isSet ? +targetEl.dataset.setPadSlot : +targetEl.dataset.padSlot;
+  const pad   = isSet ? _bdSet?.pads.find(p => p.slot === slot) : _bdScene?.pads.find(p => p.slot === slot);
+  if (!pad) return;
+  // Don't interfere if a sheet is open
+  if (_bdOptsSlot !== null || _bdSetOptsSlot !== null || _bdSceneOptsId !== null || _bdSceneAddOpen || _bdSetOptsId !== null || _bdSetAddOpen) return;
+
+  const rect  = targetEl.getBoundingClientRect();
+  _dragSlot   = slot;
+  _dragIsSet  = isSet;
+  _dragStartX = e.clientX;
+  _dragStartY = e.clientY;
+  _dragOffX   = e.clientX - rect.left;
+  _dragOffY   = e.clientY - rect.top;
+  _dragActive = false;
+  _dragSourceEl = targetEl;
+});
+
+document.addEventListener('pointermove', e => {
+  if (_dragSlot === null) return;
+
+  if (!_dragActive) {
+    const dx = e.clientX - _dragStartX, dy = e.clientY - _dragStartY;
+    if (dx * dx + dy * dy < 100) return; // 10px threshold
+    _dragActive = true;
+    // Create ghost clone
+    const rect = _dragSourceEl.getBoundingClientRect();
+    _dragGhost = _dragSourceEl.cloneNode(true);
+    _dragGhost.className += ' pad-drag-ghost';
+    _dragGhost.style.cssText = `position:fixed;pointer-events:none;z-index:700;width:${rect.width}px;height:${rect.height}px;left:${e.clientX - _dragOffX}px;top:${e.clientY - _dragOffY}px`;
+    document.body.appendChild(_dragGhost);
+    _dragSourceEl.classList.add('is-dragging');
+    closePadPicker(); closePadOpts(); closeSceneOpts(); closeSceneAdd(); closeSetOpts(); closeSetAdd();
+  }
+
+  // Move ghost
+  _dragGhost.style.left = (e.clientX - _dragOffX) + 'px';
+  _dragGhost.style.top  = (e.clientY - _dragOffY) + 'px';
+
+  // Find drop target under cursor (hide ghost first so it doesn't block elementFromPoint)
+  _dragGhost.style.visibility = 'hidden';
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  _dragGhost.style.visibility = '';
+
+  const attr     = _dragIsSet ? '[data-set-pad-slot]' : '[data-pad-slot]';
+  const dropEl   = under?.closest(attr);
+  const dropSlot = dropEl ? +dropEl.dataset[_dragIsSet ? 'setPadSlot' : 'padSlot'] : null;
+
+  // Update highlight
+  document.querySelectorAll('.pad.is-drop-target,.set-pad.is-drop-target')
+    .forEach(el => el.classList.remove('is-drop-target'));
+  _dragTarget = (dropSlot !== null && dropSlot !== _dragSlot) ? dropSlot : null;
+  if (_dragTarget !== null) dropEl.classList.add('is-drop-target');
+});
+
+document.addEventListener('pointerup', () => {
+  if (_dragSlot === null) return;
+  if (_dragActive) {
+    _dragDidDrop = true; // suppress the follow-on click
+    if (_dragTarget !== null) _dragSwap(_dragSlot, _dragTarget, _dragIsSet);
+    _dragCancel();
+  } else {
+    _dragSlot = null; _dragSourceEl = null;
+  }
+});
+
+document.addEventListener('pointercancel', () => {
+  if (_dragSlot !== null) { _dragCancel(); }
+});
+
 /* ── LONG-PRESS: QUICK VOLUME ───────────────────────────────── */
 
 document.addEventListener('pointerdown', e => {
@@ -2986,6 +3114,9 @@ document.addEventListener('click', e => {
 
   // suppress the click that immediately follows a long-press (keep slider open)
   if (_lpFired) { _lpFired = false; return; }
+
+  // suppress the click that follows a drag drop
+  if (_dragDidDrop) { _dragDidDrop = false; return; }
 
   // close quick-volume slider on outside click
   if (document.getElementById('pad-vol-slider') && !e.target.closest('#pad-vol-slider')) {
