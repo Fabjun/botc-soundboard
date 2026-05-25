@@ -136,7 +136,7 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 .s-hdr{border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
 .s-hdr .cx{padding-top:11px;padding-bottom:11px;display:flex;align-items:center}
 .s-hdr h2{font-family:var(--ff-label);color:var(--gold);font-size:calc(17px * var(--font-scale));letter-spacing:0;text-align:center;flex:1}
-.pbtn.ed{border-color:var(--active)!important;box-shadow:0 0 8px rgba(79,195,247,.25)}
+.pbtn.ed{border-color:var(--active)!important;box-shadow:inset 4px 0 0 var(--pad-color,var(--border)),0 0 8px rgba(79,195,247,.25)}
 #crop-dlg{position:fixed;inset:0;background:rgba(10,10,20,0.97);z-index:300;
   display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px}
 #crop-dlg.open{display:flex}
@@ -371,10 +371,11 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 .pgrid{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:grid;
   grid-template-columns:repeat(auto-fill,var(--pad-sz));
   gap:var(--pad-gap);padding:8px;position:relative;z-index:2;align-content:start}
-.pbtn{background:var(--surface);border:1px solid var(--border);border-radius:var(--pad-radius);
+.pbtn{background:var(--raised);border:1px solid var(--border);border-radius:var(--pad-radius);
   padding:4px;cursor:pointer;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:2px;aspect-ratio:1/1;
-  transition:all .1s;position:relative;overflow:hidden}
+  transition:all .1s;position:relative;overflow:hidden;
+  box-shadow:inset 4px 0 0 var(--pad-color,var(--border)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35)}
 .pbtn.empty{cursor:pointer;border:1.5px dashed var(--mode-accent-dim);
   opacity:1;flex-direction:column;gap:5px;transition:background .15s,border-color .15s}
 .pbtn.empty:active,.pbtn.empty:hover{background:rgba(79,195,247,.05);border-color:var(--mode-accent)}
@@ -384,9 +385,11 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
   transition:color .15s}
 .e-lbl{font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;
   color:var(--mode-accent-dim);transition:color .15s}
-.pbtn.playing{border-color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,.2);
+.pbtn.playing{border-color:var(--pad-color,var(--gold));
+  box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 10px var(--pad-glow,rgba(212,178,92,.2));
   animation:breathe-gold 1.8s ease-in-out infinite}
-.pbtn.plooping{border-color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,.2);
+.pbtn.plooping{border-color:var(--pad-color,var(--gold));
+  box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 10px var(--pad-glow,rgba(212,178,92,.2));
   animation:breathe-gold 2.2s ease-in-out infinite}
 .pbtn.flash{background:var(--raised)}
 .pbtn .pico{font-size:calc((23px - 3px * var(--ico-density)) * var(--sym-scale) * var(--ico-scale));line-height:1;color:var(--mode-accent);position:relative;z-index:2}
@@ -405,11 +408,12 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
   font-size:calc(var(--pad-sz) * 0.155 * var(--font-scale));
   color:var(--mode-accent);font-family:var(--ff-label);
   text-shadow:0 0 8px var(--mode-accent);opacity:.85;z-index:3}
-.pbtn.playing .pnum,.pbtn.plooping .pnum{color:var(--gold-dim);text-shadow:0 0 8px var(--gold)}
+.pbtn.playing .pnum,.pbtn.plooping .pnum{color:var(--pad-color,var(--gold-dim));text-shadow:0 0 8px var(--pad-glow,var(--gold))}
 .pbtn.has-img{background-size:cover;background-position:center;background-repeat:no-repeat}
 .pbtn::before{content:'';position:absolute;inset:0;transform:scaleY(var(--plevel,0));transform-origin:bottom;border-radius:inherit;pointer-events:none;z-index:0}
 body.mode-play .pbtn::before{background:linear-gradient(to top,rgba(201,168,76,.38) 0%,rgba(201,168,76,.1) 55%,transparent 100%)}
 body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.3) 0%,rgba(79,195,247,.07) 55%,transparent 100%)}
+body.mode-edit .pbtn:not(.empty){border-style:dashed;border-color:var(--border-strong)}
 #hint-ov{display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.88);flex-direction:column}
 #hint-ov.open{display:flex}
 #hint-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 14px 20px}
@@ -518,8 +522,8 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
   0%,100%{box-shadow:0 0 8px rgba(79,195,247,.25),inset 0 0 10px rgba(79,195,247,.05)}
   50%    {box-shadow:0 0 22px rgba(79,195,247,.55),inset 0 0 18px rgba(79,195,247,.12)}}
 @keyframes breathe-gold{
-  0%,100%{box-shadow:0 0 8px rgba(201,168,76,.25),inset 0 0 10px rgba(201,168,76,.05)}
-  50%    {box-shadow:0 0 22px rgba(201,168,76,.55),inset 0 0 18px rgba(201,168,76,.12)}}
+  0%,100%{box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 8px var(--pad-glow,rgba(212,178,92,.25))}
+  50%    {box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 22px var(--pad-glow,rgba(212,178,92,.55))}}
 @keyframes screen-in{from{opacity:0}to{opacity:1}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes ripple-anim{to{transform:scale(3);opacity:0}}
@@ -2152,8 +2156,11 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 164;
+const APP_VERSION = 165;
 const CHANGELOG=[
+  {v:165,date:'2026-05-25',items:[
+    "PAD type colors + depth (Phase 2): _padTypeVars(mode) injects --pad-color/--pad-glow CSS custom properties on each .pbtn element; SINGLE=gold, LOOP=teal, PLAYLIST/CHAIN/RANDOM=violet, COMBO=copper; left-edge 4px spine via inset box-shadow always visible; depth bevel via inset 1px and -1px box-shadows; .pbtn background upgraded from --surface to --raised; playing/plooping states use --pad-color for border and --pad-glow for outer glow; breathe-gold keyframes updated to include spine + use CSS variable glow color; .pnum text color follows --pad-color when playing; SETUP mode: non-empty pads get dashed border with --border-strong to signal drag-ready state; data-mode attribute set on all pads for future breathing animation (Phase 4)"
+  ]},
   {v:164,date:'2026-05-25',items:[
     "Token update: added extended CSS variable set — --top, --sunk, --border-soft/strong/gold/blood, --text-strong/mute/on-gold, --gold-bright, --gold-soft, --flame, --blood-soft; added PAD type color families --pad-single/loop/playlist/combo each with -soft and -glow variants; improved WCAG contrast: --text-dim #8a8098→#B8B0C8 (3.7:1→6.9:1), --gold #c9a84c→#D4B25C, --blood #8b1a1a→#A02828; all new tokens are foundations for Phase 2 (PAD type spines) and Phase 3 (new themes)"
   ]},
@@ -5647,6 +5654,12 @@ function applyPadFilter(){
   if(countEl) countEl.textContent=(q||padFilter!=='all')&&visible.length<total?`${visible.length}/${total}`:'';
 }
 
+// ── PAD TYPE COLOR HELPER ──
+function _padTypeVars(mode){
+  const t={once:'single',loop:'loop',playlist:'playlist',chain:'playlist',random:'playlist',combo:'combo'}[mode]||'single';
+  return [`var(--pad-${t})`,`var(--pad-${t}-glow)`];
+}
+
 // ── SETUP ──
 function findNextPadId(){
   for(let i=0;i<pads.length;i++){ if(pads[i]==null) return i; }
@@ -5658,7 +5671,9 @@ function renderSetup(){
     const p=pads[i]; if(p==null) continue;
     const b=document.createElement('div');
     b.className='pbtn'+(i===eId?' ed':'');
-    b.dataset.id=i;
+    b.dataset.id=i; b.dataset.mode=p.mode||'once';
+    const [_stc,_stg]=_padTypeVars(p.mode);
+    b.style.setProperty('--pad-color',_stc); b.style.setProperty('--pad-glow',_stg);
     if(p.image){ b.style.backgroundImage=`url(${p.image})`; b.classList.add('has-img'); }
     b.innerHTML=`<div class="pnum">${escHtml(p.keyLabel||p.key||'')}</div>`+
                 renderPadIconArea(p)+
@@ -6956,7 +6971,9 @@ function renderPerf(){
     const p=pads[i]; if(p==null) continue;
     const b=document.createElement('div');
     b.className='pbtn';
-    b.dataset.id=i;
+    b.dataset.id=i; b.dataset.mode=p.mode||'once';
+    const [_ptc,_ptg]=_padTypeVars(p.mode);
+    b.style.setProperty('--pad-color',_ptc); b.style.setProperty('--pad-glow',_ptg);
     const isLoop=p.mode==='loop'||p.mode==='playlist'||p.mode==='combo';
     if(srcs[i]) b.classList.add(isLoop?'plooping':'playing');
     b.addEventListener('pointerdown', e=>onPadPointerDown(e,i));
