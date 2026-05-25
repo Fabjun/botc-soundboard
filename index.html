@@ -276,9 +276,11 @@ input[type=file]{display:none}
 /* TIPS */
 .tips-hdr{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));letter-spacing:0;
   color:var(--gold-dim);padding:14px 0 6px;border-top:1px solid var(--border);margin-top:4px;text-align:center}
-.sg-hdr{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));letter-spacing:.2em;
-  color:var(--gold);border-top:1px solid var(--gold-dim);padding:16px 0 8px;margin-top:12px;text-align:center}
-.sg-hdr:first-child{border-top:none;margin-top:0;padding-top:4px}
+.sg-hdr{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));letter-spacing:.18em;
+  color:var(--gold);border-top:none;padding:16px 0 8px;margin-top:12px;
+  display:flex;align-items:center;gap:8px}
+.sg-hdr::before,.sg-hdr::after{content:'';flex:1;height:2px;background-image:repeating-linear-gradient(90deg,var(--gold-dim) 0 2px,transparent 2px 5px);opacity:.7}
+.sg-hdr:first-child{margin-top:0;padding-top:4px}
 .sg-sub{font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;
   color:var(--gold-dim);padding:10px 0 4px;border-top:1px solid var(--border);margin-top:4px}
 .tip{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(42,42,74,.4)}
@@ -335,7 +337,9 @@ input[type=file]{display:none}
 .sp-seg.sp-mode-edit{color:var(--active);letter-spacing:.12em}
 .sp-seg.sp-vol{margin-left:auto;border-right:none;border-left:1px solid var(--border-soft)}
 .sb-section{display:flex;flex-direction:column;gap:8px}
-.sb-lbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--text-dim);letter-spacing:1px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.sb-lbl{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--text-dim);letter-spacing:.18em;padding-bottom:0;border-bottom:none;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sb-lbl::before{content:'◆';color:var(--gold);font-size:calc(7px * var(--font-scale));flex-shrink:0;line-height:1}
+.sb-lbl::after{content:'';flex:1;height:2px;background-image:repeating-linear-gradient(90deg,currentColor 0 2px,transparent 2px 5px);opacity:.45;min-width:8px}
 .sb-tabs{display:flex;flex-direction:column;gap:4px}
 /* FOLDER TREE — sidebar folder navigation */
 .fld-tree{display:flex;flex-direction:column;gap:2px;margin-top:4px}
@@ -1473,6 +1477,7 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
         <b style="color:var(--text)">CRIMSON</b> — horror gothic, deep red.
       </p>
     </div>
+    <div class="pix-div" style="margin:8px 0">◆</div>
     <div class="sg-sub">CONTENT WIDTH</div>
     <div class="sec-body">
       <div class="trow">
@@ -1488,6 +1493,7 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
         <b style="color:var(--text)">AUTO</b> scales with the viewport — recommended on mobile.
       </p>
     </div>
+    <div class="pix-div" style="margin:8px 0">◆</div>
     <div class="sg-sub">FONT SIZE</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:10px">
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.7">Scales all UI text proportionally. Does not affect PAD label size (controlled by PAD size).</p>
@@ -1499,6 +1505,7 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
       </div>
       <div style="text-align:center;font-size:calc(11px * var(--font-scale));color:var(--text-dim)" id="font-scale-label">100%</div>
     </div>
+    <div class="pix-div" style="margin:8px 0">◆</div>
     <div class="sg-sub">SYMBOL SIZE</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:10px">
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.7">Scales decorative symbols and fire animations independently from text.</p>
@@ -2353,7 +2360,7 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 <div id="sidebar">
   <div id="sb-board" style="display:contents">
     <div class="sb-section">
-      <div class="sb-lbl">FILTER</div>
+      <div class="sb-lbl" id="sb-filter-lbl">FILTER</div>
       <div style="display:flex;gap:4px">
         <div class="pf-tab pf-act" id="pf-all" onclick="setPadFilter('all')">ALL</div>
         <div class="pf-tab" id="pf-audio" onclick="setPadFilter('audio')">S-PAD</div>
@@ -2361,7 +2368,7 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
       </div>
     </div>
     <div class="sb-section sidebar-style">
-      <div class="sb-lbl">PAD STYLE</div>
+      <div class="sb-lbl" id="sb-padstyle-lbl">PAD STYLE</div>
       <div class="gc-row">
         <span class="gc-ico">▦ SIZE</span>
         <input type="range" id="sz-slider" min="60" max="320" value="90">
@@ -2409,8 +2416,11 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 175;
+const APP_VERSION = 176;
 const CHANGELOG=[
+  {v:176,date:'2026-05-25',items:[
+    "Section label + divider system applied to UI: .sg-hdr upgraded to flex row with repeating-gradient dashes before/after (replaces old border-top rule); .sb-lbl upgraded similarly with ◆ prefix glyph + trailing dash line; sectionLabel() applied to sidebar FILTER/SCOPE/GROUPS headings in renderSidebarContent() and _libFolderTreeHtml(); three PixelDividers added between independent setting groups in #sa-appear (THEME|CONTENT WIDTH|FONT SIZE|SYMBOL SIZE)"
+  ]},
   {v:175,date:'2026-05-25',items:[
     "Decoration system (JSX foundations.jsx + decorations.jsx): _PIXEL_ICONS data (24 icons — full UI set + mystic/alchemy: moon star sparkle eye potion key rune skull hourglass diamond scroll); pixelIcon(name,size,color) vanilla JS helper returns SVG HTML string, assigned to window.pixelIcon for command-palette compatibility; sectionLabel(text,glyph,opts) returns decorated header HTML ([icon] LABEL ──── [icon]); pixelDivider(glyph) returns dashed ornament divider HTML; CSS: .sec-lbl/.sec-lbl__text/.sec-lbl__line, .pix-div, .cb-wrap corner bracket spans (.cb-tl/.cb-tr/.cb-bl/.cb-br), .su-spark flanking sparkle glyphs; Home screen (unlock + main menu): flame container wrapped in .cb-wrap with 4 corner bracket spans; title wrapped with ✦ sparkle glyphs on both sides per screens.jsx HomeScreen spec"
   ]},
@@ -3186,14 +3196,14 @@ function renderSidebarContent(screenId){
     let html='';
     if(tab==='audio'){
       const m=libFilterMode||'all';
-      html=`<div class="sb-section"><div class="sb-lbl">FILTER</div><div class="sb-tabs">
+      html=`<div class="sb-section">${sectionLabel('FILTER','tag')}<div class="sb-tabs">
         <div class="pf-tab${m==='all'?' pf-act':''}" onclick="libFilter('all')">ALL</div>
         <div class="pf-tab${m==='used'?' pf-act':''}" onclick="libFilter('used')">IN USE</div>
         <div class="pf-tab${m==='unused'?' pf-act':''}" onclick="libFilter('unused')">UNUSED</div>
       </div></div>${_libFolderTreeHtml('audio',_libAudioFolder,_libAudioFolderList)}`;
     } else if(tab==='pads'){
       const f=_libPadFilter||'current';
-      html=`<div class="sb-section"><div class="sb-lbl">SCOPE</div><div class="sb-tabs">
+      html=`<div class="sb-section">${sectionLabel('SCOPE','book')}<div class="sb-tabs">
         <div class="pf-tab${f==='current'?' pf-act':''}" onclick="setLibPadFilter('current')">CURRENT BOARD</div>
         <div class="pf-tab${f==='all'?' pf-act':''}" onclick="setLibPadFilter('all')">ALL BOARDS</div>
       </div></div>${_libFolderTreeHtml('pads',_libPadsFolder,_libPadsFolderList)}`;
@@ -3254,7 +3264,7 @@ function _libFolderTreeHtml(tab, activeFolder, folderList){
         </div>
       </div>`
     :`<div class="fld-add" onclick="libNewFolder('${tab}')">＋ NEW GROUP</div>`;
-  return `<div class="sb-section" style="margin-top:16px"><div class="sb-lbl">GROUPS</div><div class="fld-tree">
+  return `<div class="sb-section" style="margin-top:16px">${sectionLabel('GROUPS','scroll')}<div class="fld-tree">
     <div class="fld-node${!activeFolder?' fld-act':''}" onclick="libSetFolder('${tab}',null)"><span class="fld-node-name">ALL</span></div>
     ${nodes}${newFolderHtml}
   </div></div>`;
