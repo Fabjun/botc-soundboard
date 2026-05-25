@@ -405,6 +405,12 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .hint-q{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(14px * var(--font-scale));letter-spacing:0;padding:2px 7px;border-radius:2px;cursor:pointer;line-height:1.4;flex-shrink:0}
 .pbtn.has-img::after{content:'';position:absolute;inset:0;background:rgba(10,10,20,0.52);border-radius:inherit;pointer-events:none}
 .pbtn.has-img .pico{display:none}
+body.pad-ci .pbtn .plbl{display:none}
+body.hide-pad-icons .pbtn .pico{display:none!important}
+body.hide-pad-icons.pad-ci .pbtn .plbl-arc{display:none}
+body.hide-pad-icons .pbtn .plbl{display:block!important;bottom:auto;top:50%;transform:translateY(-50%);background:none;white-space:normal;overflow:visible;text-overflow:clip;font-size:calc(var(--pad-sz) * 0.19 * var(--font-scale) * var(--pad-label-scale));color:var(--text);padding:3px 6px;line-height:1.25;z-index:2;text-shadow:0 1px 4px rgba(0,0,0,.8)}
+/* no-anim — kills all CSS animations and transitions */
+body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!important;transition:none!important}
 /* Multi-icon grid on pad */
 .pbtn{container-type:inline-size}
 .pbtn .pico.pico-g{display:grid;grid-template-columns:1fr 1fr;gap:2px;place-items:center}
@@ -1288,6 +1294,16 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         When no icon is manually assigned, picks one automatically by matching the PAD name against built-in icon keywords. Works with German and English names. Updates whenever the icon library changes.
       </p>
     </div>
+    <div class="sg-sub">ANIMATIONS</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="anim-on" onclick="setAnimations(true)">ON</div>
+        <div class="topt" id="anim-off" onclick="setAnimations(false)">OFF</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        Enables all CSS animations, glow pulses, fire effects, and transitions. Turn off for a fully static UI — reduces battery drain and suits motion sensitivity. Playing-state borders and colors remain visible regardless.
+      </p>
+    </div>
    </div><!-- /.cx -->
   </div>
 </div>
@@ -1598,8 +1614,8 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     <div class="tip" data-screens="sp">
       <div class="tip-key">Enter</div>
       <div class="tip-body">
-        <div class="tip-ttl">STOP ALL</div>
-        <div class="tip-desc">Immediately stops all running sounds and resets their position to the beginning. Works on every screen and in GAME mode.</div>
+        <div class="tip-ttl">STOP WITH ENTER</div>
+        <div class="tip-desc">In <b>TOTAL</b> mode (default) the Enter key stops all running sounds at once. In <b>SERIAL</b> mode it stops only the most recently started sound per press — press multiple times to unwind the stack. Change the mode in Settings → CONTROLS → ENTER KEY STOP.</div>
       </div>
     </div>
     <div class="tip" data-screens="sp,ep">
@@ -1684,6 +1700,27 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <div class="tip-body">
         <div class="tip-ttl">MULTIPLE BOARDS</div>
         <div class="tip-desc">Create as many boards as you like from MY BOARDS in the main menu. Each board has its own set of pads but shares the same audio Library. Rename boards with the ✎ button. All boards are included in every export.</div>
+      </div>
+    </div>
+    <div class="tip" data-screens="sp">
+      <div class="tip-key">Long Press</div>
+      <div class="tip-body">
+        <div class="tip-ttl">QUICK RENAME (SETUP MODE)</div>
+        <div class="tip-desc">In SETUP mode, long-press a pad for 500 ms to open a rename overlay directly — without entering the full edit panel. Useful for quickly fixing a label. Drag cancels the timer.</div>
+      </div>
+    </div>
+    <div class="tip" data-screens="sp">
+      <div class="tip-key">Long Press</div>
+      <div class="tip-body">
+        <div class="tip-ttl">VOLUME SLIDER (GAME MODE)</div>
+        <div class="tip-desc">In GAME mode, long-press a playing pad to open a mini volume slider directly above or below it. The gain adjusts in real time and is saved automatically when the slider closes.</div>
+      </div>
+    </div>
+    <div class="tip" data-screens="sli">
+      <div class="tip-key">◈ GROUP</div>
+      <div class="tip-body">
+        <div class="tip-ttl">LIBRARY GROUPS</div>
+        <div class="tip-desc">In the Library sidebar, tap ＋ NEW GROUP to create a named group and optionally add the currently selected files to it. Use the group icon button on any card to move it to an existing group. Tap a group in the sidebar to filter to just that group.</div>
       </div>
     </div>
    </div><!-- /.cx -->
@@ -2045,6 +2082,13 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         <div class="topt" id="sh-rd" onclick="setPadShape('8px','rd')">▢ RD</div>
         <div class="topt" id="sh-ci" onclick="setPadShape('50%','ci')">● CI</div>
       </div>
+      <div class="gc-row">
+        <span class="gc-ico">ICON</span>
+        <div class="trow" style="flex:1">
+          <div class="topt" id="pi-on" onclick="setPadIconsVisible(true)">ON</div>
+          <div class="topt" id="pi-off" onclick="setPadIconsVisible(false)">OFF</div>
+        </div>
+      </div>
     </div>
   </div>
   <div id="sb-library" style="display:contents"></div>
@@ -2052,8 +2096,13 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 156;
+const APP_VERSION = 157;
 const CHANGELOG=[
+  {v:157,date:'2026-05-25',items:[
+    "PAD icon visibility toggle: ICON ON/OFF in PAD STYLE sidebar; body.hide-pad-icons hides all .pico elements; label repositioned to centered, larger, wrapping text with text-shadow; circle PADs also render a hidden .plbl div that activates instead of the arc SVG when icons are off; show-pad-icons key in SETTINGS_KEYS",
+    "Animations toggle: body.no-anim kills all CSS animations and transitions (fire, glow pulses, breathing, screen-in) via *::before/after{animation:none!important;transition:none!important}; static playing-state border and box-shadow remain visible; toggle in Settings → VISUALS → ANIMATIONS; animations key in SETTINGS_KEYS",
+    "Tips & Tricks: STOP ALL tip corrected to describe SERIAL/TOTAL behavior; 3 new tips added — QUICK RENAME (long-press in SETUP), VOLUME SLIDER (long-press in GAME), LIBRARY GROUPS"
+  ]},
   {v:156,date:'2026-05-25',items:[
     "Pixel-art group icon: _grpIcon(open,sz) renders a 16×16 SVG folder shape (closed/open variants); replaces ◈ Unicode in all group chips, folder-tree nodes, move-to-group dropdowns, and libCard folder action button (now lca-icon class)",
     "Settings split into sub-menus: #sa is now a navigation grid with 6 pixel-art icon cards (CONTROLS · APPEARANCE · VISUALS · KEYBINDING · DATA · DEVELOPER + KEY TEST); each sub-screen has a ← SETTINGS back button and its own SCREEN_CONFIG entry with targeted onShow callbacks; all settings content moved with added description texts"
@@ -2246,7 +2295,7 @@ const CHANGELOG=[
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
 console.assert(CHANGELOG[0].v===APP_VERSION,'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations'];
 // ── DEBUG LOG ──
 let _debugLogEnabled = localStorage.getItem('debug-log') === '1';
 const _DEBUG_LOG_MAX = 200;
@@ -3306,6 +3355,7 @@ function unlock(){
   initTheme();
   initGridCtrl();
   initAutoIcon();
+  _initAnimationsUI();
   _boardSsbUpdateSortUI();
   openDB().then(load).then(async ()=>{
     await migrateToLibrary();
@@ -5175,7 +5225,7 @@ const SCREEN_CONFIG = {
   sa:       { title: 'SETTINGS',    hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{} },
   'sa-ctrl':  { title: 'CONTROLS',   hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _renderSwitchSoundRow(); _initWakeLockUI(); _initAutoStopUI(); } },
   'sa-appear':{ title: 'APPEARANCE', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initThemeSettings(); } },
-  'sa-vis':   { title: 'VISUALS',    hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initPadLevelUI(); } },
+  'sa-vis':   { title: 'VISUALS',    hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initPadLevelUI(); _initAnimationsUI(); } },
   'sa-keys':  { title: 'KEYBINDING', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initHelpSettings(); } },
   'sa-data':  { title: 'DATA',       hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ updateExportAge(); } },
   'sa-dev':   { title: 'DEVELOPER',  hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initDebugLogUI(); } },
@@ -5251,13 +5301,14 @@ function setPadShape(radius,key){
 }
 function renderPadLabel(p, i){
   const name=p.name||'';
+  const div=`<div class="plbl">${escHtml(name)}</div>`;
   if(localStorage.getItem('pad-shape-key')==='ci'){
     return `<svg class="plbl-arc" viewBox="0 0 100 100">` +
       `<defs><path id="ap${i}" d="M14,50 A36,36 0 0,0 86,50" fill="none"/></defs>` +
       (name?`<text text-anchor="middle"><textPath href="#ap${i}" startOffset="50%">${escHtml(name)}</textPath></text>`:'') +
-      `</svg>`;
+      `</svg>${div}`;
   }
-  return `<div class="plbl">${escHtml(name)}</div>`;
+  return div;
 }
 function applyGridCtrl(){
   const sz=document.getElementById('sz-slider').value;
@@ -5302,6 +5353,7 @@ function initGridCtrl(){
     document.documentElement.style.setProperty('--pad-label-scale',v);
     localStorage.setItem('pad-label-scale',v);
   });
+  _initPadIconsUI();
 }
 
 // ── MODE ──
@@ -5333,6 +5385,32 @@ function setEnterStopMode(m){ setToptSetting('enter-stop-mode','esm-',['serial',
 function initEnterStopModeUI(){ setEnterStopMode(localStorage.getItem('enter-stop-mode')||'serial'); }
 function renderBoard(){
   if(locked) renderPerf(); else renderSetup();
+}
+
+function setPadIconsVisible(v){
+  localStorage.setItem('show-pad-icons',v?'1':'0');
+  document.body.classList.toggle('hide-pad-icons',!v);
+  document.getElementById('pi-on')?.classList.toggle('al',v);
+  document.getElementById('pi-off')?.classList.toggle('al',!v);
+  renderBoard();
+}
+function _initPadIconsUI(){
+  const v=(localStorage.getItem('show-pad-icons')??'1')!=='0';
+  document.body.classList.toggle('hide-pad-icons',!v);
+  document.getElementById('pi-on')?.classList.toggle('al',v);
+  document.getElementById('pi-off')?.classList.toggle('al',!v);
+}
+function setAnimations(v){
+  localStorage.setItem('animations',v?'1':'0');
+  document.body.classList.toggle('no-anim',!v);
+  document.getElementById('anim-on')?.classList.toggle('al',v);
+  document.getElementById('anim-off')?.classList.toggle('al',!v);
+}
+function _initAnimationsUI(){
+  const v=(localStorage.getItem('animations')??'1')!=='0';
+  document.body.classList.toggle('no-anim',!v);
+  document.getElementById('anim-on')?.classList.toggle('al',v);
+  document.getElementById('anim-off')?.classList.toggle('al',!v);
 }
 
 // ── PAD FILTER + BOARD SSB ──
