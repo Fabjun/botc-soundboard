@@ -415,10 +415,10 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 .e-lbl{font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));letter-spacing:0;
   color:var(--mode-accent-dim);transition:color .15s}
 .pbtn.playing{border-color:var(--pad-color,var(--gold));
-  box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 10px var(--pad-glow,rgba(212,178,92,.2));
+  box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35);
   animation:breathe-gold 1.8s ease-in-out infinite}
 .pbtn.plooping{border-color:var(--pad-color,var(--gold));
-  box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 10px var(--pad-glow,rgba(212,178,92,.2));
+  box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35);
   animation:breathe-gold 2.2s ease-in-out infinite}
 .pbtn.flash{background:var(--raised)}
 .pbtn .pico{font-size:calc((23px - 3px * var(--ico-density)) * var(--sym-scale) * var(--ico-scale));line-height:1;color:var(--mode-accent);position:relative;z-index:2}
@@ -551,11 +551,11 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
   0%,100%{box-shadow:0 0 8px rgba(79,195,247,.25),inset 0 0 10px rgba(79,195,247,.05)}
   50%    {box-shadow:0 0 22px rgba(79,195,247,.55),inset 0 0 18px rgba(79,195,247,.12)}}
 @keyframes breathe-gold{
-  0%,100%{box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 8px var(--pad-glow,rgba(212,178,92,.25))}
-  50%    {box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 22px var(--pad-glow,rgba(212,178,92,.55))}}
+  0%,100%{box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35);filter:drop-shadow(0 0 5px var(--pad-glow,rgba(212,178,92,.35)))}
+  50%    {box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35);filter:drop-shadow(0 0 14px var(--pad-glow,rgba(212,178,92,.7)))}}
 @keyframes pad-aura{
-  0%,100%{box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 8px var(--pad-glow,rgba(212,178,92,.25))}
-  50%    {box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 28px var(--pad-glow,rgba(212,178,92,.65)),0 0 50px var(--pad-glow,rgba(212,178,92,.15))}}
+  0%,100%{box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35);filter:drop-shadow(0 0 6px var(--pad-glow,rgba(212,178,92,.3)))}
+  50%    {box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35);filter:drop-shadow(0 0 22px var(--pad-glow,rgba(212,178,92,.75))) drop-shadow(0 0 40px var(--pad-glow,rgba(212,178,92,.2)))}}
 @keyframes pad-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.018)}}
 body.aura-on .pbtn.playing {animation:pad-aura 2s ease-in-out infinite}
 body.aura-on .pbtn.plooping{animation:pad-aura 2.4s ease-in-out infinite}
@@ -571,6 +571,16 @@ body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
 .ember{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--flame,#E8821E);
   pointer-events:none;z-index:1;
   animation:ember-float var(--ember-dur,4s) ease-in var(--ember-delay,0s) infinite}
+/* STEPPED CORNERS — pixel-art chamfer on PADs and key UI elements.
+   Applied to RETRO/VERDANT/NEON/CRIMSON; skipped on MODERN (uses border-radius).
+   Circle-mode pads (body.pad-ci) are excluded to preserve their shape.
+   filter:drop-shadow() in the glow keyframes extends outside the clip region. */
+:root{--cc:polygon(5px 0%,calc(100% - 5px) 0%,100% 5px,100% calc(100% - 5px),calc(100% - 5px) 100%,5px 100%,0% calc(100% - 5px),0% 5px)}
+body:not(.theme-modern):not(.pad-ci) .pbtn{border-radius:0;clip-path:var(--cc)}
+body.theme-modern .pbtn{clip-path:none}
+body:not(.theme-modern) .qa-item{border-radius:0;clip-path:polygon(4px 0%,calc(100% - 4px) 0%,100% 4px,100% calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,0% calc(100% - 4px),0% 4px)}
+body:not(.theme-modern) .ep-card{border-radius:0;clip-path:polygon(4px 0%,calc(100% - 4px) 0%,100% 4px,100% calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,0% calc(100% - 4px),0% 4px)}
+body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6px,100% calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,0% calc(100% - 6px),0% 6px)}
 @keyframes screen-in{from{opacity:0}to{opacity:1}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes ripple-anim{to{transform:scale(3);opacity:0}}
@@ -2344,8 +2354,11 @@ body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 170;
+const APP_VERSION = 171;
 const CHANGELOG=[
+  {v:171,date:'2026-05-25',items:[
+    "Stepped corners (Phase 8): clip-path polygon(5px…) on .pbtn for non-MODERN non-circle themes; 4px chamfer on .qa-item and .ep-card; 6px on .cp palette panel; body.theme-modern and body.pad-ci excluded; glow keyframes (breathe-gold, pad-aura) converted from outer box-shadow to filter:drop-shadow() so glow still bleeds outside clip region; .pbtn.playing/.plooping base outer box-shadow removed (glow driven by keyframe filter); --cc CSS variable holds the 5px polygon"
+  ]},
   {v:170,date:'2026-05-25',items:[
     "Command Palette (Phase 7): ⌘K / Ctrl+K opens floating .cp-overlay over all UI; substring search across current-board pads, all other boards + their pads, and built-in actions; ↑↓ navigate, ↵ run, Esc close; kind-colored icons (▶ ∞ ≡ ⧖ ◈ ⚡ ⚙) + match highlighting via <mark>; async _refreshCpItems() builds index from getAllBoardsFull() after load and board switch; toggle in Settings → CONTROLS → COMMAND PALETTE (default OFF); cmd-palette added to SETTINGS_KEYS; _closeCp uses _escStack for Esc; separate keydown listener for ⌘K fires even inside input fields"
   ]},
