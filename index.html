@@ -295,6 +295,12 @@ input[type=file]{display:none}
 .fld-dsep{border-top:1px solid var(--border);margin:2px 0}
 .fld-chip{display:inline-flex;align-items:center;gap:3px;font-size:calc(10px * var(--font-scale));color:var(--text-dim);cursor:pointer;padding:1px 5px;border-radius:2px;border:1px solid transparent}
 .fld-chip:hover{border-color:var(--border);color:var(--text)}
+.fld-new-form{display:flex;flex-direction:column;gap:3px;margin-top:4px;padding:6px;background:var(--deep);border:1px solid var(--border);border-radius:2px}
+.fld-opt-row{display:flex;align-items:center;gap:5px;cursor:pointer;padding:2px 0;-webkit-user-select:none;user-select:none}
+.fld-opt-row:hover .fld-opt-txt{color:var(--text)}
+.fld-opt-cb{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--text-dim);flex-shrink:0}
+.fld-opt-cb.on{color:var(--screen-accent)}
+.fld-opt-txt{font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:var(--text-dim);letter-spacing:.3px}
 .sec-lbl{display:block;font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--gold-dim);letter-spacing:.5px;margin:16px 0 8px}
 .sec-lbl-row{display:flex;align-items:center;gap:8px;margin:16px 0 8px}
 .sec-lbl-row .sec-lbl{margin:0;flex:1}
@@ -839,6 +845,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 .lib-card-sub{font-family:var(--ff-body);font-size:calc(11px * var(--font-scale));color:var(--text-dim)}
 .lib-card-acts{display:flex;align-items:center;gap:4px;flex-shrink:0}
 .lib-card-badge{font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));padding:1px 5px;border-radius:2px;flex-shrink:0;border:1px solid}
+.lib-dur{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--text);letter-spacing:.3px}
 .lca-icon{background:none;border:none;color:var(--text-dim);font-size:calc(15px * var(--font-scale));cursor:pointer;padding:0 4px;line-height:1}
 .lca-rename{background:none;border:none;color:var(--text-dim);font-size:calc(16px * var(--font-scale));cursor:pointer;padding:0 3px;line-height:1}
 .lca-dim{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:2px 8px;border-radius:2px;cursor:pointer;letter-spacing:0;flex-shrink:0}
@@ -1359,7 +1366,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   <div id="lib-sel-bar">
     <span id="lib-sel-count" style="flex:1;font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--gold)"></span>
     <button class="lca-dim" onclick="_libAudioClearSel()">✕ CLEAR</button>
-    <button class="lca-pos" onclick="_libAudioMoveSelFolder(this)">MOVE TO FOLDER</button>
+    <button class="lca-pos" onclick="_libAudioMoveSelFolder(this)">ADD TO GROUP</button>
   </div>
 </div>
 
@@ -1961,8 +1968,14 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 154;
+const APP_VERSION = 155;
 const CHANGELOG=[
+  {v:155,date:'2026-05-25',items:[
+    "Library Groups: folder system renamed to Groups throughout UI — sidebar label FOLDERS→GROUPS, ＋NEW FOLDER→＋NEW GROUP, all placeholders, action button tooltip, dropdown options, folder chips now use ◈ icon instead of emoji",
+    "New group creation form: name input + ☑ ADD SELECTED (N) toggle (visible when items selected, default on) + ☑ SET AS TARGET toggle (default on) with confirm/cancel buttons; if ADD SELECTED: moves all selected files to new group on creation",
+    "Library audio card body click selects for multi-select: clicking the card area (outside action buttons) toggles selection; cursor:pointer on all audio cards",
+    "Audio file duration displayed as a distinct lib-dur label (VT323 font, full text color) instead of dimmed text mixed into the metadata line"
+  ]},
   {v:154,date:'2026-05-25',items:[
     "Palette consistency pass: .bp (positive badge) green #81c784 -> var(--gold); .bo (negative badge) pink #ef9a9a -> var(--blood-bright); .bl (active badge) hardcoded bg/border -> rgba(--active) equivalents; .topt.ap (playlist mode active) green -> mist-purple rgba(74,74,122,.25)/var(--mist)/#c0c0e8; #dbg inline style #0a0a14/#1e1e35/#4a4a7a -> var(--night)/var(--raised)/var(--mist)"
   ]},
@@ -2248,6 +2261,7 @@ let _libPadsFolder = null;
 let _libAudioFolderList = [];
 let _libPadsFolderList = [];
 let _libNewFolderTab = null;
+let _libNewFolderOpts = {addSel:true, setTarget:true};
 let _libFolderRename = null;
 let _libPendingFolderMove = null;
 let _fldDropEl = null;
@@ -2706,18 +2720,30 @@ function _libFolderTreeHtml(tab, activeFolder, folderList){
       </div></div>`;
     }
     return `<div class="fld-node${isAct?' fld-act':''}" onclick="libSetFolder('${tab}',${isAct?'null':ejn})">
-      <span class="fld-node-name">📁 ${escHtml(name)}</span>
+      <span class="fld-node-name">◈ ${escHtml(name)}</span>
       ${rename}
     </div>`;
   }).join('');
+  const addSelCount=tab==='audio'?_libAudioSel.size:0;
   const newFolderHtml=_libNewFolderTab===tab
-    ?`<div class="fld-new-row">
-        <input id="fld-new-inp" class="fld-new-inp" placeholder="Folder name…" maxlength="40"
-          onkeydown="if(event.key==='Enter')_libConfirmNewFolder('${tab}');if(event.key==='Escape'){_libNewFolderTab=null;renderSidebarContent(cur);}">
-        <button class="fld-nbtn" style="padding:2px 5px" onclick="_libConfirmNewFolder('${tab}')">✓</button>
+    ?`<div class="fld-new-form">
+        <input id="fld-new-inp" class="fld-new-inp" placeholder="Group name…" maxlength="40"
+          onkeydown="if(event.key==='Enter')_libConfirmNewFolder('${tab}');if(event.key==='Escape')_libCancelNewFolder()">
+        ${addSelCount>0?`<div class="fld-opt-row" onclick="_libNewFolderOptToggle('addSel')">
+          <span class="fld-opt-cb${_libNewFolderOpts.addSel?' on':''}">${_libNewFolderOpts.addSel?'☑':'☐'}</span>
+          <span class="fld-opt-txt">＋ ADD SELECTED (${addSelCount})</span>
+        </div>`:''}
+        <div class="fld-opt-row" onclick="_libNewFolderOptToggle('setTarget')">
+          <span class="fld-opt-cb${_libNewFolderOpts.setTarget?' on':''}">${_libNewFolderOpts.setTarget?'☑':'☐'}</span>
+          <span class="fld-opt-txt">⊞ SET AS TARGET</span>
+        </div>
+        <div class="fld-new-row" style="justify-content:flex-end;margin-top:2px">
+          <button class="fld-nbtn" style="padding:2px 7px;color:var(--screen-accent)" onclick="_libConfirmNewFolder('${tab}')">✓</button>
+          <button class="fld-nbtn" style="padding:2px 7px;color:var(--blood)" onclick="_libCancelNewFolder()">✕</button>
+        </div>
       </div>`
-    :`<div class="fld-add" onclick="libNewFolder('${tab}')">＋ NEW FOLDER</div>`;
-  return `<div class="sb-section" style="margin-top:16px"><div class="sb-lbl">FOLDERS</div><div class="fld-tree">
+    :`<div class="fld-add" onclick="libNewFolder('${tab}')">＋ NEW GROUP</div>`;
+  return `<div class="sb-section" style="margin-top:16px"><div class="sb-lbl">GROUPS</div><div class="fld-tree">
     <div class="fld-node${!activeFolder?' fld-act':''}" onclick="libSetFolder('${tab}',null)"><span class="fld-node-name">ALL</span></div>
     ${nodes}${newFolderHtml}
   </div></div>`;
@@ -2728,19 +2754,38 @@ function libSetFolder(tab, folder){
   if(tab==='audio') initLibScreen(); else renderLibPads();
 }
 function libNewFolder(tab){
+  _libNewFolderOpts={addSel:true,setTarget:true};
   _libNewFolderTab=tab;
   renderSidebarContent(cur);
   setTimeout(()=>document.getElementById('fld-new-inp')?.focus(), 30);
 }
+function _libNewFolderOptToggle(which){
+  _libNewFolderOpts[which]=!_libNewFolderOpts[which];
+  renderSidebarContent(cur);
+  setTimeout(()=>document.getElementById('fld-new-inp')?.focus(),20);
+}
+function _libCancelNewFolder(){
+  _libNewFolderTab=null;
+  _libNewFolderOpts={addSel:true,setTarget:true};
+  _libPendingFolderMove=null;
+  renderSidebarContent(cur);
+}
 function _libConfirmNewFolder(tab){
   const val=document.getElementById('fld-new-inp')?.value.trim();
+  const opts={..._libNewFolderOpts};
   _libNewFolderTab=null;
+  _libNewFolderOpts={addSel:true,setTarget:true};
   if(val){
-    if(tab==='audio') _libAudioFolder=val;
-    else if(tab==='pads') _libPadsFolder=val;
+    if(opts.setTarget){
+      if(tab==='audio') _libAudioFolder=val;
+      else if(tab==='pads') _libPadsFolder=val;
+    }
     if(_libPendingFolderMove&&_libPendingFolderMove.tab===tab){
       const {hash}=_libPendingFolderMove; _libPendingFolderMove=null;
       libMoveToFolder(hash,tab,val); return;
+    }
+    if(opts.addSel&&tab==='audio'&&_libAudioSel.size>0){
+      _libAudioMoveSelToFolder(val); return;
     }
     if(tab==='audio') initLibScreen(); else renderLibPads();
   } else { _libPendingFolderMove=null; renderSidebarContent(cur); }
@@ -2789,9 +2834,9 @@ function libFolderDropdown(evt, hash, tab, currentFolder){
   const folders=tab==='audio'?_libAudioFolderList:_libPadsFolderList;
   const opts=[
     ...(currentFolder?[`<div class="fld-dopt" onclick="libMoveToFolder('${hash}','${tab}',null)">— Unfiled</div>`]:[]),
-    ...folders.filter(f=>f!==currentFolder).map(f=>`<div class="fld-dopt" onclick="libMoveToFolder('${hash}','${tab}',${escHtml(JSON.stringify(f))})">📁 ${escHtml(f)}</div>`),
+    ...folders.filter(f=>f!==currentFolder).map(f=>`<div class="fld-dopt" onclick="libMoveToFolder('${hash}','${tab}',${escHtml(JSON.stringify(f))})">◈ ${escHtml(f)}</div>`),
     `<div class="fld-dsep"></div>`,
-    `<div class="fld-dopt" onclick="_libDropNewFolder('${hash}','${tab}')">＋ New folder…</div>`,
+    `<div class="fld-dopt" onclick="_libDropNewFolder('${hash}','${tab}')">＋ New group…</div>`,
   ].join('');
   const el=document.createElement('div');
   el.className='fld-drop'; el.innerHTML=opts;
@@ -2808,7 +2853,7 @@ function _closeFldDrop(){ if(_fldDropEl){_fldDropEl.remove();_fldDropEl=null;} }
 function _libDropNewFolder(hash, tab){
   if(!_fldDropEl) return;
   _fldDropEl.innerHTML=`<div style="padding:8px">
-    <input id="fld-dnew-inp" class="fld-new-inp" style="width:100%;box-sizing:border-box" placeholder="Folder name…" maxlength="40"
+    <input id="fld-dnew-inp" class="fld-new-inp" style="width:100%;box-sizing:border-box" placeholder="Group name…" maxlength="40"
       onkeydown="if(event.key==='Enter')_libDropConfirmNew('${hash}','${tab}');if(event.key==='Escape')_closeFldDrop()">
     <div style="display:flex;gap:4px;margin-top:6px">
       <button class="lca-pos" style="flex:1" onclick="_libDropConfirmNew('${hash}','${tab}')">✓ CREATE</button>
@@ -2832,6 +2877,10 @@ async function libMoveToFolder(hash, tab, folder){
   if(tab==='audio') initLibScreen(); else renderLibPads();
 }
 // ── LIBRARY AUDIO MULTI-SELECT ──
+function _libCardBodySel(hash, e){
+  if(e.target.closest('button')) return;
+  _libAudioToggleSel(hash, e);
+}
 function _libAudioToggleSel(hash, event){
   event.stopPropagation();
   if(_libAudioSel.has(hash)) _libAudioSel.delete(hash); else _libAudioSel.add(hash);
@@ -2864,9 +2913,9 @@ function _libAudioMoveSelFolder(btn){
   _closeFldDrop();
   const folders=_libAudioFolderList;
   const opts=[
-    ...folders.map(f=>`<div class="fld-dopt" onclick="_libAudioMoveSelToFolder(${escHtml(JSON.stringify(f))})">📁 ${escHtml(f)}</div>`),
+    ...folders.map(f=>`<div class="fld-dopt" onclick="_libAudioMoveSelToFolder(${escHtml(JSON.stringify(f))})">◈ ${escHtml(f)}</div>`),
     `<div class="fld-dsep"></div>`,
-    `<div class="fld-dopt" onclick="_libAudioMoveSelNewFolder()">＋ New folder…</div>`,
+    `<div class="fld-dopt" onclick="_libAudioMoveSelNewFolder()">＋ New group…</div>`,
     ...(folders.length?[`<div class="fld-dsep"></div>`,`<div class="fld-dopt" onclick="_libAudioMoveSelToFolder(null)">— Remove from folder</div>`]:[]),
   ].join('');
   const el=document.createElement('div');
@@ -2881,7 +2930,7 @@ function _libAudioMoveSelFolder(btn){
 function _libAudioMoveSelNewFolder(){
   if(!_fldDropEl) return;
   _fldDropEl.innerHTML=`<div style="padding:8px">
-    <input id="fld-msel-inp" class="fld-new-inp" style="width:100%;box-sizing:border-box" placeholder="Folder name…" maxlength="40"
+    <input id="fld-msel-inp" class="fld-new-inp" style="width:100%;box-sizing:border-box" placeholder="Group name…" maxlength="40"
       onkeydown="if(event.key==='Enter')_libAudioMoveSelToFolder(document.getElementById('fld-msel-inp').value.trim()||null,true);if(event.key==='Escape')_closeFldDrop()">
     <div style="display:flex;gap:4px;margin-top:6px">
       <button class="lca-pos" style="flex:1" onclick="_libAudioMoveSelToFolder(document.getElementById('fld-msel-inp').value.trim()||null,true)">✓ CREATE</button>
@@ -2987,7 +3036,7 @@ async function initBoardScreen(){
   const boards=await loadBoardsMeta();
   renderBoardList(boards);
 }
-function libCard({nameId,preHtml='',badge=null,nameHtml,nameStyle='',actions=[],subLines=[],active=false,extraClass='',waveHtml=''}){
+function libCard({nameId,preHtml='',badge=null,nameHtml,nameStyle='',actions=[],subLines=[],active=false,extraClass='',waveHtml='',onclick=''}){
   const badgeHtml=badge?`<span class="lib-card-badge" style="color:${badge.color};border-color:${badge.color}">${badge.label}</span>`:'';
   const actHtml=actions.map(a=>{
     if(a.type==='preview') return `<button id="lpb-${a.hash}" class="lca-icon lib-prev-btn" onclick="toggleLibPreview('${a.hash}')" title="Preview">▶</button>`;
@@ -2997,11 +3046,11 @@ function libCard({nameId,preHtml='',badge=null,nameHtml,nameStyle='',actions=[],
     if(a.type==='pos')  return `<button class="lca-pos" onclick="${a.onclick}">${a.label}</button>`;
     if(a.type==='del')  return `<button class="lca-del" onclick="${a.onclick}">✕</button>`;
     if(a.type==='icon') return `<button class="lca-icon" onclick="${a.onclick}"${a.id?` id="${a.id}"`:''}${a.title?` title="${a.title}"`:''}>${a.label}</button>`;
-    if(a.type==='folder') return `<button class="lca-dim" onclick="${a.onclick}" title="Move to folder">📁</button>`;
+    if(a.type==='folder') return `<button class="lca-dim" onclick="${a.onclick}" title="Move to group">◈</button>`;
     return '';
   }).join('');
   const subHtml=subLines.map(l=>`<div class="lib-card-sub">${l}</div>`).join('');
-  return `<div class="lib-card${active?' lib-card-active':''}${extraClass?' '+extraClass:''}">
+  return `<div class="lib-card${active?' lib-card-active':''}${extraClass?' '+extraClass:''}"${onclick?` onclick="${onclick}" style="cursor:pointer"`:''}">
     ${waveHtml}<div class="lib-card-row">${preHtml}${badgeHtml}<div id="${nameId}" class="lib-card-name"${nameStyle?` style="${nameStyle}"`:''}>${nameHtml}</div><div class="lib-card-acts">${actHtml}</div></div>
     ${subHtml}</div>`;
 }
@@ -3865,14 +3914,16 @@ function renderLibList(entries,usedHashes){
         <span class="lib-card-sub">· ${escHtml(u.boardName)}</span>
       </div>`).join('');
     const folderChip=e.folder&&!_libAudioFolder
-      ?`<span class="fld-chip" onclick="libSetFolder('audio',${escHtml(JSON.stringify(e.folder))});event.stopPropagation()">📁 ${escHtml(e.folder)}</span>`:'';
+      ?`<span class="fld-chip" onclick="libSetFolder('audio',${escHtml(JSON.stringify(e.folder))});event.stopPropagation()">◈ ${escHtml(e.folder)}</span>`:'';
     const isSel=_libAudioSel.has(h);
+    const durChip=e.duration?`<span class="lib-dur">${_fmtTime(e.duration)}</span> · `:'';
     return libCard({
       nameId:`lnm-${h}`,
       preHtml:`<button class="lca-sel${isSel?' lca-sel-on':''}" onclick="_libAudioToggleSel('${h}',event)">${isSel?'☑':'☐'}</button>`,
       nameHtml:escHtml(e.name),
       extraClass:isSel?'lib-card-sel':'',
       waveHtml:e.peaks?_peaksToSvg(e.peaks):'',
+      onclick:`_libCardBodySel('${h}',event)`,
       actions:[
         {type:'preview', hash:h},
         {type:'rename', onclick:`libRenameStart('${h}')`},
@@ -3882,7 +3933,7 @@ function renderLibList(entries,usedHashes){
       subLines:[
         ...(folderChip?[folderChip]:[]),
         ...(e.origName&&e.origName!==e.name?[`<span style="opacity:.6;word-break:break-all">upload-name: ${escHtml(e.origName)}</span>`]:[]),
-        `${e.duration?_fmtTime(e.duration)+' · ':''}${fmtSize(e.size||0)} · ${date} · ${inUseEl}`,
+        `${durChip}${fmtSize(e.size||0)} · ${date} · ${inUseEl}`,
         ...(inUse?[`<div id="lub-${h}" style="display:none;border-left:2px solid var(--active);padding-left:8px;margin-top:2px">${usedByRows}</div>`]:[]),
       ],
     });
@@ -4119,7 +4170,7 @@ async function renderLibPads(){
           const dateStr=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
           const fhT=pd.mode==='combo'?getComboFirstFileHash(pd.steps):(pd.files?.length?pd.files[0]:null);
           const folderChipT=e.folder&&!_libPadsFolder
-            ?`<span class="fld-chip" onclick="libSetFolder('pads',${escHtml(JSON.stringify(e.folder))});event.stopPropagation()">📁 ${escHtml(e.folder)}</span>`:'';
+            ?`<span class="fld-chip" onclick="libSetFolder('pads',${escHtml(JSON.stringify(e.folder))});event.stopPropagation()">◈ ${escHtml(e.folder)}</span>`:'';
           return libCard({
             nameId:`ltnm-${e.hash}`,
             badge:{color:mc, label:ml},
