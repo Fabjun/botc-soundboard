@@ -1,8 +1,12 @@
 'use strict';
 
-const APP_VERSION = '1.5.15';
+const APP_VERSION = '1.5.16';
 
 const CHANGELOG = [
+  { v: '1.5.16', date: '2026-05-26', items: [
+    'Library BOARDS tab: list all boards with scene/set counts, last-updated date, OPEN + 2-tap delete',
+    'Active board highlighted in the list; OPEN navigates directly to the board',
+  ]},
   { v: '1.5.15', date: '2026-05-25', items: [
     'Playlist pad: pad type LIST ☰ — ordered sequence of audio tracks, auto-advances on natural end',
     'Shuffle toggle per playlist pad; state resets on manual stop',
@@ -718,13 +722,14 @@ async function mountMenu() {
 
 /* ── SCREEN: LIBRARY ─────────────────────────────────────────── */
 
-let _libTab       = 'audio';
-let _libSearchQ   = '';
-let _libFolder    = null;
-let _libFilter    = 'all';
-let _libDeleteCfm = null;
-let _libUploading = false;
-let _libEntries   = [];
+let _libTab         = 'audio';
+let _libSearchQ     = '';
+let _libFolder      = null;
+let _libFilter      = 'all';
+let _libDeleteCfm   = null;
+let _libBdDeleteCfm = null;
+let _libUploading   = false;
+let _libEntries     = [];
 
 /** @returns {Promise<void>} */
 async function _libRefresh() {
@@ -751,7 +756,7 @@ function libraryHTML() {
   <div class="lib-tabs">
     <div class="lib-tab${_libTab==='audio'?' is-active':''}" data-action="lib-tab" data-tab="audio">AUDIO <span class="lib-tab-count" id="lc-audio">—</span></div>
     <div class="lib-tab${_libTab==='pads'?' is-active':''}" data-action="lib-tab" data-tab="pads">PADS</div>
-    <div class="lib-tab${_libTab==='boards'?' is-active':''}" data-action="lib-tab" data-tab="boards">BOARDS</div>
+    <div class="lib-tab${_libTab==='boards'?' is-active':''}" data-action="lib-tab" data-tab="boards">BOARDS <span class="lib-tab-count" id="lc-boards">—</span></div>
     <div class="lib-tab${_libTab==='icons'?' is-active':''}" data-action="lib-tab" data-tab="icons">ICONS</div>
   </div>
 
@@ -800,7 +805,9 @@ function libraryHTML() {
       <main class="lib-main lib-main-stub"><p class="stub-sub" style="margin-top:40px">PAD templates — coming in Slice 5</p></main>
     </div>
     <div class="tab-panel${_libTab==='boards'?' is-active':''}" id="tab-boards">
-      <main class="lib-main lib-main-stub"><p class="stub-sub" style="margin-top:40px">Boards — coming in Slice 5</p></main>
+      <main class="lib-main">
+        <div class="lib-bd-list" id="lib-bd-list"><p class="lib-empty">Loading…</p></div>
+      </main>
     </div>
     <div class="tab-panel${_libTab==='icons'?' is-active':''}" id="tab-icons">
       <main class="lib-main lib-main-stub"><p class="stub-sub" style="margin-top:40px">Icon library — coming in Slice 6</p></main>
@@ -850,7 +857,8 @@ async function mountLibrary() {
   }
 
   await _libRefresh();
-  renderAudioList();
+  if (_libTab === 'boards') renderBoardsTab();
+  else renderAudioList();
 }
 
 function renderAudioList() {
@@ -937,6 +945,8 @@ function handleLibTab(tab) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('is-active', p.id === 'tab-' + tab));
   const s = document.getElementById('lib-status-tab');
   if (s) s.textContent = tab.toUpperCase();
+  if (tab === 'boards') renderBoardsTab();
+  else if (tab === 'audio') renderAudioList();
 }
 
 function handleLibFilter(filter) {
@@ -994,6 +1004,69 @@ async function handleLibRename(hash) {
   });
 }
 
+
+async function renderBoardsTab() {
+  _libBdDeleteCfm = null;
+  const listEl = document.getElementById('lib-bd-list');
+  if (!listEl) return;
+
+  const boards = await boardGetAll();
+
+  const countEl = document.getElementById('lc-boards');
+  if (countEl) countEl.textContent = boards.length || 0;
+
+  const statusCount = document.getElementById('lib-status-count');
+  if (statusCount) statusCount.textContent = boards.length
+    ? `${boards.length} board${boards.length !== 1 ? 's' : ''}`
+    : 'No boards';
+
+  if (!boards.length) {
+    listEl.innerHTML = `<p class="lib-empty">No boards yet. Create one on the Board List screen.</p>`;
+    return;
+  }
+
+  listEl.innerHTML = boards.map(b => {
+    const isActive = b.id === S.boardId;
+    const sceneN   = b.scenes?.length || 0;
+    const setN     = b.sets?.length   || 0;
+    const date     = b.updated
+      ? new Date(b.updated).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'2-digit' })
+      : b.created
+        ? new Date(b.created).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'2-digit' })
+        : '—';
+    const isCfm = _libBdDeleteCfm === b.id;
+    return `<div class="lib-bd-row${isActive ? ' is-active' : ''}" data-board-id="${b.id}">
+      <div class="lib-bd-info">
+        <div class="lib-bd-name">${escHtml(b.name)}</div>
+        <div class="lib-bd-meta">${sceneN} scene${sceneN !== 1 ? 's' : ''} · ${setN} set${setN !== 1 ? 's' : ''} · ${date}</div>
+      </div>
+      <div class="lib-bd-acts">
+        <button class="sb-btn sb-btn-sm${isActive ? ' sb-btn-filled' : ' sb-btn-ghost'}" data-action="lib-bd-open" data-board-id="${b.id}">OPEN</button>
+        <button class="act-btn danger${isCfm ? ' is-confirm' : ''}" data-action="lib-bd-delete" data-board-id="${b.id}" title="Delete board">${isCfm ? 'SURE?' : '×'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function handleLibBdDelete(boardId) {
+  if (_libBdDeleteCfm === boardId) {
+    _libBdDeleteCfm = null;
+    const board = (await boardGetAll()).find(b => b.id === boardId);
+    if (board?.scenes) { for (const s  of board.scenes) await sceneDelete(s.id); }
+    if (board?.sets)   { for (const st of board.sets)   await setDelete(st.id);  }
+    await boardDelete(boardId);
+    if (S.boardId === boardId) set.boardId(null);
+    renderBoardsTab();
+  } else {
+    if (_libBdDeleteCfm) {
+      const old = document.querySelector(`.act-btn.danger[data-board-id="${_libBdDeleteCfm}"]`);
+      if (old) { old.classList.remove('is-confirm'); old.textContent = '×'; }
+    }
+    _libBdDeleteCfm = boardId;
+    const btn = document.querySelector(`.act-btn.danger[data-board-id="${boardId}"]`);
+    if (btn) { btn.classList.add('is-confirm'); btn.textContent = 'SURE?'; }
+  }
+}
 
 /* ── SCREEN: BOARD LIST ──────────────────────────────────────── */
 
@@ -2805,6 +2878,15 @@ document.addEventListener('click', e => {
     }
   }
 
+  // clear boards-tab delete confirm
+  if (_libBdDeleteCfm) {
+    if (!e.target.closest(`[data-action="lib-bd-delete"][data-board-id="${_libBdDeleteCfm}"]`)) {
+      const old = document.querySelector(`.act-btn.danger[data-board-id="${_libBdDeleteCfm}"]`);
+      if (old) { old.classList.remove('is-confirm'); old.textContent = '×'; }
+      _libBdDeleteCfm = null;
+    }
+  }
+
   // clear board-list delete confirm
   if (_blDeleteCfm) {
     if (!e.target.closest(`[data-action="bl-delete"][data-board-id="${_blDeleteCfm}"]`)) {
@@ -2887,6 +2969,8 @@ function handleAction(action, el) {
     case 'lib-folder':        handleLibFolder(el.dataset.folder); break;
     case 'lib-rename':        handleLibRename(el.dataset.hash); break;
     case 'lib-delete':        handleLibDelete(el.dataset.hash); break;
+    case 'lib-bd-open':       handleBlOpen(el.dataset.boardId); break;
+    case 'lib-bd-delete':     handleLibBdDelete(el.dataset.boardId); break;
 
     // board list
     case 'bl-create':         openBoardCreate(); break;
