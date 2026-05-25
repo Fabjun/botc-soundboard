@@ -1649,22 +1649,22 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         </div>
         <div class="fg" style="margin-bottom:0">
           <label class="fl">FADE-OUT — <span id="efo-lbl">Off</span></label>
-          <input type="range" id="efo" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('efo')" style="width:100%;accent-color:var(--gold)">
+          <input type="range" id="efo" min="0" max="10" step="0.5" value="0" oninput="updFadeLabel('efo')" style="width:100%;accent-color:var(--gold);transform:scaleX(-1)">
         </div>
       </div>
 
       <div class="ep-sub-toggle" id="trim-toggle" onclick="const b=document.getElementById('ep-trim'); const open=b.style.display==='none'; b.style.display=open?'':'none'; this.querySelector('.ep-sub-arrow').style.transform=open?'rotate(90deg)':'';">
         <span class="ep-sub-arrow" style="transition:transform 0.2s">▶</span>
-        <span>TRIM / BESCHNEIDEN</span>
+        <span>TRIM</span>
       </div>
       <div class="ep-sub-body" id="ep-trim" style="display:none; padding-top:8px;">
         <div class="fg">
-          <label class="fl">STARTZEIT — <span id="ets-lbl">0.0</span>s</label>
+          <label class="fl">START TIME — <span id="ets-lbl">0.0</span>s</label>
           <input type="range" id="ets" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ets-lbl').textContent=this.value==='0'?'0.0':this.value;drawScrubber()" style="width:100%;accent-color:var(--gold)">
         </div>
         <div class="fg" style="margin-bottom:0">
-          <label class="fl">ENDZEIT / DAUER — <span id="ete-lbl">Full</span></label>
-          <input type="range" id="ete" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ete-lbl').textContent=this.value==='0'?'Full':(this.value+'s');drawScrubber()" style="width:100%;accent-color:var(--gold)">
+          <label class="fl">END TIME — <span id="ete-lbl">Full</span></label>
+          <input type="range" id="ete" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ete-lbl').textContent=this.value==='0'?'Full':(this.value+'s');drawScrubber()" style="width:100%;accent-color:var(--gold);transform:scaleX(-1)">
         </div>
       </div>
     </div>
@@ -1923,11 +1923,16 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 148;
+const APP_VERSION = 149;
 const CHANGELOG=[
-  {v:148,date:'2026-05-25',items:[
-    "Fade effects anchored to trim boundaries (visual + audio): fade-in overlay starts at trim-start position; fade-out overlay ends at trim-end position; both overlays clamped to active region width so they never bleed into trimmed-out zones; auto fade-out for once-mode pads: when trim-end is set and fade-out > 0, a gain ramp is pre-scheduled to reach 0 exactly at trim-end; foStart = max(after-fade-in, dur-fo) to handle overlap with fade-in; manual stop still overrides via cancelScheduledValues in stopPad"
+  {v:149,date:'2026-05-25',items:[
+    "Trim section labels translated to English: TRIM / BESCHNEIDEN → TRIM, STARTZEIT → START TIME, ENDZEIT / DAUER → END TIME",
+    "Fade-out and Trim-End sliders visually reversed (scaleX(-1)): thumb starts at right edge (Off / Full) and moves left as value increases — matches audio direction (both effects apply from the right/end)",
+    "Preview enforces trim boundaries: _prevStartPlayback clamps start position to [trimStart, trimEnd]; duration passed to AudioBufferSourceNode.start() so playback stops exactly at trim-end; onended resets playhead to trimStart; pre-scheduled fade-out ramp applies when trim-end + fade-out are set",
+    "Waveform bars in drawScrubber() are now gain-modulated: bars in trimmed-out zones have height 0 (silent = no visual level); bars in fade-in ramp rise linearly from trim-start; bars in fade-out ramp fall linearly to trim-end; played/unplayed color also respects gain (gold only when gain > 0)",
+    "Fade zone hit-detection in scrubber updated to be trim-anchored: fade-in drag zone starts at tsFrac, fade-out drag zone ends at teFrac; delta calculation updated so dragging sets fi = cursor - trimStart and fo = trimEnd - cursor"
   ]},
+  {v:148,date:'2026-05-25',items:[
   {v:147,date:'2026-05-25',items:[
     "Trim tool visual scrubber: two amber markers (vertical line + inward-pointing triangles) show trim-start and trim-end positions on the waveform canvas; regions outside the active trim range are covered with a diagonal-stripe zebra overlay (dark base + hatching lines); markers are always visible when audio is loaded — right marker at right edge when no end-trim is set; draw order: waveform → trim zones → fade overlays → trim markers → playhead",
     "Trim markers draggable: scrubber hit-zones ±10px around each marker; drag modes 'ts' (trim start) and 'te' (trim end) added to initScrub(); priority: playhead > trim markers > fade zones; left marker clamped to [0, te-0.5]; right marker snaps to 0 (Full) when dragged past 97% width; sliders and labels sync live during drag",
@@ -5793,22 +5798,32 @@ function drawScrubber(){
   if(wf){
     const vol=+document.getElementById('ev').value/100;
     const bw=W/wf.length;
+    const ts=+(document.getElementById('ets')?.value||0);
+    const te=+(document.getElementById('ete')?.value||0);
+    const fi=+(document.getElementById('eft')?.value||0);
+    const fo=+(document.getElementById('efo')?.value||0);
+    const teAbs=te>ts?te:dur;
     for(let i=0;i<wf.length;i++){
-      const x=i*bw, h=Math.max(1,wf[i]*mid*0.88*vol);
-      g.fillStyle=i/wf.length<=frac?'rgba(122,95,40,0.85)':'rgba(74,74,122,0.7)';
-      g.fillRect(x+0.5, mid-h, Math.max(bw-1,1), h*2);
+      const x=i*bw;
+      let gain=1.0;
+      if(dur>0){
+        const barSec=(i/wf.length)*dur;
+        if(barSec<ts) gain=0;
+        else if(te>ts&&barSec>te) gain=0;
+        else if(fi>0&&barSec<ts+fi) gain=(barSec-ts)/fi;
+        else if(fo>0&&barSec>teAbs-fo) gain=(teAbs-barSec)/fo;
+      }
+      const h=gain>0?Math.max(1,wf[i]*mid*0.88*vol*gain):0;
+      g.fillStyle=gain>0&&i/wf.length<=frac?'rgba(122,95,40,0.85)':'rgba(74,74,122,0.7)';
+      if(h>0) g.fillRect(x+0.5, mid-h, Math.max(bw-1,1), h*2);
     }
     if(dur>0){
-      const ts=+(document.getElementById('ets')?.value||0);
-      const te=+(document.getElementById('ete')?.value||0);
       const tsX=(ts/dur)*W;
-      const teX=te>0?(te/dur)*W:W;
+      const teX=te>ts?(te/dur)*W:W;
       // Trim zone zebra overlays
       _drawTrimZone(g, 0, tsX, H);
       _drawTrimZone(g, teX, W, H);
       // Fade overlays (on top of trim zones, within active region)
-      const fi=+(document.getElementById('eft')?.value||0);
-      const fo=+(document.getElementById('efo')?.value||0);
       if(fi>0){
         const fiW=Math.min(fi/dur*W, teX-tsX);
         const grad=g.createLinearGradient(tsX,0,tsX+fiW,0);
@@ -5880,8 +5895,8 @@ function initScrub(){
     // fade zones
     const fi=+(document.getElementById('eft')?.value||0);
     const fo=+(document.getElementById('efo')?.value||0);
-    if(fi>0&&frac<Math.min(fi/dur,1)) return 'fi';
-    if(fo>0&&frac>1-Math.min(fo/dur,1)) return 'fo';
+    if(fi>0&&frac>=tsFrac&&frac<tsFrac+Math.min(fi/dur,teFrac-tsFrac)) return 'fi';
+    if(fo>0&&frac>teFrac-Math.min(fo/dur,teFrac-tsFrac)&&frac<=teFrac) return 'fo';
     return 'seek';
   }
 
@@ -5894,10 +5909,16 @@ function initScrub(){
     }
     const dur=getDur();
     if(dragMode==='fi'&&dur>0){
-      const v=Math.min(Math.round(frac*dur*2)/2,10);
+      const tsV=+(document.getElementById('ets')?.value||0);
+      const teV=+(document.getElementById('ete')?.value||0);
+      const activeLen=teV>tsV?teV-tsV:dur-tsV;
+      const v=Math.min(Math.max(0,Math.round((frac*dur-tsV)*2)/2),10,activeLen);
       document.getElementById('eft').value=v; updFadeLabel('eft');
     } else if(dragMode==='fo'&&dur>0){
-      const v=Math.min(Math.round((1-frac)*dur*2)/2,10);
+      const tsV=+(document.getElementById('ets')?.value||0);
+      const teV=+(document.getElementById('ete')?.value||0);
+      const activeEnd=teV>tsV?teV:dur;
+      const v=Math.min(Math.max(0,Math.round((activeEnd-frac*dur)*2)/2),10,activeEnd-tsV);
       document.getElementById('efo').value=v; updFadeLabel('efo');
     } else if(dragMode==='ts'&&dur>0){
       const teV=+(document.getElementById('ete')?.value||0);
@@ -5955,6 +5976,12 @@ function _prevStartPlayback(offset, applyFadeIn){
   if(!_prevGain){ _prevGain=ctx.createGain(); _prevGain.connect(ctx.destination); }
   const targetVol=+document.getElementById('ev').value/100;
   const fi=applyFadeIn?+(document.getElementById('eft')?.value||0):0;
+  const fo=applyFadeIn?+(document.getElementById('efo')?.value||0):0;
+  const tS=+(document.getElementById('ets')?.value||0);
+  const tE=+(document.getElementById('ete')?.value||0);
+  const hasTrimEnd=tE>tS;
+  const clampedOffset=hasTrimEnd?Math.max(tS,Math.min(offset,tE)):Math.max(tS,offset);
+  const playDur=hasTrimEnd?(tE-clampedOffset):undefined;
   _prevGain.gain.cancelScheduledValues(ctx.currentTime);
   if(fi>0){
     _prevGain.gain.setValueAtTime(0, ctx.currentTime);
@@ -5962,14 +5989,21 @@ function _prevStartPlayback(offset, applyFadeIn){
   } else {
     _prevGain.gain.setValueAtTime(targetVol, ctx.currentTime);
   }
+  if(hasTrimEnd&&fo>0&&playDur>0){
+    const foStart=Math.max(ctx.currentTime+fi,ctx.currentTime+playDur-fo);
+    _prevGain.gain.setValueAtTime(targetVol,foStart);
+    _prevGain.gain.linearRampToValueAtTime(0,ctx.currentTime+playDur);
+  }
   _prevSrc=ctx.createBufferSource();
   _prevSrc.buffer=_prevBuf;
   _prevSrc.connect(_prevGain);
-  _prevPausePos=offset;
+  _prevPausePos=clampedOffset;
   _prevStartCtx=ctx.currentTime;
   _prevPlaying=true;
-  _prevSrc.start(0, Math.max(0, Math.min(offset, _prevBuf.duration-0.001)));
-  _prevSrc.onended=()=>{ _prevSrc=null; _prevPlaying=false; _prevPausePos=0; updFB(); drawScrubber(); };
+  const safeStart=Math.max(0,Math.min(clampedOffset,_prevBuf.duration-0.001));
+  if(playDur!==undefined) _prevSrc.start(0,safeStart,playDur);
+  else _prevSrc.start(0,safeStart);
+  _prevSrc.onended=()=>{ _prevSrc=null; _prevPlaying=false; _prevPausePos=tS; updFB(); drawScrubber(); };
 }
 function _cleanupPreview(){
   ++previewFadeGen;
