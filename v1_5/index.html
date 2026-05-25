@@ -13,6 +13,7 @@
 <body>
   <div id="app"></div>
   <input type="file" id="lib-audio-input" accept="audio/*" multiple style="display:none">
+  <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="parseImportFile(this)">
   <script src="flame.js"></script>
   <script src="audio.js"></script>
   <script src="app.js"></script>

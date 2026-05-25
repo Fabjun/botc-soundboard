@@ -642,3 +642,25 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
   padding:10px 14px;border-top:1px solid var(--border);
   display:flex;justify-content:flex-end;flex-shrink:0;
   background:var(--surface)}
+
+/* ── TOAST ───────────────────────────────────────────────────── */
+.sos-toast{
+  position:fixed;bottom:64px;left:50%;
+  transform:translateX(-50%) translateY(12px);
+  background:var(--raised);border:1px solid var(--border-strong);
+  color:var(--text);font-family:var(--font-ui);font-size:12px;
+  letter-spacing:.5px;padding:7px 16px;clip-path:var(--cc);
+  opacity:0;transition:opacity .2s,transform .2s;
+  pointer-events:none;z-index:500;white-space:nowrap}
+.sos-toast.is-visible{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── IMPORT MODAL ────────────────────────────────────────────── */
+.imp-section{display:flex;flex-direction:column;gap:4px}
+.imp-section-title{
+  font-family:var(--font-ui);font-size:11px;color:var(--gold-dim);
+  letter-spacing:.08em;margin-bottom:2px}
+.imp-row-info{
+  font-family:var(--font-mono);font-size:12px;line-height:1.5;padding:2px 0}
+.imp-new{color:var(--mode-setup)}
+.imp-conflict{color:var(--gold)}
+.imp-skip{color:var(--text-mute)}

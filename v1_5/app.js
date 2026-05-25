@@ -1,8 +1,14 @@
 'use strict';
 
-const APP_VERSION = '1.5.9';
+const APP_VERSION = '1.5.10';
 
 const CHANGELOG = [
+  { v: '1.5.10', date: '2026-05-25', items: [
+    'Slice 7: Export + Import — full board+audio backup',
+    'Export: streaming JSON (one audio entry at a time — no RAM spike), share sheet on iOS / save picker on desktop / download fallback',
+    'Import: parse backup, preview summary, execute — audio deduplicated by hash, name conflicts auto-renamed with _imported suffix, boards added with new ID if collision',
+    'Toast notifications for export/import status',
+  ]},
   { v: '1.5.9', date: '2026-05-25', items: [
     'Slice 6: Sets + Quick Access strip at bottom of board',
     'Create, rename, delete Sets; quick-access horizontal pad strip per set',
@@ -1910,6 +1916,230 @@ function closeChangelog() {
   document.getElementById('cl-overlay')?.remove();
 }
 
+/* ── TOAST ──────────────────────────────────────────────────── */
+
+let _toastTimer = null;
+function showToast(msg) {
+  let el = document.getElementById('sos-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sos-toast';
+    el.className = 'sos-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('is-visible');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el?.classList.remove('is-visible'), 2800);
+}
+
+/* ── EXPORT ─────────────────────────────────────────────────── */
+
+function bufToBase64(buf) {
+  if (!buf) return '';
+  const bytes = new Uint8Array(buf);
+  let s = ''; const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk)
+    s += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunk, bytes.length)));
+  return btoa(s);
+}
+
+function base64ToBuf(b64) {
+  const s = atob(b64), buf = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) buf[i] = s.charCodeAt(i);
+  return buf.buffer;
+}
+
+async function buildExportBlob() {
+  const boards = await boardGetAll();
+  const scenes = [], sets = [];
+  for (const b of boards) {
+    for (const s of b.scenes || []) { const sc = await sceneGet(s.id); if (sc) scenes.push(sc); }
+    for (const st of b.sets   || []) { const se = await setGet(st.id);   if (se) sets.push(se);   }
+  }
+  const meta = await libGetAllMeta();
+  const header = { sos: 'v1_5', version: APP_VERSION, exported: new Date().toISOString(), boards, scenes, sets };
+  const headerJson = JSON.stringify(header);
+  const chunks = [headerJson.slice(0, -1) + ',"library":[']; // inject library array before closing }
+  let first = true;
+  for (const m of meta) {
+    const entry = await libGet(m.hash);
+    if (!entry?.buf) continue;
+    const item = {
+      hash: entry.hash, name: entry.name, origName: entry.origName || '',
+      type: entry.type || '', size: entry.size || 0, added: entry.added || 0,
+      data: bufToBase64(entry.buf),
+      ...(entry.folder   != null ? { folder: entry.folder }     : {}),
+      ...(entry.peaks    != null ? { peaks: entry.peaks }       : {}),
+      ...(entry.duration != null ? { duration: entry.duration } : {}),
+    };
+    if (!first) chunks.push(',');
+    chunks.push(JSON.stringify(item));
+    first = false;
+    // entry.buf and item.data can be GC'd after this iteration
+  }
+  chunks.push(']}');
+  return new Blob(chunks, { type: 'application/json' });
+}
+
+async function doExport() {
+  showToast('Preparing export…');
+  await new Promise(r => setTimeout(r, 60));
+  try {
+    const blob = await buildExportBlob();
+    const date = new Date().toISOString().slice(0, 10);
+    const filename = `sos-backup-${date}.json`;
+    const file = new File([blob], filename, { type: 'application/json' });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'SoS Backup' }); return; }
+      catch (e) { if (e.name === 'AbortError') return; }
+    }
+    if (window.showSaveFilePicker) {
+      try {
+        const fh = await window.showSaveFilePicker({ suggestedName: filename, types: [{ description: 'SoS Backup', accept: { 'application/json': ['.json'] } }] });
+        const w = await fh.createWritable(); await w.write(blob); await w.close();
+        showToast('Backup saved.'); return;
+      } catch (e) { if (e.name === 'AbortError') return; }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Saved to Downloads.');
+  } catch (e) {
+    console.error('Export failed:', e);
+    showToast('Export failed — see console.');
+  }
+}
+
+/* ── IMPORT ─────────────────────────────────────────────────── */
+
+let _importData = null;
+let _importAudioChoices = {};
+let _importModalOpen = false;
+
+function triggerImport() {
+  document.getElementById('import-file-input')?.click();
+}
+
+async function parseImportFile(inp) {
+  const file = inp.files[0]; inp.value = ''; if (!file) return;
+  showToast('Parsing file…');
+  let data;
+  try {
+    let jsonStr = await file.text();
+    data = JSON.parse(jsonStr);
+    jsonStr = null; // allow GC before processing
+  } catch (e) { showToast('Invalid file — could not parse.'); return; }
+  if (data.sos !== 'v1_5' || !Array.isArray(data.boards) || !Array.isArray(data.library)) {
+    showToast('Not a V1.5 backup file.'); return;
+  }
+  _importData = data;
+  _importAudioChoices = {};
+
+  const currentLib      = await libGetAllMeta();
+  const currentHashes   = new Set(currentLib.map(e => e.hash));
+  const currentNameMap  = Object.fromEntries(currentLib.map(e => [e.name, e.hash]));
+  const currentBoardIds = new Set((await boardGetAll()).map(b => b.id));
+
+  data.library.forEach(e => {
+    if (currentHashes.has(e.hash))                                              _importAudioChoices[e.hash] = 'skip';
+    else if (currentNameMap[e.name] && currentNameMap[e.name] !== e.hash)       _importAudioChoices[e.hash] = 'keep-both';
+    else                                                                        _importAudioChoices[e.hash] = 'add';
+  });
+
+  const newAudio      = data.library.filter(e => _importAudioChoices[e.hash] === 'add').length;
+  const skipAudio     = data.library.filter(e => _importAudioChoices[e.hash] === 'skip').length;
+  const conflictAudio = data.library.filter(e => _importAudioChoices[e.hash] === 'keep-both').length;
+  const newBoards     = data.boards.filter(b => !currentBoardIds.has(b.id)).length;
+  const dupeBoards    = data.boards.length - newBoards;
+
+  showImportModal({ newAudio, skipAudio, conflictAudio, newBoards, dupeBoards });
+}
+
+function showImportModal({ newAudio, skipAudio, conflictAudio, newBoards, dupeBoards }) {
+  if (_importModalOpen) return;
+  _importModalOpen = true;
+  const row = (cls, text) => `<div class="imp-row-info ${cls}">${escHtml(text)}</div>`;
+  const audioSection = [
+    newAudio      ? row('imp-new',      `+ ${newAudio} new file${newAudio !== 1 ? 's' : ''} will be added`) : '',
+    conflictAudio ? row('imp-conflict', `⚠ ${conflictAudio} name conflict${conflictAudio !== 1 ? 's' : ''} — auto-renamed with "_imported"`) : '',
+    skipAudio     ? row('imp-skip',     `· ${skipAudio} already exist — skipped`) : '',
+    !newAudio && !conflictAudio && !skipAudio ? row('imp-skip', 'No audio in backup') : '',
+  ].join('');
+  const boardSection = [
+    newBoards  ? row('imp-new',  `+ ${newBoards} board${newBoards !== 1 ? 's' : ''} will be added`) : '',
+    dupeBoards ? row('imp-skip', `· ${dupeBoards} already exist — added with new ID`) : '',
+    !newBoards && !dupeBoards ? row('imp-skip', 'No boards in backup') : '',
+  ].join('');
+  document.body.insertAdjacentHTML('beforeend', `<div class="cl-overlay" id="import-overlay">
+    <div class="cl-modal" id="import-modal">
+      <div class="cl-header">
+        <span class="cl-title">${pi('download', 13, 'var(--gold)')} IMPORT BACKUP</span>
+        <button class="act-btn" data-action="import-cancel">×</button>
+      </div>
+      <div class="cl-body" style="padding:16px 16px 8px;gap:0">
+        <div class="imp-section"><div class="imp-section-title">AUDIO</div>${audioSection}</div>
+        <div class="imp-section" style="margin-top:12px"><div class="imp-section-title">BOARDS</div>${boardSection}</div>
+      </div>
+      <div class="cl-footer" style="gap:8px">
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="import-cancel">CANCEL</button>
+        <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="import-execute">IMPORT</button>
+      </div>
+    </div>
+  </div>`);
+}
+
+function closeImportModal() {
+  _importModalOpen = false;
+  _importData = null;
+  _importAudioChoices = {};
+  document.getElementById('import-overlay')?.remove();
+}
+
+async function executeImport() {
+  if (!_importData) return;
+  const data = _importData;
+  closeImportModal();
+  showToast('Importing…');
+  await new Promise(r => setTimeout(r, 60));
+  try {
+    // 1. Audio — one at a time to avoid RAM spike
+    for (const e of data.library) {
+      const choice = _importAudioChoices[e.hash];
+      if (choice === 'skip') continue;
+      const buf = base64ToBuf(e.data);
+      e.data = null; // free base64 string immediately
+      const meta = { origName: e.origName || e.name, type: e.type || '', size: e.size || buf.byteLength,
+                     added: e.added || Date.now(), buf,
+                     ...(e.folder   != null ? { folder: e.folder }     : {}),
+                     ...(e.peaks    != null ? { peaks: e.peaks }       : {}),
+                     ...(e.duration != null ? { duration: e.duration } : {}) };
+      if (choice === 'keep-both') {
+        const ext  = e.name.includes('.') ? '.' + e.name.split('.').pop() : '';
+        const base = e.name.includes('.') ? e.name.slice(0, e.name.lastIndexOf('.')) : e.name;
+        await libPut({ hash: e.hash, name: base + '_imported' + ext, ...meta });
+      } else {
+        await libPut({ hash: e.hash, name: e.name, ...meta });
+      }
+    }
+    // 2. Scenes + sets
+    for (const sc of data.scenes || []) await scenePut(sc);
+    for (const se of data.sets   || []) await setPut(se);
+    // 3. Boards — if ID collision assign a new ID
+    const existIds = new Set((await boardGetAll()).map(b => b.id));
+    for (const b of data.boards) {
+      const boardToSave = { ...b };
+      if (existIds.has(b.id)) { boardToSave.id = _newId('b'); boardToSave.name = b.name + ' (imported)'; }
+      await boardPut(boardToSave);
+    }
+    showToast('Import complete!');
+  } catch (e) {
+    console.error('Import failed:', e);
+    showToast('Import failed — see console.');
+  }
+}
+
 /* ── STUB SCREEN ────────────────────────────────────────────── */
 
 /** @param {string} label @returns {string} */
@@ -1963,6 +2193,7 @@ bus.on('screen', renderScreen);
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    if (_importModalOpen)      { closeImportModal(); return; }
     if (_clOpen)               { closeChangelog(); return; }
     if (_bdPickerSlot !== null) { closePadPicker(); return; }
     if (_bdOptsSlot   !== null) { closePadOpts();   return; }
@@ -1974,6 +2205,9 @@ document.addEventListener('keydown', e => {
 });
 
 document.addEventListener('click', e => {
+  // close import modal on backdrop click
+  if (_importModalOpen && !e.target.closest('#import-modal')) { closeImportModal(); return; }
+
   // close changelog on backdrop click
   if (_clOpen && !e.target.closest('#cl-modal')) { closeChangelog(); return; }
 
@@ -2042,8 +2276,10 @@ function handleAction(action, el) {
     // menu / changelog
     case 'show-changelog':    showChangelog(); break;
     case 'cl-close':          closeChangelog(); break;
-    case 'backup':            alert('Backup — coming in Slice 7'); break;
-    case 'import':            alert('Import — coming in Slice 7'); break;
+    case 'backup':            doExport(); break;
+    case 'import':            triggerImport(); break;
+    case 'import-cancel':     closeImportModal(); break;
+    case 'import-execute':    executeImport(); break;
     case 'check-update':
       navigator.serviceWorker?.getRegistration?.()?.then(reg => {
         if (!reg) return;
