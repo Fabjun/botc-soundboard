@@ -1,8 +1,15 @@
 'use strict';
 
-const APP_VERSION = '1.5.7';
+const APP_VERSION = '1.5.8';
 
 const CHANGELOG = [
+  { v: '1.5.8', date: '2026-05-25', items: [
+    'Slice 5: Complete scene model — no more browser prompt() dialogs',
+    'Scene opts bottom sheet: inline name editing, grid-cols picker (2-5), 2-tap delete',
+    'New scene bottom sheet replaces prompt for scene creation',
+    'Board name: inline rename (click name → type → Enter/blur to save)',
+    'Scene switch in GAME mode stops all active audio',
+  ]},
   { v: '1.5.7', date: '2026-05-25', items: [
     'Slice 4: Audio Playback — GAME mode pad taps play/stop audio via audio.js engine',
     'audio.js: LRU buffer cache (150 MB max), in-flight dedup, iOS silent-switch bypass',
@@ -962,10 +969,13 @@ async function handleBlDelete(id) {
 
 /* ── SCREEN: BOARD ───────────────────────────────────────────── */
 
-let _bdBoard      = null;
-let _bdScene      = null;
-let _bdPickerSlot = null;
-let _bdOptsSlot   = null;
+let _bdBoard        = null;
+let _bdScene        = null;
+let _bdPickerSlot   = null;
+let _bdOptsSlot     = null;
+let _bdSceneOptsId  = null;
+let _bdSceneOptsCfm = false;
+let _bdSceneAddOpen = false;
 
 /** @returns {string} */
 function boardHTML() {
@@ -1218,6 +1228,10 @@ async function handleBdSceneSwitch(sceneId) {
   if (!_bdBoard || sceneId === _bdScene?.id) return;
   closePadPicker();
   closePadOpts();
+  closeSceneOpts();
+  closeSceneAdd();
+  audioStopAll(0);
+  document.querySelectorAll('.pad.is-playing').forEach(e => e.classList.remove('is-playing'));
   _bdBoard.activeSceneId = sceneId;
   _bdBoard.updated = Date.now();
   await boardPut(_bdBoard);
@@ -1225,24 +1239,9 @@ async function handleBdSceneSwitch(sceneId) {
   renderBoardUI();
 }
 
-async function handleBdSceneAdd() {
-  if (!_bdBoard) return;
-  const raw  = prompt('Scene name:');
-  const name = (raw || '').trim();
-  if (!name) return;
-  closePadPicker();
-  closePadOpts();
-  _bdScene = await sceneAdd(_bdBoard, name);
-  renderBoardUI();
-}
+async function handleBdSceneAdd() { openSceneAdd(); }
 
-async function handleBdSceneOpts(sceneId) {
-  const s    = _bdBoard?.scenes?.find(x => x.id === sceneId);
-  if (!s) return;
-  const choice = prompt(`"${s.name}"\n1 = Rename   2 = Delete`);
-  if (choice === '1') await handleBdSceneRename(sceneId);
-  else if (choice === '2') await handleBdSceneDelete(sceneId);
-}
+async function handleBdSceneOpts(sceneId) { openSceneOpts(sceneId); }
 
 async function handleBdSceneRename(sceneId) {
   const s    = _bdBoard?.scenes?.find(x => x.id === sceneId);
@@ -1277,14 +1276,174 @@ async function handleBdSceneDelete(sceneId) {
   renderBoardUI();
 }
 
+/* ── SCENE OPTS BOTTOM SHEET ──────────────────────────────── */
+
+function _sceneOptsHTML(sceneId) {
+  const s    = _bdBoard?.scenes?.find(x => x.id === sceneId);
+  if (!s) return '';
+  const cols = (_bdScene?.id === sceneId ? _bdScene.gridCols : null) || s.gridCols || 4;
+  const canDel = (_bdBoard?.scenes || []).length > 1;
+  return `<div class="scene-opts" id="scene-opts">
+    <div class="scene-opts-header">
+      <span class="scene-opts-title">${pi('cog', 12, 'var(--mode-setup)')} SCENE</span>
+      <button class="act-btn" data-action="bd-scene-opts-close">×</button>
+    </div>
+    <div class="scene-opts-body">
+      <div class="scene-opts-row">
+        <label class="scene-opts-label">NAME</label>
+        <input class="scene-opts-input" id="scene-opts-name" type="text"
+               value="${escAttr(s.name)}" maxlength="40" autocomplete="off">
+      </div>
+      <div class="scene-opts-row">
+        <label class="scene-opts-label">GRID</label>
+        <div class="scene-cols-picker">
+          ${[2,3,4,5].map(n =>
+            `<button class="cols-btn${n === cols ? ' is-active' : ''}"
+                     data-action="bd-scene-cols" data-cols="${n}">${n}</button>`
+          ).join('')}
+        </div>
+      </div>
+      <div class="scene-opts-actions">
+        <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="bd-scene-opts-save">SAVE</button>
+        ${canDel
+          ? `<button class="sb-btn sb-btn-sm sb-btn-danger" id="scene-opts-del"
+                     data-action="bd-scene-opts-delete">DELETE</button>`
+          : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function openSceneOpts(sceneId) {
+  closePadPicker();
+  closePadOpts();
+  closeSceneAdd();
+  closeSceneOpts();
+  _bdSceneOptsId  = sceneId;
+  _bdSceneOptsCfm = false;
+  const content = document.getElementById('bd-content');
+  if (!content) return;
+  content.insertAdjacentHTML('beforeend', _sceneOptsHTML(sceneId));
+  document.getElementById('scene-opts-name')?.focus();
+}
+
+function closeSceneOpts() {
+  _bdSceneOptsId  = null;
+  _bdSceneOptsCfm = false;
+  document.getElementById('scene-opts')?.remove();
+}
+
+async function handleSceneOptsSave() {
+  if (!_bdSceneOptsId || !_bdBoard) return;
+  const name = (document.getElementById('scene-opts-name')?.value || '').trim();
+  if (!name) return;
+  const activeBtn = document.querySelector('.cols-btn.is-active');
+  const cols = activeBtn ? +activeBtn.dataset.cols : 4;
+
+  _bdBoard.scenes  = _bdBoard.scenes.map(x => x.id === _bdSceneOptsId ? { ...x, name } : x);
+  _bdBoard.updated = Date.now();
+  await boardPut(_bdBoard);
+
+  const sc = _bdScene?.id === _bdSceneOptsId ? _bdScene : await sceneGet(_bdSceneOptsId);
+  if (sc) {
+    sc.name = name; sc.gridCols = cols;
+    await scenePut(sc);
+    if (_bdScene?.id === _bdSceneOptsId) _bdScene = sc;
+  }
+
+  closeSceneOpts();
+  renderBoardUI();
+}
+
+async function handleSceneOptsDelete() {
+  if (!_bdSceneOptsId) return;
+  const delBtn = document.getElementById('scene-opts-del');
+  if (!_bdSceneOptsCfm) {
+    _bdSceneOptsCfm = true;
+    if (delBtn) { delBtn.textContent = 'CONFIRM?'; delBtn.classList.add('is-confirming'); }
+    return;
+  }
+  const id = _bdSceneOptsId;
+  closeSceneOpts();
+  await handleBdSceneDelete(id);
+}
+
+function handleSceneCols(cols) {
+  document.querySelectorAll('.cols-btn').forEach(btn =>
+    btn.classList.toggle('is-active', +btn.dataset.cols === +cols));
+}
+
+/* ── SCENE ADD BOTTOM SHEET ───────────────────────────────── */
+
+function openSceneAdd() {
+  if (!_bdBoard) return;
+  closePadPicker();
+  closePadOpts();
+  closeSceneOpts();
+  closeSceneAdd();
+  _bdSceneAddOpen = true;
+  const content = document.getElementById('bd-content');
+  if (!content) return;
+  content.insertAdjacentHTML('beforeend', `
+    <div class="scene-opts scene-add-sheet" id="scene-add-sheet">
+      <div class="scene-opts-header">
+        <span class="scene-opts-title">${pi('cog', 12, 'var(--mode-setup)')} NEW SCENE</span>
+        <button class="act-btn" data-action="bd-scene-add-close">×</button>
+      </div>
+      <div class="scene-opts-body">
+        <div class="scene-opts-row">
+          <label class="scene-opts-label">NAME</label>
+          <input class="scene-opts-input" id="scene-add-name" type="text"
+                 placeholder="Scene name" maxlength="40" autocomplete="off">
+        </div>
+        <div class="scene-opts-actions">
+          <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="bd-scene-add-confirm">CREATE</button>
+        </div>
+      </div>
+    </div>
+  `);
+  document.getElementById('scene-add-name')?.focus();
+}
+
+function closeSceneAdd() {
+  _bdSceneAddOpen = false;
+  document.getElementById('scene-add-sheet')?.remove();
+}
+
+async function handleSceneAddConfirm() {
+  const name = (document.getElementById('scene-add-name')?.value || '').trim();
+  if (!name) return;
+  closeSceneAdd();
+  _bdScene = await sceneAdd(_bdBoard, name);
+  renderBoardUI();
+}
+
+function renderTopBar() {
+  const el = document.querySelector('.bd-top-bar');
+  if (!el || !_bdBoard) return;
+  const isSetup = S.boardMode === 'setup';
+  const isGame  = S.boardMode === 'game';
+  el.innerHTML = `
+    <button class="bd-back-btn" data-target="board-list">${pi('rune', 15, 'currentColor')}<span>BOARDS</span></button>
+    <div class="bd-title-area">
+      <span class="bd-board-name" id="bd-board-name" data-action="bd-rename-board" title="Tap to rename">${escHtml(_bdBoard.name)}</span>
+    </div>
+    ${isGame ? `<button class="bd-stop-all-btn" data-action="bd-stop-all" title="Stop all sounds">■ STOP ALL</button>` : ''}
+    <div class="bd-mode-toggle">
+      <button class="bd-mode-btn${isSetup ? ' is-active' : ''}" data-action="bd-mode" data-mode="setup">SETUP</button>
+      <button class="bd-mode-btn${isGame  ? ' is-active' : ''}" data-action="bd-mode" data-mode="game">GAME</button>
+    </div>`;
+}
+
 async function handleBdMode(mode) {
   set.boardMode(mode);
-  document.querySelectorAll('.bd-mode-btn').forEach(btn =>
-    btn.classList.toggle('is-active', btn.dataset.mode === mode));
   const sMode = document.getElementById('bd-status-mode');
   if (sMode) { sMode.textContent = mode.toUpperCase(); sMode.style.color = `var(--mode-${mode})`; }
   closePadPicker();
   closePadOpts();
+  closeSceneOpts();
+  closeSceneAdd();
+  renderTopBar();
   renderSceneBar();
   renderPadGrid();
 }
@@ -1313,18 +1472,46 @@ async function handleBdPadTap(slot) {
   }
 }
 
-async function handleBdRenameBoard() {
+function handleBdRenameBoard() {
   if (!_bdBoard) return;
-  const raw  = prompt('Board name:', _bdBoard.name);
-  const name = (raw || '').trim();
-  if (!name || name === _bdBoard.name) return;
-  _bdBoard.name    = name;
-  _bdBoard.updated = Date.now();
-  await boardPut(_bdBoard);
-  const nameEl = document.getElementById('bd-board-name');
-  if (nameEl) nameEl.textContent = name;
-  const sName = document.getElementById('bd-status-name');
-  if (sName) sName.textContent = name;
+  const span = document.getElementById('bd-board-name');
+  if (!span || document.getElementById('bd-board-name-input')) return; // already editing
+
+  const prev = _bdBoard.name;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id   = 'bd-board-name-input';
+  input.className = 'bd-board-name-input';
+  input.value = prev;
+  input.maxLength = 40;
+  input.setAttribute('autocomplete', 'off');
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const commit = async () => {
+    const name = input.value.trim() || prev;
+    if (name !== prev) {
+      _bdBoard.name    = name;
+      _bdBoard.updated = Date.now();
+      await boardPut(_bdBoard);
+    }
+    const newSpan = document.createElement('span');
+    newSpan.id          = 'bd-board-name';
+    newSpan.className   = 'bd-board-name';
+    newSpan.dataset.action = 'bd-rename-board';
+    newSpan.title       = 'Tap to rename';
+    newSpan.textContent = _bdBoard.name;
+    input.replaceWith(newSpan);
+    const sName = document.getElementById('bd-status-name');
+    if (sName) sName.textContent = _bdBoard.name;
+  };
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.value = prev; input.blur(); }
+  });
+  input.addEventListener('blur', commit, { once: true });
 }
 
 /* ── CHANGELOG MODAL ────────────────────────────────────────── */
@@ -1419,9 +1606,11 @@ bus.on('screen', renderScreen);
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    if (_clOpen)          { closeChangelog(); return; }
+    if (_clOpen)               { closeChangelog(); return; }
     if (_bdPickerSlot !== null) { closePadPicker(); return; }
     if (_bdOptsSlot   !== null) { closePadOpts();   return; }
+    if (_bdSceneOptsId !== null){ closeSceneOpts(); return; }
+    if (_bdSceneAddOpen)        { closeSceneAdd();  return; }
   }
 });
 
@@ -1456,6 +1645,18 @@ document.addEventListener('click', e => {
   // close pad opts when clicking outside it (but not on the pad itself)
   if (_bdOptsSlot !== null && !e.target.closest('#pad-opts') && !e.target.closest(`[data-pad-slot="${_bdOptsSlot}"]`)) {
     closePadOpts();
+    return;
+  }
+
+  // close scene opts when clicking outside it (but not on the ⋯ button)
+  if (_bdSceneOptsId !== null && !e.target.closest('#scene-opts') && !e.target.closest('.bd-scene-opts-btn')) {
+    closeSceneOpts();
+    return;
+  }
+
+  // close scene-add sheet when clicking outside it (but not on the + button)
+  if (_bdSceneAddOpen && !e.target.closest('#scene-add-sheet') && !e.target.closest('.bd-scene-add')) {
+    closeSceneAdd();
     return;
   }
 
@@ -1503,9 +1704,15 @@ function handleAction(action, el) {
 
     // board
     case 'bd-mode':           handleBdMode(el.dataset.mode); break;
-    case 'bd-scene-switch':   handleBdSceneSwitch(el.dataset.sceneId); break;
-    case 'bd-scene-add':      handleBdSceneAdd(); break;
-    case 'bd-scene-opts':     handleBdSceneOpts(el.dataset.sceneId); break;
+    case 'bd-scene-switch':      handleBdSceneSwitch(el.dataset.sceneId); break;
+    case 'bd-scene-add':         handleBdSceneAdd(); break;
+    case 'bd-scene-opts':        handleBdSceneOpts(el.dataset.sceneId); break;
+    case 'bd-scene-opts-close':  closeSceneOpts(); break;
+    case 'bd-scene-opts-save':   handleSceneOptsSave(); break;
+    case 'bd-scene-opts-delete': handleSceneOptsDelete(); break;
+    case 'bd-scene-cols':        handleSceneCols(+el.dataset.cols); break;
+    case 'bd-scene-add-close':   closeSceneAdd(); break;
+    case 'bd-scene-add-confirm': handleSceneAddConfirm(); break;
     case 'bd-pad-tap':        handleBdPadTap(+el.dataset.padSlot); break;
     case 'bd-stop-all':       audioStopAll(0); document.querySelectorAll('.pad.is-playing').forEach(e => e.classList.remove('is-playing')); break;
     case 'bd-rename-board':   handleBdRenameBoard(); break;

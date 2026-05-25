@@ -468,6 +468,42 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
   background:var(--sunk);padding:0 3px;line-height:1.5}
 .pad-add{font-family:var(--font-ui);font-size:22px;color:var(--mode-setup);opacity:.6;line-height:1}
 
+/* scene opts + scene-add bottom sheet */
+.scene-opts{
+  position:absolute;bottom:0;left:0;right:0;
+  background:var(--raised);border-top:2px solid var(--border-strong);
+  padding:14px 14px 20px;z-index:60;display:flex;flex-direction:column;gap:10px}
+.scene-opts-header{
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.scene-opts-title{
+  display:flex;align-items:center;gap:6px;
+  font-family:var(--font-ui);font-size:13px;color:var(--mode-setup);letter-spacing:.06em}
+.scene-opts-body{display:flex;flex-direction:column;gap:10px}
+.scene-opts-row{display:flex;align-items:center;gap:10px}
+.scene-opts-label{
+  font-family:var(--font-mono);font-size:11px;color:var(--text-mute);
+  width:52px;flex-shrink:0}
+.scene-opts-input{
+  flex:1;background:var(--sunk);border:1px solid var(--border);
+  color:var(--text);font-family:var(--font-mono);font-size:13px;
+  padding:5px 8px;outline:none;min-width:0}
+.scene-opts-input:focus{border-color:var(--mode-setup)}
+.scene-cols-picker{display:flex;gap:4px}
+.cols-btn{
+  font-family:var(--font-ui);font-size:13px;padding:4px 12px;cursor:pointer;
+  background:var(--sunk);border:1px solid var(--border-soft);color:var(--text-mute);
+  clip-path:var(--cc);transition:border-color .15s,color .15s,background .15s}
+.cols-btn:hover{border-color:var(--border);color:var(--text-dim)}
+.cols-btn.is-active{border-color:var(--mode-setup);color:var(--mode-setup);background:rgba(109,181,184,.1)}
+.scene-opts-actions{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap}
+.sb-btn-danger.is-confirming{border-color:var(--blood-bright);color:var(--text-strong);background:var(--blood-soft)}
+/* board name inline input */
+.bd-board-name-input{
+  flex:1;min-width:0;max-width:200px;
+  background:var(--sunk);border:1px solid var(--mode-setup);
+  color:var(--text);font-family:var(--font-ui);font-size:13px;
+  padding:3px 8px;outline:none;letter-spacing:.04em}
+
 /* pad picker overlay */
 .pad-picker{
   position:absolute;inset:0;background:var(--deep);z-index:50;
