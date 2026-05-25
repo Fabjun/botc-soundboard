@@ -2374,8 +2374,11 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 173;
+const APP_VERSION = 174;
 const CHANGELOG=[
+  {v:174,date:'2026-05-25',items:[
+    "Flame bug fixes: thaw rate 0.45→0.9 s⁻¹ + grace 1.6→0.8 s (thaw no longer perceived as broken); glitter threshold raised 0.7→0.9 (no premature crystal sparkle during warm→freeze transition); _drawFlame: H=18*cell matches _makeFlame canvas height; halo alpha formula 0.55−c*0.55 zeroes at cold=1 (eliminates bright halo square when frozen); gradient radius W*0.45 stays within canvas (was W*0.7 — leaked past edges); sway Math.round (eliminates sub-pixel grid lines); ctx.translate(sway,cell) offsets body down 1 cell freeing row 0 for tip extension; bY transform uses 17*cell not H so breathe stays relative to body; particles wrapped in ctx.save/translate(0,cell)/restore to share body coordinate space; frost vignette radius W*0.5 (was W*0.7)"
+  ]},
   {v:173,date:'2026-05-25',items:[
     "Desktop Pro-Tool Layout (Phase 10): at ≥900px #sidebar-btn is hidden and the sidebar auto-pins (body:not(.dt-nosidebar) forces translateX(0)); show() toggles body.dt-nosidebar based on SCREEN_CONFIG[id].hasSidebar so sidebar only pins on sp/sli; persistent status bar #sp-bar at bottom of #sp (display:flex at ≥900px) shows LIVE/EDIT mode badge (gold/blue), board name, N playing summary, and master volume; _updSpBar() keeps it live — called from chkNP(), applyModeVisuals(), updBoardSubtitle(), setMasterVolume()"
   ]},
@@ -4530,13 +4533,13 @@ function _lerpHexStr(a,b,t){const[r,g,c]=_lerpHexRGB(a,b,t);return`rgb(${r},${g}
 function _flameColor(lay,cold){const w=_WFLAME,c=_CFLAME;return _lerpHexStr(lay===0?w.o:lay===1?w.m:w.c,lay===0?c.o:lay===1?c.m:c.c,cold);}
 
 function _makeFlame(container,cellSz,interactive){
-  const cv=document.createElement('canvas'),W=16*cellSz,H=17*cellSz;
+  const cv=document.createElement('canvas'),W=16*cellSz,H=18*cellSz;
   cv.className='flame-cv';cv.width=W;cv.height=H;
-  cv.style.cssText=`width:${W}px;height:${H}px${interactive?';cursor:pointer':''}`;
+  cv.style.cssText=`width:${W}px;height:${H}px;margin-top:-${cellSz}px${interactive?';cursor:pointer':''}`;
   container.appendChild(cv);
   const s={cv,ctx:cv.getContext('2d'),cell:cellSz,cold:0,time:0,raf:null,
     parts:[],glitter:[],lick:{side:0,until:0},lastTap:performance.now()-9000,
-    thaw:1.6,glT:0,interactive,targetCold:null,_last:null};
+    thaw:0.8,glT:0,interactive,targetCold:null,_last:null};
   if(interactive) cv.addEventListener('click',e=>{e.stopPropagation();_flameTap(s);});
   const tick=now=>{_flameTick(s,now);s.raf=requestAnimationFrame(tick);};
   s.raf=requestAnimationFrame(tick);
@@ -4550,7 +4553,7 @@ function _flameTick(s,now){
     const d=s.targetCold-s.cold;
     s.cold=Math.abs(d)<0.005?s.targetCold:s.cold+d*Math.min(1,dt*1.8);
   } else if((now-s.lastTap)/1000>s.thaw&&s.cold>0){
-    s.cold=Math.max(0,s.cold-dt*0.45);
+    s.cold=Math.max(0,s.cold-dt*0.9);
   }
   for(let i=s.parts.length-1;i>=0;i--){
     const p=s.parts[i];
@@ -4562,7 +4565,7 @@ function _flameTick(s,now){
   if(s.cold<0.55&&now>s.lick.until&&Math.random()<dt*1.6)
     s.lick={side:Math.random()<.5?-1:1,until:now+80+Math.random()*140};
   s.glT-=dt;
-  if(s.cold>0.7&&s.glT<=0){
+  if(s.cold>0.9&&s.glT<=0){
     s.glT=0.22+Math.random()*.5;
     const[gx,gy]=_FGLITTER[Math.random()*16|0];
     s.glitter.push({x:gx,y:gy,life:.42,mx:.42});
@@ -4587,28 +4590,28 @@ function _flameTap(s){
 function _flameSetMode(s,warm){s.targetCold=warm?0:1;}
 
 function _drawFlame(s){
-  const ctx=s.ctx,c=s.cold,t=s.time,cell=s.cell,W=16*cell,H=17*cell;
+  const ctx=s.ctx,c=s.cold,t=s.time,cell=s.cell,W=16*cell,H=18*cell;
   ctx.clearRect(0,0,W,H);
-  // Halo
+  // Halo — radius W*.45 keeps gradient within canvas; hA zeroes at cold=1 with (0.55-c*0.55)
   const rgb=_lerpHexRGB(c<0.5?'#E8821E':'#9F88E8',c<0.5?'#9F88E8':'#5BAFD8',c<0.5?c*2:(c-.5)*2);
   const flk=Math.max(0,1-c*1.4);
-  const hA=Math.max(0,(0.55-c*.33)*(1+Math.sin(t*3)*.06*flk));
-  const gr=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*.7);
+  const hA=Math.max(0,(0.55-c*0.55)*(1+Math.sin(t*3)*.06*flk));
+  const gr=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*.45);
   gr.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${hA.toFixed(2)})`);
   gr.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=gr;ctx.fillRect(0,0,W,H);
-  // Body sway + breathe
-  const sway=Math.sin(t*1.4)*.4*flk*cell;
+  // Body sway + breathe — rounded sway prevents sub-pixel grid; +cell offset frees row 0 for tip
+  const sway=Math.round(Math.sin(t*1.4)*.4*flk*cell);
   const bY=1+Math.sin(t*2.3)*.03*flk;
   ctx.save();
-  ctx.translate(sway,0);
-  ctx.transform(1,0,0,bY,0,H*(1-bY));
+  ctx.translate(sway,cell);
+  ctx.transform(1,0,0,bY,0,Math.round(17*cell*(1-bY)));
   function px(x,y,lay,a){ctx.globalAlpha=a===undefined?1:a;ctx.fillStyle=_flameColor(lay,c);ctx.fillRect(x*cell,y*cell,cell,cell);}
   // Body
   for(let i=0;i<_FBODY.length;i+=3)px(_FBODY[i],_FBODY[i+1],_FBODY[i+2]);
   // Heart pulse
   if(c<0.85){ctx.globalAlpha=(.7+.3*Math.sin(t*4)*flk)*(1-c);ctx.fillStyle=_lerpHexStr(_WFLAME.h,_CFLAME.h,c);ctx.fillRect(7*cell,9*cell,2*cell,2*cell);}ctx.globalAlpha=1;
-  // Tip flicker
+  // Tip flicker — y=-1 maps to canvas row 0 (the extra cell above body)
   const tFr=Math.floor(t*12)%16;
   if(c<0.88){
     for(let i=0;i<_FTIP.length;i+=3){const x=_FTIP[i],y=_FTIP[i+1],l=_FTIP[i+2];if(((tFr*11+(i/3|0)*17)%13)/13<(y===0?.4:.6)+flk*.4)px(x,y,l);}
@@ -4628,7 +4631,8 @@ function _drawFlame(s){
   // Frozen glitter
   s.glitter.forEach(g=>{ctx.globalAlpha=1-Math.abs(g.life/g.mx-.5)*2;ctx.fillStyle='#FFFFFF';ctx.fillRect(g.x*cell,g.y*cell,cell,cell);});ctx.globalAlpha=1;
   ctx.restore();
-  // Particles (fly free of body transform)
+  // Particles — offset by +cell so they share the body's coordinate space
+  ctx.save();ctx.translate(0,cell);
   s.parts.forEach(p=>{
     const pt=Math.max(0,p.life/p.mx);
     if(p.k==='s'){
@@ -4644,10 +4648,11 @@ function _drawFlame(s){
       ctx.restore();
     }
   });
+  ctx.restore();
   ctx.globalAlpha=1;
-  // Frost vignette
+  // Frost vignette — radius W*.5 ensures gradient reaches canvas edges cleanly
   if(c>0.3){
-    const fv=(c-.3)*.18,fg=ctx.createRadialGradient(W/2,H/2,W*.25,W/2,H/2,W*.7);
+    const fv=(c-.3)*.18,fg=ctx.createRadialGradient(W/2,H/2,W*.25,W/2,H/2,W*.5);
     fg.addColorStop(0,'rgba(0,0,0,0)');fg.addColorStop(1,`rgba(155,210,235,${fv})`);
     ctx.fillStyle=fg;ctx.fillRect(0,0,W,H);
   }
