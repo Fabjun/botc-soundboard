@@ -2,7 +2,8 @@
 // Audio engine — V1.5. Ported from V1.
 // Depends on: libGet(hash) from app.js (must be loaded after audio.js).
 
-let ctx = null;
+let ctx        = null;
+let masterGain = null;
 let _ctxInitDone = false;
 
 const LRU_BUF_MAX_BYTES = 150 * 1024 * 1024;
@@ -45,6 +46,21 @@ function _initCtx() {
   sil.setAttribute('playsinline', '');
   sil.play().catch(() => {});
   ctx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = ctx.createGain();
+  masterGain.gain.value = Math.max(0, Math.min(1, +(localStorage.getItem('sos-master-vol') ?? 100) / 100));
+  masterGain.connect(ctx.destination);
+}
+
+/** @param {number} v 0–100 */
+function setMasterVolume(v) {
+  const clamped = Math.max(0, Math.min(100, v));
+  localStorage.setItem('sos-master-vol', String(clamped));
+  if (masterGain) masterGain.gain.value = clamped / 100;
+}
+
+/** @returns {number} 0–100 */
+function getMasterVolume() {
+  return +(localStorage.getItem('sos-master-vol') ?? 100);
 }
 
 async function _ensureLibBuf(hash) {
@@ -107,7 +123,7 @@ async function audioPlay(padId, hash, opts = {}) {
   const vol = Math.max(0, Math.min(1, volume / 100));
   const g = ctx.createGain();
   fadeInGain(g, vol, fadeIn);
-  g.connect(ctx.destination);
+  g.connect(masterGain || ctx.destination);
   gains[padId] = g;
 
   const s = ctx.createBufferSource();

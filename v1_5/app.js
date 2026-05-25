@@ -1,8 +1,12 @@
 'use strict';
 
-const APP_VERSION = '1.5.13';
+const APP_VERSION = '1.5.14';
 
 const CHANGELOG = [
+  { v: '1.5.14', date: '2026-05-25', items: [
+    'Master volume: live slider in Settings, applied via masterGain node in audio engine',
+    'Persisted to localStorage; applied at AudioContext init so the engine always starts at the saved level',
+  ]},
   { v: '1.5.13', date: '2026-05-25', items: [
     'Wake lock: keep screen on during game sessions (toggle in Settings)',
     'Start mode: board can open directly in GAME mode (setting: SETUP / GAME / REMEMBER)',
@@ -2263,6 +2267,7 @@ function settingsHTML() {
   const wakeLock    = localStorage.getItem('sos-wake-lock')     === '1';
   const autoStop    = localStorage.getItem('sos-auto-stop')     === '1';
   const autoStopMin = localStorage.getItem('sos-auto-stop-min') || '30';
+  const masterVol   = localStorage.getItem('sos-master-vol')    ?? '100';
   const themes = [
     { id: '',        label: 'DEFAULT' },
     { id: 'verdant', label: 'VERDANT' },
@@ -2304,6 +2309,12 @@ function settingsHTML() {
 
     <div class="sett-section">
       <div class="sett-title">${pi('keyboard', 12, 'var(--gold)')} SESSION</div>
+      <div class="sett-row">
+        <label class="sett-label">Master volume</label>
+        <input type="range" id="sett-master-vol" class="sett-vol-slider"
+               min="0" max="100" value="${escAttr(masterVol)}" style="flex:1;min-width:60px">
+        <span class="sett-unit" id="sett-master-vol-val" style="min-width:32px;text-align:right">${masterVol}%</span>
+      </div>
       <div class="sett-row">
         <label class="sett-label">Keep screen on</label>
         <div class="sett-btn-group">
@@ -2476,6 +2487,18 @@ function aboutHTML() {
   </div>`;
 }
 
+function mountSettings() {
+  const slider = document.getElementById('sett-master-vol');
+  const valEl  = document.getElementById('sett-master-vol-val');
+  if (slider) {
+    slider.oninput = () => {
+      const v = +slider.value;
+      if (valEl) valEl.textContent = v + '%';
+      setMasterVolume(v);
+    };
+  }
+}
+
 /* ── STUB SCREEN ────────────────────────────────────────────── */
 
 /** @param {string} label @returns {string} */
@@ -2508,6 +2531,7 @@ const SCREEN_MOUNTS = {
   'board-list': mountBoardList,
   board:        mountBoard,
   library:      mountLibrary,
+  settings:     mountSettings,
 };
 
 /* ── RENDER ─────────────────────────────────────────────────── */
