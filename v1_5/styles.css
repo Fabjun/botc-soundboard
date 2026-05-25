@@ -664,3 +664,50 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
 .imp-new{color:var(--mode-setup)}
 .imp-conflict{color:var(--gold)}
 .imp-skip{color:var(--text-mute)}
+
+/* ── SETTINGS SCREEN ─────────────────────────────────────────── */
+.screen-settings{display:flex;flex-direction:column;height:100%}
+.sett-body{
+  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:16px;display:flex;flex-direction:column;gap:16px}
+.sett-section{
+  background:var(--surface);border:1px solid var(--border);
+  clip-path:var(--cc);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.sett-title{
+  display:flex;align-items:center;gap:8px;
+  font-family:var(--font-ui);font-size:15px;color:var(--gold);
+  letter-spacing:.1em;margin-bottom:2px;border-bottom:1px solid var(--border-soft);padding-bottom:8px}
+.sett-row{
+  display:flex;align-items:center;gap:10px;min-height:36px}
+.sett-label{
+  font-family:var(--font-ui);font-size:13px;color:var(--text-dim);
+  letter-spacing:.06em;flex:1}
+.sett-unit{
+  font-family:var(--font-mono);font-size:11px;color:var(--text-mute)}
+.sett-input{width:60px;text-align:right}
+.sett-actions{display:flex;justify-content:flex-end;margin-top:4px}
+.sett-theme-picker{
+  display:flex;flex-wrap:wrap;gap:8px}
+.sett-theme-btn{
+  font-family:var(--font-ui);font-size:14px;letter-spacing:.08em;
+  padding:6px 14px;background:var(--raised);color:var(--text-dim);
+  border:1px solid var(--border);clip-path:var(--cc);cursor:pointer;
+  transition:border-color .15s,color .15s}
+.sett-theme-btn:hover{border-color:var(--border-strong);color:var(--text)}
+.sett-theme-btn.is-active{
+  border-color:var(--gold);color:var(--gold);background:var(--gold-soft)}
+.sett-about{display:flex;flex-direction:column;gap:6px}
+.sett-about-line{
+  font-family:var(--font-mono);font-size:12px;color:var(--text-dim);
+  line-height:1.6;margin:0}
+
+/* ── PAD TYPE PICKER (pad opts sheet) ────────────────────────── */
+.pad-type-picker{display:flex;gap:6px}
+.pad-type-btn{
+  font-family:var(--font-ui);font-size:13px;letter-spacing:.06em;
+  padding:4px 12px;background:var(--raised);color:var(--text-dim);
+  border:1px solid var(--border);clip-path:var(--cc);cursor:pointer;
+  transition:border-color .15s,color .15s}
+.pad-type-btn:hover{border-color:var(--border-strong);color:var(--text)}
+.pad-type-btn.is-active{
+  border-color:var(--mode-setup);color:var(--mode-setup);background:rgba(109,181,184,.12)}

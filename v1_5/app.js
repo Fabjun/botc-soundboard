@@ -1,8 +1,16 @@
 'use strict';
 
-const APP_VERSION = '1.5.10';
+const APP_VERSION = '1.5.11';
 
 const CHANGELOG = [
+  { v: '1.5.11', date: '2026-05-25', items: [
+    'Slice 8: Settings screen — theme picker, new-pad volume/fade defaults, about section',
+    'Pad opts sheet: type selector (SINGLE / LOOP) and volume control',
+    'Fix: new pads defaulted to volume 1 (near-silent) — now reads saved defaults (default 80)',
+    'Hotkeys: GAME mode keydown fires the matching pad (any hotkey, not just NumPad)',
+    'Navigate away from board now stops all audio',
+    'bus.on("theme") wired — theme changes apply immediately without reload',
+  ]},
   { v: '1.5.10', date: '2026-05-25', items: [
     'Slice 7: Export + Import — full board+audio backup',
     'Export: streaming JSON (one audio entry at a time — no RAM spike), share sheet on iOS / save picker on desktop / download fallback',
@@ -186,6 +194,15 @@ function fmtDur(secs) {
 /** @param {string} filename @returns {string} filename without extension */
 function _cleanName(filename) {
   return filename.replace(/\.[^/.]+$/, '');
+}
+
+/** @returns {{volume:number,fadeIn:number,fadeOut:number}} */
+function _defaultPadOpts() {
+  return {
+    volume:  +(localStorage.getItem('sos-def-volume')  ?? 80),
+    fadeIn:  +(localStorage.getItem('sos-def-fadein')  ?? 0),
+    fadeOut: +(localStorage.getItem('sos-def-fadeout') ?? 0),
+  };
 }
 
 /* ── INDEXED DB — LIB ────────────────────────────────────────── */
@@ -514,6 +531,10 @@ function applyTheme(name) {
 
 /** @param {ScreenId} screenId */
 function navigate(screenId) {
+  if (S.screen === 'board' && screenId !== 'board') {
+    audioStopAll(0);
+    document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
+  }
   set.screen(screenId);
 }
 
@@ -1277,7 +1298,7 @@ async function handlePadPick(hash, name) {
     const existing = _bdScene.pads.find(p => p.slot === slot);
     const newPad   = existing
       ? { ...existing, hash, name: existing.name || name }
-      : { id: _newId('p'), slot, type: 'single', name, hash, hotkey: '', volume: 1, fadeIn: 0, fadeOut: 0 };
+      : { id: _newId('p'), slot, type: 'single', name, hash, hotkey: '', ..._defaultPadOpts() };
     _bdScene.pads = existing
       ? _bdScene.pads.map(p => p.slot === slot ? newPad : p)
       : [..._bdScene.pads, newPad];
@@ -1289,7 +1310,7 @@ async function handlePadPick(hash, name) {
     const existing = _bdSet.pads.find(p => p.slot === slot);
     const newPad   = existing
       ? { ...existing, hash, name: existing.name || name }
-      : { id: _newId('p'), slot, type: 'single', name, hash, hotkey: '', volume: 1, fadeIn: 0, fadeOut: 0 };
+      : { id: _newId('p'), slot, type: 'single', name, hash, hotkey: '', ..._defaultPadOpts() };
     _bdSet.pads = existing
       ? _bdSet.pads.map(p => p.slot === slot ? newPad : p)
       : [..._bdSet.pads, newPad];
@@ -1300,18 +1321,27 @@ async function handlePadPick(hash, name) {
 
 /* pad options bottom sheet */
 
-function openPadOpts(slot) {
-  closePadPicker();
-  closePadOpts();
-  const pad = _bdScene?.pads.find(p => p.slot === slot);
-  if (!pad) { openPadPicker(slot); return; }
-  _bdOptsSlot = slot;
-
-  document.getElementById('bd-content')?.insertAdjacentHTML('beforeend', `<div class="pad-opts" id="pad-opts">
+/** @param {Object} pad @returns {string} */
+function _padOptsHTML(pad) {
+  const t   = pad.type || 'single';
+  const vol = pad.volume ?? 80;
+  return `<div class="pad-opts" id="pad-opts">
     <div class="pad-opts-title">${escHtml(pad.name || '—')}</div>
     <div class="pad-opts-row">
       <span class="pad-opts-label">Name</span>
       <input class="audio-name-input" id="pad-opts-name" type="text" value="${escAttr(pad.name || '')}" style="flex:1;min-width:0">
+    </div>
+    <div class="pad-opts-row">
+      <span class="pad-opts-label">Type</span>
+      <div class="pad-type-picker">
+        <button class="pad-type-btn${t === 'single' ? ' is-active' : ''}" data-action="bd-opts-type" data-type="single">SINGLE</button>
+        <button class="pad-type-btn${t === 'loop' ? ' is-active' : ''}" data-action="bd-opts-type" data-type="loop">LOOP ↻</button>
+      </div>
+    </div>
+    <div class="pad-opts-row">
+      <span class="pad-opts-label">Volume</span>
+      <input class="audio-name-input" id="pad-opts-volume" type="number" min="0" max="100" value="${vol}" style="width:60px;text-align:right">
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-mute);margin-left:4px">%</span>
     </div>
     <div class="pad-opts-row">
       <span class="pad-opts-label">Hotkey</span>
@@ -1322,8 +1352,16 @@ function openPadOpts(slot) {
       <button class="sb-btn sb-btn-sm sb-btn-danger" data-action="bd-opts-clear">Clear</button>
       <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="bd-opts-save">Save</button>
     </div>
-  </div>`);
+  </div>`;
+}
 
+function openPadOpts(slot) {
+  closePadPicker();
+  closePadOpts();
+  const pad = _bdScene?.pads.find(p => p.slot === slot);
+  if (!pad) { openPadPicker(slot); return; }
+  _bdOptsSlot = slot;
+  document.getElementById('bd-content')?.insertAdjacentHTML('beforeend', _padOptsHTML(pad));
   document.getElementById('pad-opts-name')?.focus();
 }
 
@@ -1336,13 +1374,15 @@ function closePadOpts() {
 async function handlePadOptsSave() {
   const name   = document.getElementById('pad-opts-name')?.value.trim() || '';
   const hotkey = document.getElementById('pad-opts-hotkey')?.value.trim() || '';
+  const type   = document.querySelector('.pad-type-btn.is-active')?.dataset.type || 'single';
+  const volume = Math.max(0, Math.min(100, +(document.getElementById('pad-opts-volume')?.value ?? 80)));
   if (_bdOptsSlot !== null && _bdScene) {
     const slot = _bdOptsSlot; closePadOpts();
-    _bdScene.pads = _bdScene.pads.map(p => p.slot === slot ? { ...p, name, hotkey } : p);
+    _bdScene.pads = _bdScene.pads.map(p => p.slot === slot ? { ...p, name, hotkey, type, volume } : p);
     await scenePut(_bdScene); renderPadGrid();
   } else if (_bdSetOptsSlot !== null && _bdSet) {
     const slot = _bdSetOptsSlot; closePadOpts();
-    _bdSet.pads = _bdSet.pads.map(p => p.slot === slot ? { ...p, name, hotkey } : p);
+    _bdSet.pads = _bdSet.pads.map(p => p.slot === slot ? { ...p, name, hotkey, type, volume } : p);
     await setPut(_bdSet); renderSetStrip();
   }
 }
@@ -1471,22 +1511,7 @@ function openSetPadOpts(slot) {
   const pad = _bdSet?.pads.find(p => p.slot === slot);
   if (!pad) { openSetPadPicker(slot); return; }
   _bdSetOptsSlot = slot;
-  document.getElementById('bd-content')?.insertAdjacentHTML('beforeend', `<div class="pad-opts" id="pad-opts">
-    <div class="pad-opts-title">${escHtml(pad.name || '—')}</div>
-    <div class="pad-opts-row">
-      <span class="pad-opts-label">Name</span>
-      <input class="audio-name-input" id="pad-opts-name" type="text" value="${escAttr(pad.name || '')}" style="flex:1;min-width:0">
-    </div>
-    <div class="pad-opts-row">
-      <span class="pad-opts-label">Hotkey</span>
-      <input class="audio-name-input" id="pad-opts-hotkey" type="text" value="${escAttr(pad.hotkey || '')}" maxlength="4" style="width:60px">
-    </div>
-    <div class="pad-opts-actions">
-      <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="bd-opts-change">Change Audio</button>
-      <button class="sb-btn sb-btn-sm sb-btn-danger" data-action="bd-opts-clear">Clear</button>
-      <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="bd-opts-save">Save</button>
-    </div>
-  </div>`);
+  document.getElementById('bd-content')?.insertAdjacentHTML('beforeend', _padOptsHTML(pad));
   document.getElementById('pad-opts-name')?.focus();
 }
 
@@ -2140,6 +2165,80 @@ async function executeImport() {
   }
 }
 
+/* ── SCREEN: SETTINGS ───────────────────────────────────────── */
+
+/** @returns {string} */
+function settingsHTML() {
+  const theme      = S.theme || '';
+  const defVol     = localStorage.getItem('sos-def-volume')  ?? '80';
+  const defFadeIn  = localStorage.getItem('sos-def-fadein')  ?? '0';
+  const defFadeOut = localStorage.getItem('sos-def-fadeout') ?? '0';
+  const themes = [
+    { id: '',        label: 'DEFAULT' },
+    { id: 'verdant', label: 'VERDANT' },
+    { id: 'neon',    label: 'NEON'    },
+    { id: 'crimson', label: 'CRIMSON' },
+  ];
+  return `
+  <div class="lib-top-bar">
+    <div class="lib-top-col">
+      <button class="lib-menu-btn" data-target="menu">${pi('scroll', 18, 'currentColor')}<span>MENU</span></button>
+    </div>
+    <div class="lib-top-col lib-top-center">
+      <span class="lib-title">SETTINGS</span>
+    </div>
+    <div class="lib-top-col lib-top-right" style="width:80px"></div>
+  </div>
+  <div class="sett-body">
+
+    <div class="sett-section">
+      <div class="sett-title">${pi('flame', 12, 'var(--gold)')} THEME</div>
+      <div class="sett-theme-picker">
+        ${themes.map(t => `<button class="sett-theme-btn${theme === t.id ? ' is-active' : ''}" data-action="sett-theme" data-theme="${t.id}">${t.label}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="sett-section">
+      <div class="sett-title">${pi('cog', 12, 'var(--gold)')} NEW PAD DEFAULTS</div>
+      <div class="sett-row">
+        <label class="sett-label">Volume</label>
+        <input class="audio-name-input sett-input" id="sett-def-volume" type="number" min="0" max="100" value="${escAttr(defVol)}" style="width:60px;text-align:right">
+        <span class="sett-unit">%</span>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Fade In</label>
+        <input class="audio-name-input sett-input" id="sett-def-fadein" type="number" min="0" max="30" step="0.1" value="${escAttr(defFadeIn)}" style="width:60px;text-align:right">
+        <span class="sett-unit">s</span>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Fade Out</label>
+        <input class="audio-name-input sett-input" id="sett-def-fadeout" type="number" min="0" max="30" step="0.1" value="${escAttr(defFadeOut)}" style="width:60px;text-align:right">
+        <span class="sett-unit">s</span>
+      </div>
+      <div class="sett-actions">
+        <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="sett-defaults-save">SAVE DEFAULTS</button>
+      </div>
+    </div>
+
+    <div class="sett-section">
+      <div class="sett-title">${pi('info', 12, 'var(--gold)')} ABOUT</div>
+      <div class="sett-about">
+        <p class="sett-about-line">Soundboard of Storytelling v ${APP_VERSION}</p>
+        <p class="sett-about-line">A tool for Game-Masters and other creative Creatures.</p>
+        <p class="sett-about-line" style="margin-top:8px">
+          <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="show-changelog">CHANGELOG</button>
+          <button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-left:8px" data-action="check-update">CHECK UPDATES</button>
+        </p>
+      </div>
+    </div>
+
+  </div>
+  <div class="sb-status-bar">
+    <span class="sb-status-section" style="color:var(--gold)">SETTINGS</span>
+    <span class="sb-status-section">v ${APP_VERSION}</span>
+  </div>`;
+}
+
 /* ── STUB SCREEN ────────────────────────────────────────────── */
 
 /** @param {string} label @returns {string} */
@@ -2160,7 +2259,7 @@ const SCREENS = {
   'board-list': boardListHTML,
   board:        boardHTML,
   library:      libraryHTML,
-  settings:     () => stubHTML('SETTINGS'),
+  settings:     settingsHTML,
   tips:         () => stubHTML('TIPS & TRICKS'),
   about:        () => stubHTML('ABOUT'),
 };
@@ -2188,6 +2287,7 @@ function renderScreen(screenId) {
 }
 
 bus.on('screen', renderScreen);
+bus.on('theme', applyTheme);
 
 /* ── EVENT DELEGATION ───────────────────────────────────────── */
 
@@ -2201,6 +2301,28 @@ document.addEventListener('keydown', e => {
     if (_bdSceneAddOpen)        { closeSceneAdd();  return; }
     if (_bdSetOptsId !== null)  { closeSetOpts();   return; }
     if (_bdSetAddOpen)          { closeSetAdd();    return; }
+  }
+  // GAME mode hotkeys
+  if (S.screen === 'board' && S.boardMode === 'game' && !e.target.closest('input,textarea')) {
+    const key = e.key.toUpperCase();
+    if (key.length === 1 || (e.key.startsWith('Numpad') && e.key.length > 6)) {
+      const k = e.key.length === 1 ? key : e.key.replace('Numpad','');
+      const pad = _bdScene?.pads.find(p => p.hotkey?.toUpperCase() === k);
+      if (pad?.hash) {
+        e.preventDefault();
+        const padEl = document.querySelector(`[data-pad-id="${CSS.escape(pad.id)}"]`);
+        if (audioIsPlaying(pad.id)) {
+          audioStop(pad.id, { fade: pad.fadeOut || 0 });
+          padEl?.classList.remove('is-playing');
+        } else {
+          audioPlay(pad.id, pad.hash, {
+            type: pad.type || 'single', volume: pad.volume ?? 80,
+            fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
+          });
+          padEl?.classList.add('is-playing');
+        }
+      }
+    }
   }
 });
 
@@ -2339,6 +2461,27 @@ function handleAction(action, el) {
     case 'bd-opts-save':      handlePadOptsSave(); break;
     case 'bd-opts-clear':     handlePadOptsClear(); break;
     case 'bd-opts-change':    handlePadOptsChange(); break;
+    case 'bd-opts-type':
+      document.querySelectorAll('.pad-type-btn').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.type === el.dataset.type));
+      break;
+
+    // settings
+    case 'sett-theme':
+      set.theme(el.dataset.theme);
+      document.querySelectorAll('.sett-theme-btn').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.theme === el.dataset.theme));
+      break;
+    case 'sett-defaults-save': {
+      const vol     = Math.max(0, Math.min(100, +(document.getElementById('sett-def-volume')?.value  ?? 80)));
+      const fadeIn  = Math.max(0, Math.min(30,  +(document.getElementById('sett-def-fadein')?.value  ?? 0)));
+      const fadeOut = Math.max(0, Math.min(30,  +(document.getElementById('sett-def-fadeout')?.value ?? 0)));
+      localStorage.setItem('sos-def-volume',  String(vol));
+      localStorage.setItem('sos-def-fadein',  String(fadeIn));
+      localStorage.setItem('sos-def-fadeout', String(fadeOut));
+      showToast('Defaults saved.');
+      break;
+    }
   }
 }
 
