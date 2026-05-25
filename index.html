@@ -763,6 +763,25 @@ body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
 .cue-pill:active{background:var(--top,var(--surface))}
 #cue-clear{padding:2px 8px;background:none;border:1px solid var(--border);border-radius:2px;font-family:var(--ff-label);font-size:calc(13px * var(--font-scale));color:var(--text-dim);cursor:pointer;flex-shrink:0;min-height:28px}
 #cue-clear:active{color:var(--blood-bright)}
+/* QUICK ACCESS STRIP */
+#qa-strip{display:none;flex-shrink:0}body.qa-on #qa-strip{display:block}
+.qa-strip{display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--deep);border-top:1px solid var(--gold-dim);border-bottom:1px solid var(--border-soft);min-height:36px}
+.qa-strip__head{font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:var(--gold-dim);letter-spacing:.1em;white-space:nowrap;padding-right:8px;border-right:1px solid var(--border-soft);flex-shrink:0}
+.qa-strip__items{display:flex;gap:5px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+.qa-strip__items::-webkit-scrollbar{display:none}
+.qa-strip__count{font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-mute);white-space:nowrap;flex-shrink:0}
+.qa-item{--qa-color:var(--pad-single);display:inline-flex;align-items:center;gap:4px;padding:2px 7px;background:var(--raised);border:1px solid var(--border);border-left:3px solid var(--qa-color);color:var(--text);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));letter-spacing:.03em;cursor:pointer;white-space:nowrap;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.45));transition:background .1s;min-height:26px;min-width:44px;flex-shrink:0;border-radius:0}
+.qa-item:hover{background:var(--top)}
+.qa-item:active{transform:translate(1px,1px);filter:none}
+.qa-item--once{--qa-color:var(--pad-single)}.qa-item--loop{--qa-color:var(--pad-loop)}
+.qa-item--playlist,.qa-item--chain,.qa-item--random{--qa-color:var(--pad-playlist)}.qa-item--combo{--qa-color:var(--pad-combo)}
+.qa-item--hot{border-left-color:var(--qa-color);filter:drop-shadow(1px 1px 0 rgba(0,0,0,.45)) drop-shadow(0 0 4px var(--qa-color))}
+.qa-item--hot .qa-item__name{color:var(--qa-color)}
+.qa-item__name{max-width:10ch;overflow:hidden;text-overflow:ellipsis}.qa-item__xbd{font-size:.65em;color:var(--text-mute);vertical-align:middle}
+.qa-empty-hint{font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-mute);font-style:italic;padding:2px 4px;flex-shrink:0}
+.ep-pin-btn{background:none;border:1px solid var(--gold-dim);color:var(--gold-dim);font-size:15px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;border-radius:2px;transition:background .1s,color .1s}
+.ep-pin-btn.pinned{background:var(--gold-soft,rgba(212,178,92,.18));border-color:var(--gold);color:var(--gold)}
+.ep-pin-btn:hover{background:var(--gold-soft,rgba(212,178,92,.18))}
 .ssb-search{flex:1;position:relative;min-width:0}
 .ssb-input{width:100%;background:var(--deep);border:1px solid var(--border);color:var(--text);font-family:var(--ff-body);font-size:calc(12px * var(--font-scale));padding:5px 26px 5px 8px;border-radius:2px;outline:none;box-sizing:border-box}
 .ssb-input:focus{border-color:var(--screen-accent-dim)}
@@ -1315,6 +1334,14 @@ body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
         Default pause added to every <b style="color:var(--text)">new</b> combo step. Existing steps keep their own duration. Set to <b style="color:var(--text)">0</b> to skip the pause by default.
       </p>
+    </div>
+    <div class="sg-sub">QUICK ACCESS STRIP</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="qa-on-btn" onclick="setQA(true)">ON</div>
+        <div class="topt" id="qa-off-btn" onclick="setQA(false)">OFF</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">Shows a row of up to 5 pinned PADs visible on every board. Pin a PAD with the ★ button in its edit panel. Tap a chip to play; long-press / right-click to unpin. Cross-board pads are marked ◈.</p>
     </div>
    </div><!-- /.cx -->
   </div>
@@ -1891,6 +1918,7 @@ body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
     <button class="ep-back" onclick="tryCloseEP()">←</button>
     <span class="ep-title" id="ep-t">EDIT SOUND-PAD</span>
     <button class="hint-q" onclick="openHints(['ep'])" title="Hints">?</button>
+    <button id="ep-pin-btn" class="ep-pin-btn" onclick="_togglePinFromEditor()" title="Pin to Quick Access">☆</button>
     <button class="btn-g ep-save-btn" onclick="savePad()">SAVE</button>
   </div>
   <div class="ep-body">
@@ -2064,6 +2092,13 @@ body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
     <span id="cue-lbl">CUE</span>
     <div id="cue-items"></div>
     <button id="cue-clear" onclick="_clearCue()">×</button>
+  </div>
+  <div id="qa-strip">
+    <div class="qa-strip">
+      <div class="qa-strip__head">★ QA</div>
+      <div class="qa-strip__items" id="qa-items"></div>
+      <span class="qa-strip__count" id="qa-count">0/5</span>
+    </div>
   </div>
   <div class="pgrid" id="pgrid"></div>
   <div id="np">
@@ -2266,8 +2301,11 @@ body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 168;
+const APP_VERSION = 169;
 const CHANGELOG=[
+  {v:169,date:'2026-05-25',items:[
+    "Quick Access Strip (Phase 6): toggleable in Settings → CONTROLS → QUICK ACCESS STRIP (default OFF); body.qa-on shows #qa-strip above #pgrid; ★ QA header, type-colored .qa-item chips (up to 5), count badge; pin a PAD via ★ button in PAD editor header; right-click/long-press chip to unpin; ◈ marker on cross-board pads; cross-board once/loop playback via _playQACrossBoard using _qaXSrcs tracking; _stopAllQAX() called from stopAll() and fadeOutAll(); chkNP() checks _qaXSrcs too; _syncQAPad() updates QA data when a pinned pad is saved; _loadQA/_saveQA use localStorage 'quick-access'; qa-on + quick-access added to SETTINGS_KEYS"
+  ]},
   {v:168,date:'2026-05-25',items:[
     "Cue Stack (Phase 5): CUE added as 4th LONG-PRESS ACTION option; long-pressing a PAD in GAME mode queues it (max 3); TAB key fires the next PAD in the queue; visual cue strip above #pgrid shows queued PADs as type-colored pills; tapping a pill plays and removes it immediately; × button clears all; selecting a different lp-action clears the queue; _addToCue/fireCue/clearCue/renderCueStrip/tapCueItem JS functions"
   ]},
@@ -2498,7 +2536,7 @@ const CHANGELOG=[
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
 console.assert(CHANGELOG[0].v===APP_VERSION,'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-cols','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations','master-vol','lp-action','combo-delay','aura','breathing','hearth','embers'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-cols','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations','master-vol','lp-action','combo-delay','aura','breathing','hearth','embers','qa-on','quick-access'];
 // ── DEBUG LOG ──
 let _debugLogEnabled = localStorage.getItem('debug-log') === '1';
 const _DEBUG_LOG_MAX = 200;
@@ -2557,6 +2595,7 @@ let pads = [];
 let currentBoardId = null, currentBoardName = '';
 let ctx = null, db = null, masterGain = null, analyser = null, analyserData = null;
 let bufs = {}, srcs = {}, gains = {}, padAnalysers = {};
+let _qaData = [], _qaXSrcs = {};
 let _playStack = []; // LIFO: last activated pad id is at the end
 function _onPadStarted(id){ _playStack=_playStack.filter(x=>x!==id); _playStack.push(id); }
 function _onPadStopped(id){ _playStack=_playStack.filter(x=>x!==id); }
@@ -3563,6 +3602,7 @@ function unlock(){
   _initLongPressUI();
   _initComboDelayUI();
   _initMasterVolumeUI();
+  _initQAUI();
   _boardSsbUpdateSortUI();
   openDB().then(load).then(async ()=>{
     await migrateToLibrary();
@@ -3966,6 +4006,7 @@ function fadeOutAll(fadeTime) {
       _detachPadAnalyser(pid);
       updBtn(pid, false);
     });
+    _stopAllQAX();
     chkNP();
   }, (fadeTime * 1000) + 50);
 }
@@ -4060,6 +4101,7 @@ function stopAll(exceptComboId = null, isFade = false){
       stopCombo(+id);
     });
     _playStack=[];
+    _stopAllQAX();
     chkNP();
   }
 }
@@ -4112,6 +4154,146 @@ function _tapCueItem(i){
   _renderCueStrip();
 }
 
+// ── QUICK ACCESS STRIP ──
+const QA_MAX=5;
+function _loadQA(){ try{_qaData=JSON.parse(localStorage.getItem('quick-access')||'[]');}catch(e){_qaData=[];} if(!Array.isArray(_qaData))_qaData=[]; }
+function _saveQA(){ localStorage.setItem('quick-access',JSON.stringify(_qaData)); }
+
+function setQA(on){
+  localStorage.setItem('qa-on',on?'1':'0');
+  document.body.classList.toggle('qa-on',on);
+  document.getElementById('qa-on-btn')?.classList.toggle('al',on);
+  document.getElementById('qa-off-btn')?.classList.toggle('al',!on);
+}
+function _initQAUI(){
+  const on=(localStorage.getItem('qa-on')||'0')==='1';
+  setQA(on);
+  _loadQA();
+  _renderQAStrip();
+}
+
+function _renderQAStrip(){
+  const container=document.getElementById('qa-items');
+  const countEl=document.getElementById('qa-count');
+  if(!container) return;
+  if(!_qaData.length){
+    container.innerHTML='<span class="qa-empty-hint">pin pads via ★ in editor</span>';
+    if(countEl) countEl.textContent=`0/${QA_MAX}`;
+    return;
+  }
+  container.innerHTML=_qaData.map((e,i)=>{
+    const mode=e.mode||'once';
+    const isHot=e.boardId===currentBoardId?!!(srcs[e.padIdx]):!!(_qaXSrcs[i]);
+    const cls=['qa-item','qa-item--'+mode,isHot?'qa-item--hot':''].filter(Boolean).join(' ');
+    const xbd=e.boardId!==currentBoardId?`<span class="qa-item__xbd" title="From another board">◈</span>`:'';
+    return `<button class="${cls}" onclick="_tapQAItem(${i})" oncontextmenu="_ctxQAItem(event,${i})" title="${escHtml(e.name||'')} · ${mode}${e.boardId!==currentBoardId?' ('+escHtml(e.boardName||'other board')+')':''} · right-click to unpin"><span class="qa-item__name">${escHtml(e.name||'')}</span>${xbd}</button>`;
+  }).join('');
+  if(countEl) countEl.textContent=`${_qaData.length}/${QA_MAX}`;
+}
+
+function _tapQAItem(i){
+  const e=_qaData[i]; if(!e) return;
+  if(e.boardId===currentBoardId){ play(e.padIdx); }
+  else { _playQACrossBoard(e,i); }
+  _renderQAStrip();
+}
+function _ctxQAItem(ev,i){ ev.preventDefault(); _unpinQAAt(i); }
+
+async function _playQACrossBoard(entry,qaIdx){
+  const mode=entry.mode||'once';
+  if(_qaXSrcs[qaIdx]){
+    const {source,gain}=_qaXSrcs[qaIdx];
+    try{source.onended=null;source.stop();}catch(e){}
+    try{gain.disconnect();}catch(e){}
+    delete _qaXSrcs[qaIdx];
+    _renderQAStrip(); chkNP(); return;
+  }
+  if(mode==='combo'||mode==='playlist'||mode==='chain'||mode==='random'){
+    showToast('Cross-board combos/playlists not supported — switch to that board first.'); return;
+  }
+  const hash=typeof (entry.files||[])[0]==='string'?entry.files[0]:null;
+  if(!hash){ showToast('No audio file in this QA pad.'); return; }
+  if(!ctx) ctx=new(window.AudioContext||window.webkitAudioContext)();
+  if(ctx.state==='suspended') ctx.resume().catch(()=>{});
+  await _ensureLibBuf(hash);
+  const b=libBufs[hash];
+  if(!b){ showToast('Audio not found in library.'); return; }
+  const vol=(entry.volume||80)/100;
+  const g=ctx.createGain(); g.gain.setValueAtTime(vol,ctx.currentTime);
+  const s=ctx.createBufferSource(); s.buffer=b; s.connect(g); g.connect(masterGain);
+  if(mode==='loop'){
+    s.loop=true; s.start(0);
+    _qaXSrcs[qaIdx]={source:s,gain:g};
+    s.onended=()=>{ delete _qaXSrcs[qaIdx]; _renderQAStrip(); chkNP(); };
+    setNP(entry.name); _resetAutoStop(); _renderQAStrip();
+  } else {
+    s.start(0); s.onended=()=>{ s.buffer=null; };
+    setNP(entry.name); _resetAutoStop();
+  }
+}
+
+function _stopAllQAX(){
+  Object.keys(_qaXSrcs).forEach(k=>{
+    const {source,gain}=_qaXSrcs[k];
+    try{source.onended=null;source.stop();}catch(e){}
+    try{gain.disconnect();}catch(e){}
+  });
+  _qaXSrcs={};
+  _renderQAStrip();
+}
+
+function _pinToQA(padIdx){
+  const p=pads[padIdx]; if(!p||!p.name&&!p.files) return;
+  _loadQA();
+  if(_qaData.find(e=>e.boardId===currentBoardId&&e.padIdx===padIdx)){ showToast('Already pinned.'); return; }
+  if(_qaData.length>=QA_MAX){ showToast(`Quick Access is full (${QA_MAX} max). Unpin one first.`); return; }
+  _qaData.push({boardId:currentBoardId,boardName:currentBoardName,padIdx,name:p.name||'PAD '+(padIdx+1),mode:p.mode||'once',files:p.files||[],volume:p.volume||80});
+  _saveQA(); _renderQAStrip();
+  showToast(`"${p.name||'PAD '+(padIdx+1)}" pinned to Quick Access.`);
+}
+
+function _unpinQAAt(i){
+  _loadQA();
+  if(i<0||i>=_qaData.length) return;
+  const name=_qaData[i].name||'PAD';
+  if(_qaXSrcs[i]){
+    try{_qaXSrcs[i].source.onended=null;_qaXSrcs[i].source.stop();}catch(e){}
+    try{_qaXSrcs[i].gain.disconnect();}catch(e){}
+  }
+  // After splice, keys in _qaXSrcs shift — clear all to avoid stale references
+  _qaXSrcs={};
+  _qaData.splice(i,1);
+  _saveQA(); _renderQAStrip();
+  showToast(`"${name}" unpinned from Quick Access.`);
+}
+
+function _togglePinFromEditor(){
+  if(eId==null) return;
+  _loadQA();
+  const idx=_qaData.findIndex(e=>e.boardId===currentBoardId&&e.padIdx===eId);
+  if(idx>=0){ _unpinQAAt(idx); }
+  else { _pinToQA(eId); }
+  _updEPPinBtn();
+}
+function _updEPPinBtn(){
+  _loadQA();
+  const pinned=_qaData.findIndex(e=>e.boardId===currentBoardId&&e.padIdx===eId)>=0;
+  const btn=document.getElementById('ep-pin-btn');
+  if(btn){ btn.classList.toggle('pinned',pinned); btn.textContent=pinned?'★':'☆'; }
+}
+
+function _syncQAPad(padIdx,pad){
+  if(!pad) return;
+  _loadQA(); let changed=false;
+  _qaData.forEach((e,i)=>{
+    if(e.boardId===currentBoardId&&e.padIdx===padIdx){
+      _qaData[i]={...e,name:pad.name||e.name,mode:pad.mode||e.mode,files:pad.files||[],volume:pad.volume||80};
+      changed=true;
+    }
+  });
+  if(changed){ _saveQA(); _renderQAStrip(); }
+}
+
 function _getComboDefaultDelay(){ return +(localStorage.getItem('combo-delay')??1); }
 function setComboDefaultDelay(v){
   const clamped=isNaN(v)||v<0?0:Math.min(10,+v);
@@ -4147,7 +4329,7 @@ function updBtn(id,on,loop){
 }
 
 function chkNP(){
-  if(!Object.keys(srcs).length){
+  if(!Object.keys(srcs).length && !Object.keys(_qaXSrcs).length){
     document.getElementById('nptxt').textContent='No sound active';
     document.getElementById('nptxt').style.color='var(--text-dim)';
     const d=document.querySelector('.npdot'); if(d) d.remove();
@@ -5534,7 +5716,7 @@ function updateMenuBackupBtns(){
 const SCREEN_CONFIG = {
   sp:  { title: null,            hasSidebar: true,  accent: 'mode', hints: ['sp'],  onShow: ()=>{ renderBoard(); if(locked) focusKB(); } },
   sa:       { title: 'SETTINGS',    hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{} },
-  'sa-ctrl':  { title: 'CONTROLS',   hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initMasterVolumeUI(); _renderSwitchSoundRow(); _initWakeLockUI(); _initAutoStopUI(); _initLongPressUI(); _initComboDelayUI(); } },
+  'sa-ctrl':  { title: 'CONTROLS',   hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initMasterVolumeUI(); _renderSwitchSoundRow(); _initWakeLockUI(); _initAutoStopUI(); _initLongPressUI(); _initComboDelayUI(); _initQAUI(); } },
   'sa-appear':{ title: 'APPEARANCE', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initThemeSettings(); } },
   'sa-vis':   { title: 'VISUALS',    hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initPadLevelUI(); _initAnimationsUI(); _initAtmosphereUI(); } },
   'sa-keys':  { title: 'KEYBINDING', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initHelpSettings(); } },
@@ -5697,6 +5879,7 @@ function setEnterStopMode(m){ setToptSetting('enter-stop-mode','esm-',['serial',
 function initEnterStopModeUI(){ setEnterStopMode(localStorage.getItem('enter-stop-mode')||'serial'); }
 function renderBoard(){
   if(locked) renderPerf(); else renderSetup();
+  _renderQAStrip();
 }
 
 function setPadIconsVisible(v){
@@ -5924,6 +6107,7 @@ async function openEP(id){
   document.getElementById('ep').classList.add('open');
   document.getElementById('ebk').classList.add('open');
   document.querySelectorAll('#pgrid [data-id]').forEach(c=>c.classList.toggle('ed',+c.dataset.id===id));
+  _updEPPinBtn();
   
   if(p?.files?.length){
     try {
@@ -7073,6 +7257,7 @@ async function doSave(){
     volume:vol,fadeIn,fadeOut,trimStart,trimEnd,files:fileHashes,icons:(eIcons.filter(Boolean).length?eIcons.filter(Boolean):undefined)};
   
   if(bufs[eId]) bufs[eId] = []; // clear cache so next playback reloads freshly saved files on demand
+  _syncQAPad(eId, pads[eId]);
   await save(); closeEP(); renderSetup();
 }
 function delPad(){
