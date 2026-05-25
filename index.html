@@ -250,7 +250,16 @@ input[type=file]{display:none}
 .tip-desc{font-size:calc(12px * var(--font-scale));color:var(--text-dim);line-height:1.5}
 
 #sp{background:var(--night);position:relative;overflow:hidden;padding-top:var(--p-hdr-h)}
-#sa,#sli,#smb,#st,#sab,#sk{padding-top:var(--p-hdr-h)}
+#sa,#sa-ctrl,#sa-appear,#sa-vis,#sa-keys,#sa-data,#sa-dev,#sli,#smb,#st,#sab,#sk{padding-top:var(--p-hdr-h)}
+.sg-back{background:none;border:none;color:var(--text-dim);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));cursor:pointer;padding:12px 0 4px;letter-spacing:.04em;display:flex;align-items:center;gap:5px;-webkit-tap-highlight-color:transparent}
+.sg-back:hover,.sg-back:active{color:var(--screen-accent)}
+.sa-nav-grid{display:flex;flex-direction:column;gap:6px;padding:14px 0}
+.sa-nav-card{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:44px}
+.sa-nav-card:hover,.sa-nav-card:active{border-color:var(--screen-accent);color:var(--screen-accent)}
+.sa-nav-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold-dim);image-rendering:pixelated}
+.sa-nav-card:hover .sa-nav-icon,.sa-nav-card:active .sa-nav-icon{color:var(--screen-accent)}
+.sa-nav-lbl{font-family:var(--ff-label);font-size:calc(15px * var(--font-scale));color:var(--text);letter-spacing:.08em}
+.sa-nav-sub{font-family:var(--ff-body);font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin-top:1px}
 .pbtn.dragging{opacity:0.25}
 .pbtn.drag-insert-before{box-shadow:inset 4px 0 0 var(--mode-accent)!important}
 .pbtn.drag-insert-after{box-shadow:inset -4px 0 0 var(--mode-accent)!important}
@@ -1097,14 +1106,46 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <div id="sa" class="screen">
   <div style="flex:1;overflow-y:auto">
    <div class="cx">
-    <div style="display:flex;flex-direction:column;gap:10px;padding-top:14px;padding-bottom:14px">
-      <div class="mopt" onclick="show('sk')">
-        <div class="mico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(22px * var(--font-scale));height:calc(22px * var(--font-scale));display:block;margin:0 auto"><path d="M3 3h18v2H3zm0 16h18v2H3zM1 5h2v14H1zm20 0h2v14h-2zM3 11h18v2H3zm2-4h6v2H5zm8 0h2v2h-2zm4 0h2v2h-2zM5 13h2v4H5zm4 0h2v4H9zm4 0h2v4h-2zm4 0h2v4h-2z"/></svg></div>
-        <div><div class="mlbl">KEY TEST</div><div class="msub">Identify numpad key codes</div></div>
+    <div class="sa-nav-grid">
+      <div class="sa-nav-card" onclick="show('sa-ctrl')">
+        <div class="sa-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="22" height="22" fill="currentColor" style="image-rendering:pixelated"><path d="M3 2h10v1H3zM2 3h2v1H2zM12 3h2v1H12zM1 4h2v1H1zM5 4h6v1H5zM13 4h2v1H13zM1 5h1v1H1zM14 5h1v1H14zM1 6h1v1H1zM5 6h6v1H5zM14 6h1v1H14zM1 7h1v1H1zM14 7h1v1H14zM1 8h2v1H1zM5 8h6v1H5zM13 8h2v1H13zM1 9h1v1H1zM3 9h1v1H3zM12 9h1v1H12zM14 9h1v1H14zM1 10h2v1H1zM4 10h8v1H4zM13 10h2v1H13zM2 11h2v1H2zM12 11h2v1H12zM3 12h10v1H3z"/></svg></div>
+        <div><div class="sa-nav-lbl">CONTROLS</div><div class="sa-nav-sub">Start mode · enter key · switch sound · auto-stop</div></div>
+      </div>
+      <div class="sa-nav-card" onclick="show('sa-appear')">
+        <div class="sa-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="22" height="22" fill="currentColor" style="image-rendering:pixelated"><path d="M10 0h4v1H10zM9 1h2v1H9zM13 1h2v1H13zM8 2h2v1H8zM12 2h1v1H12zM14 2h2v1H14zM8 3h1v1H8zM11 3h1v1H11zM13 3h1v1H13zM15 3h1v1H15zM7 4h2v1H7zM12 4h1v1H12zM15 4h1v1H15zM7 5h1v1H7zM14 5h2v1H14zM5 6h3v1H5zM13 6h2v1H13zM4 7h2v1H4zM7 7h2v1H7zM11 7h3v1H11zM4 8h1v1H4zM8 8h4v1H8zM3 9h3v1H3zM9 9h1v1H9zM2 10h2v1H2zM6 10h1v1H6zM8 10h2v1H8zM1 11h2v1H1zM6 11h3v1H6zM1 12h1v1H1zM5 12h2v1H5zM1 13h1v1H1zM4 13h2v1H4zM1 14h4v1H1z"/></svg></div>
+        <div><div class="sa-nav-lbl">APPEARANCE</div><div class="sa-nav-sub">Theme · content width · font size · symbol size</div></div>
+      </div>
+      <div class="sa-nav-card" onclick="show('sa-vis')">
+        <div class="sa-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="22" height="22" fill="currentColor" style="image-rendering:pixelated"><path d="M5 2h5v1H5zM3 3h3v1H3zM9 3h3v1H9zM2 4h2v1H2zM11 4h2v1H11zM1 5h2v1H1zM9 5h1v1H9zM12 5h2v1H12zM0 6h2v1H0zM4 6h1v1H4zM10 6h1v1H10zM13 6h2v1H13zM0 7h1v1H0zM3 7h2v1H3zM10 7h2v1H10zM14 7h1v1H14zM0 8h2v1H0zM3 8h3v1H3zM9 8h3v1H9zM13 8h2v1H13zM1 9h2v1H1zM4 9h7v1H4zM12 9h2v1H12zM2 10h2v1H2zM6 10h3v1H6zM11 10h2v1H11zM3 11h3v1H3zM9 11h3v1H9zM5 12h5v1H5z"/></svg></div>
+        <div><div class="sa-nav-lbl">VISUALS</div><div class="sa-nav-sub">PAD level meter · auto-icon assignment</div></div>
+      </div>
+      <div class="sa-nav-card" onclick="show('sa-keys')">
+        <div class="sa-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="22" height="22" fill="currentColor" style="image-rendering:pixelated"><path d="M1 2h13v1H1zM1 3h1v1H1zM4 3h3v1H4zM8 3h3v1H8zM13 3h1v1H13zM1 4h1v1H1zM4 4h3v1H4zM8 4h3v1H8zM13 4h1v1H13zM1 5h1v1H1zM4 5h3v1H4zM8 5h3v1H8zM13 5h1v1H13zM1 6h1v1H1zM4 6h3v1H4zM8 6h3v1H8zM13 6h1v1H13zM1 7h1v1H1zM4 7h3v1H4zM8 7h3v1H8zM13 7h1v1H13zM1 8h1v1H1zM5 8h1v1H5zM9 8h1v1H9zM13 8h1v1H13zM1 9h1v1H1zM5 9h1v1H5zM9 9h1v1H9zM13 9h1v1H13zM1 10h1v1H1zM5 10h1v1H5zM9 10h1v1H9zM13 10h1v1H13zM1 11h1v1H1zM5 11h1v1H5zM9 11h1v1H9zM13 11h1v1H13zM1 12h1v1H1zM5 12h1v1H5zM9 12h1v1H9zM13 12h1v1H13zM1 13h13v1H1z"/></svg></div>
+        <div><div class="sa-nav-lbl">KEYBINDING</div><div class="sa-nav-sub">Help key · keymap display mode and duration</div></div>
+      </div>
+      <div class="sa-nav-card" onclick="show('sa-data')">
+        <div class="sa-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="22" height="22" fill="currentColor" style="image-rendering:pixelated"><path d="M4 1h7v1H4zM2 2h3v1H2zM10 2h3v1H10zM1 3h2v1H1zM12 3h2v1H12zM1 4h1v1H1zM13 4h1v1H13zM1 5h2v1H1zM12 5h2v1H12zM1 6h1v1H1zM3 6h2v1H3zM10 6h2v1H10zM13 6h1v1H13zM1 7h1v1H1zM5 7h5v1H5zM13 7h1v1H13zM1 8h2v1H1zM12 8h2v1H12zM1 9h1v1H1zM3 9h2v1H3zM10 9h2v1H10zM13 9h1v1H13zM1 10h1v1H1zM5 10h5v1H5zM13 10h1v1H13zM1 11h2v1H1zM12 11h2v1H12zM2 12h3v1H2zM10 12h3v1H10zM4 13h7v1H4z"/></svg></div>
+        <div><div class="sa-nav-lbl">DATA</div><div class="sa-nav-sub">Export · import · auto-backup · reset</div></div>
+      </div>
+      <div class="sa-nav-card" onclick="show('sa-dev')">
+        <div class="sa-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="22" height="22" fill="currentColor" style="image-rendering:pixelated"><path d="M1 2h14v1H1zM1 3h1v1H1zM14 3h1v1H14zM1 4h1v1H1zM14 4h1v1H14zM1 5h1v1H1zM3 5h10v1H3zM14 5h1v1H14zM1 6h1v1H1zM3 6h1v1H3zM5 6h8v1H5zM14 6h1v1H14zM1 7h1v1H1zM3 7h2v1H3zM6 7h7v1H6zM14 7h1v1H14zM1 8h1v1H1zM3 8h3v1H3zM7 8h6v1H7zM14 8h1v1H14zM1 9h1v1H1zM3 9h2v1H3zM6 9h7v1H6zM14 9h1v1H14zM1 10h1v1H1zM3 10h1v1H3zM5 10h2v1H5zM8 10h1v1H8zM10 10h1v1H10zM12 10h1v1H12zM14 10h1v1H14zM1 11h1v1H1zM3 11h10v1H3zM14 11h1v1H14zM1 12h1v1H1zM14 12h1v1H14zM1 13h14v1H1z"/></svg></div>
+        <div><div class="sa-nav-lbl">DEVELOPER</div><div class="sa-nav-sub">Debug log · version info</div></div>
+      </div>
+      <div class="sa-nav-card" onclick="show('sk')">
+        <div class="sa-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M3 3h18v2H3zm0 16h18v2H3zM1 5h2v14H1zm20 0h2v14h-2zM3 11h18v2H3zm2-4h6v2H5zm8 0h2v2h-2zm4 0h2v2h-2zM5 13h2v4H5zm4 0h2v4H9zm4 0h2v4h-2zm4 0h2v4h-2z"/></svg></div>
+        <div><div class="sa-nav-lbl">KEY TEST</div><div class="sa-nav-sub">Identify numpad key codes</div></div>
       </div>
     </div>
-    <!-- CONTROLS -->
-    <div class="sg-hdr">CONTROLS</div>
+   </div><!-- /.cx -->
+  </div>
+</div>
+
+<!-- SETTINGS: CONTROLS -->
+<div id="sa-ctrl" class="screen">
+  <div style="flex:1;overflow-y:auto">
+   <div class="cx">
+    <button class="sg-back" onclick="show('sa')">← SETTINGS</button>
+    <div class="sg-hdr" style="margin-top:0;border-top:none;padding-top:4px">START MODE</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="sm-unlocked" onclick="setStartMode('unlocked')">SETUP</div>
@@ -1112,8 +1153,8 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         <div class="topt" id="sm-remember" onclick="setStartMode('remember')">LAST</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        Start mode — <b style="color:var(--text)">SETUP</b> always opens in SETUP mode ·
-        <b style="color:var(--text)">GAME</b> opens directly in GAME mode ·
+        Which mode the app opens in. <b style="color:var(--text)">SETUP</b> always starts in edit mode ·
+        <b style="color:var(--text)">GAME</b> opens directly in locked play mode ·
         <b style="color:var(--text)">LAST</b> remembers the last used mode.
       </p>
     </div>
@@ -1124,17 +1165,19 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         <div class="topt" id="esm-total" onclick="setEnterStopMode('total')">TOTAL</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        Enter key stop mode — <b style="color:var(--text)">SERIAL</b> stops only the most recently activated sound per press (LIFO) ·
+        What happens when Enter is pressed to stop audio. <b style="color:var(--text)">SERIAL</b> stops only the most recently activated sound per press (LIFO stack) ·
         <b style="color:var(--text)">TOTAL</b> stops all sounds at once.
       </p>
     </div>
     <div class="sg-sub">SWITCH SOUND</div>
-    <div class="sec-body" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <button onclick="uploadSwitchSound()" style="background:none;border:1px solid var(--mode-accent-dim);color:var(--mode-accent);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:.04em;padding:6px 12px;border-radius:2px;cursor:pointer;flex-shrink:0">UPLOAD</button>
-      <span id="sw-snd-name" style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">no file</span>
-      <button id="sw-snd-clear" onclick="clearSwitchSound()" style="display:none;background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:4px 9px;border-radius:2px;cursor:pointer;flex-shrink:0">✕</button>
+    <div class="sec-body">
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-bottom:9px;line-height:1.7">Sound played when switching between SETUP and GAME mode. Stored locally, not exported.</p>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button onclick="uploadSwitchSound()" style="background:none;border:1px solid var(--mode-accent-dim);color:var(--mode-accent);font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));letter-spacing:.04em;padding:6px 12px;border-radius:2px;cursor:pointer;flex-shrink:0">UPLOAD</button>
+        <span id="sw-snd-name" style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">no file</span>
+        <button id="sw-snd-clear" onclick="clearSwitchSound()" style="display:none;background:none;border:1px solid var(--blood);color:var(--blood-bright);font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));padding:4px 9px;border-radius:2px;cursor:pointer;flex-shrink:0">✕</button>
+      </div>
     </div>
-
     <div id="wl-row">
       <div class="sg-sub">SCREEN WAKE LOCK</div>
       <div class="sec-body">
@@ -1142,10 +1185,9 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
           <div class="topt" id="wl-on" onclick="setWakeLock(true)">ON</div>
           <div class="topt" id="wl-off" onclick="setWakeLock(false)">OFF</div>
         </div>
-        <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">Prevents the screen from auto-locking in GAME mode — keeps the display on so a Bluetooth numpad keeps working. Does not override a manual screen-off (side button).</p>
+        <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">Prevents the screen from auto-dimming in GAME mode — keeps the display on so a Bluetooth numpad keeps working. Does not override a manual screen-off (side button).</p>
       </div>
     </div>
-
     <div class="sg-sub">AUTO-STOP</div>
     <div class="sec-body">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -1158,53 +1200,26 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
           <span style="font-size:calc(11px * var(--font-scale));color:var(--text-dim)">min</span>
         </div>
       </div>
-      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">Stops all audio after this many minutes without any tap or key press. Timer resets on every interaction and pauses when nothing is playing.</p>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">Stops all audio after this many minutes without any tap or key press. The timer resets on every interaction and pauses automatically when nothing is playing.</p>
     </div>
+   </div><!-- /.cx -->
+  </div>
+</div>
 
-    <!-- KEYBINDING -->
-    <div class="sg-hdr">KEYBINDING</div>
-    <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
-      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:0">Help key — opens the key map overlay in GAME mode. Cannot be assigned to any pad.</p>
-      <input type="text" class="fi" id="help-key-input" placeholder="Press a key…" readonly onkeydown="captureHelpKey(event)">
-      <div id="help-key-warn" style="display:none;color:var(--blood-bright);font-size:calc(11px * var(--font-scale))"></div>
-    </div>
-
-    <!-- INTERFACES -->
-    <div class="sg-hdr">INTERFACES</div>
-    <div class="sg-sub">INFO DENSITY</div>
-    <div class="sec-body">
-      <div class="trow">
-        <div class="topt" id="hd-minimal" onclick="setHelpDensity('minimal')">MINIMAL</div>
-        <div class="topt" id="hd-normal" onclick="setHelpDensity('normal')">NORMAL</div>
-        <div class="topt" id="hd-verbose" onclick="setHelpDensity('verbose')">DETAIL</div>
-      </div>
-      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        Key map overlay — <b style="color:var(--text)">MINIMAL</b> key + name ·
-        <b style="color:var(--text)">NORMAL</b> + playback mode ·
-        <b style="color:var(--text)">DETAIL</b> + file count &amp; active state
-      </p>
-    </div>
-    <div class="sg-sub">DISPLAY DURATION</div>
-    <div class="sec-body">
-      <div class="trow">
-        <div class="topt" id="hdur-toggle" onclick="setHelpDuration('toggle')">UNTIL KEY</div>
-        <div class="topt" id="hdur-5" onclick="setHelpDuration('5')">5 SEC</div>
-        <div class="topt" id="hdur-10" onclick="setHelpDuration('10')">10 SEC</div>
-        <div class="topt" id="hdur-30" onclick="setHelpDuration('30')">30 SEC</div>
-      </div>
-    </div>
-
-    <!-- GRAPHICS -->
-    <div class="sg-hdr">GRAPHICS</div>
-    <div class="sg-sub">THEME</div>
+<!-- SETTINGS: APPEARANCE -->
+<div id="sa-appear" class="screen">
+  <div style="flex:1;overflow-y:auto">
+   <div class="cx">
+    <button class="sg-back" onclick="show('sa')">← SETTINGS</button>
+    <div class="sg-hdr" style="margin-top:0;border-top:none;padding-top:4px">THEME</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="th-retro" onclick="setTheme('retro')">RETRO</div>
         <div class="topt" id="th-modern" onclick="setTheme('modern')">MODERN</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        <b style="color:var(--text)">RETRO</b> — pixel aesthetic with monospace font ·
-        <b style="color:var(--text)">MODERN</b> — elegant dark UI with system font
+        <b style="color:var(--text)">RETRO</b> — pixel aesthetic with monospace fonts, sharp corners ·
+        <b style="color:var(--text)">MODERN</b> — clean dark UI with system font and rounded elements.
       </p>
     </div>
     <div class="sg-sub">CONTENT WIDTH</div>
@@ -1216,14 +1231,15 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         <div class="topt" id="cw-auto" onclick="setContentWidth('auto')">AUTO</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        <b style="color:var(--text)">COMPACT</b> 900px ·
+        Maximum width of the content area. <b style="color:var(--text)">COMPACT</b> 900px ·
         <b style="color:var(--text)">MEDIUM</b> 1100px ·
         <b style="color:var(--text)">WIDE</b> 1400px ·
-        <b style="color:var(--text)">AUTO</b> scales with viewport
+        <b style="color:var(--text)">AUTO</b> scales with the viewport — recommended on mobile.
       </p>
     </div>
     <div class="sg-sub">FONT SIZE</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:10px">
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.7">Scales all UI text proportionally. Does not affect PAD label size (controlled by PAD size).</p>
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);width:20px;text-align:center">A</span>
         <input type="range" id="font-scale-slider" min="0.8" max="1.8" step="0.1" value="1"
@@ -1234,6 +1250,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     </div>
     <div class="sg-sub">SYMBOL SIZE</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:10px">
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.7">Scales decorative symbols and fire animations independently from text.</p>
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:calc(12px * var(--sym-scale));color:var(--text-dim);width:20px;text-align:center">✦</span>
         <input type="range" id="sym-scale-slider" min="0.6" max="2.0" step="0.1" value="1"
@@ -1242,18 +1259,25 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       </div>
       <div style="text-align:center;font-size:calc(11px * var(--font-scale));color:var(--text-dim)" id="sym-scale-label">100%</div>
     </div>
+   </div><!-- /.cx -->
+  </div>
+</div>
 
-    <div class="sg-sub">PAD LEVEL</div>
+<!-- SETTINGS: VISUALS -->
+<div id="sa-vis" class="screen">
+  <div style="flex:1;overflow-y:auto">
+   <div class="cx">
+    <button class="sg-back" onclick="show('sa')">← SETTINGS</button>
+    <div class="sg-hdr" style="margin-top:0;border-top:none;padding-top:4px">PAD LEVEL</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="pl-on" onclick="setPadLevel(true)">ON</div>
         <div class="topt" id="pl-off" onclick="setPadLevel(false)">OFF</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        Live amplitude meter in the background of each playing PAD — individual per sound, not the master mix.
+        Displays a live amplitude meter as a gradient in the background of each playing PAD. Purely visual — one analyser node per active sound, no effect on audio quality.
       </p>
     </div>
-
     <div class="sg-sub">AUTO-ICON</div>
     <div class="sec-body">
       <div class="trow">
@@ -1261,29 +1285,89 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         <div class="topt" id="ai-off" onclick="setAutoIcon(false)">OFF</div>
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
-        When no icon is assigned, automatically picks one by matching the PAD name against all built-in icons. Supports German and English keywords.
+        When no icon is manually assigned, picks one automatically by matching the PAD name against built-in icon keywords. Works with German and English names. Updates whenever the icon library changes.
       </p>
     </div>
+   </div><!-- /.cx -->
+  </div>
+</div>
 
-    <!-- DATA -->
-    <div class="sg-hdr">DATA</div>
+<!-- SETTINGS: KEYBINDING -->
+<div id="sa-keys" class="screen">
+  <div style="flex:1;overflow-y:auto">
+   <div class="cx">
+    <button class="sg-back" onclick="show('sa')">← SETTINGS</button>
+    <div class="sg-hdr" style="margin-top:0;border-top:none;padding-top:4px">HELP KEY</div>
+    <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);line-height:1.6;margin:0">Opens the key map overlay in GAME mode. This key cannot be assigned to a PAD.</p>
+      <input type="text" class="fi" id="help-key-input" placeholder="Press a key…" readonly onkeydown="captureHelpKey(event)">
+      <div id="help-key-warn" style="display:none;color:var(--blood-bright);font-size:calc(11px * var(--font-scale))"></div>
+    </div>
+    <div class="sg-sub">KEYMAP INFO DENSITY</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="hd-minimal" onclick="setHelpDensity('minimal')">MINIMAL</div>
+        <div class="topt" id="hd-normal" onclick="setHelpDensity('normal')">NORMAL</div>
+        <div class="topt" id="hd-verbose" onclick="setHelpDensity('verbose')">DETAIL</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        How much information each entry shows. <b style="color:var(--text)">MINIMAL</b> shows key and name only ·
+        <b style="color:var(--text)">NORMAL</b> adds playback mode ·
+        <b style="color:var(--text)">DETAIL</b> adds file count and active state.
+      </p>
+    </div>
+    <div class="sg-sub">KEYMAP DISPLAY DURATION</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="hdur-toggle" onclick="setHelpDuration('toggle')">UNTIL KEY</div>
+        <div class="topt" id="hdur-5" onclick="setHelpDuration('5')">5 SEC</div>
+        <div class="topt" id="hdur-10" onclick="setHelpDuration('10')">10 SEC</div>
+        <div class="topt" id="hdur-30" onclick="setHelpDuration('30')">30 SEC</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        How long the key map overlay stays visible. <b style="color:var(--text)">UNTIL KEY</b> keeps it open until the help key is pressed again.
+      </p>
+    </div>
+   </div><!-- /.cx -->
+  </div>
+</div>
+
+<!-- SETTINGS: DATA -->
+<div id="sa-data" class="screen">
+  <div style="flex:1;overflow-y:auto">
+   <div class="cx">
+    <button class="sg-back" onclick="show('sa')">← SETTINGS</button>
+    <div class="sg-hdr" style="margin-top:0;border-top:none;padding-top:4px">EXPORT &amp; IMPORT</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
       <button onclick="doExportLibrary()" class="sa-btn sa-pri">⬇ EXPORT LIBRARY</button>
       <p id="export-age" style="font-size:calc(10px * var(--font-scale));margin:0;line-height:1.6"></p>
       <button onclick="triggerImportFile()" class="sa-btn sa-pri">⬆ IMPORT LIBRARY</button>
-      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Export saves all boards, audio files and settings as one file. On iPhone it opens the share sheet. Import merges into existing data — you choose per file and per board.</p>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Saves all boards, audio files, and settings into a single file. On iPhone this opens the share sheet. Import merges into existing data — you confirm each audio file and board individually.</p>
       <p id="export-location-hint" style="display:none;font-size:calc(10px * var(--font-scale));color:var(--gold-dim);margin:0;line-height:1.6">ⓘ To choose the save location: open your browser's download settings and enable <strong style="color:var(--gold)">"Ask where to save each file before downloading"</strong>.</p>
+    </div>
+    <div class="sg-sub">AUTO-BACKUP</div>
+    <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
       <button id="auto-backup-btn" onclick="toggleAutoBackup()" class="sa-btn">AUTO-BACKUP: OFF</button>
       <p id="auto-backup-path" style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6;display:none"></p>
-      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Writes 3 rotating backup files to a folder you choose, every 10 minutes. May not work depending on browser or privacy settings. On iPhone: use Export regularly.</p>
-      <button onclick="doRemigrateAudio()" class="sa-btn" style="margin-top:4px">RE-MIGRATE AUDIO TO LIBRARY</button>
-      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Run if pads lost their sounds after an update.</p>
-      <button onclick="doResetAllData()" class="sa-btn sa-del" style="margin-top:4px">RESET ALL DATA</button>
-      <p style="font-size:calc(10px * var(--font-scale));color:var(--blood-bright);margin:0;line-height:1.6">Deletes all boards, pads, and Library files. Cannot be undone.</p>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Writes 3 rotating backup files to a folder you choose, every 10 minutes. May not work depending on browser or privacy settings. On iPhone: use the manual export instead.</p>
     </div>
-    <!-- DEVELOPER -->
-    <div class="sg-hdr">DEVELOPER</div>
-    <div class="sg-sub">DEBUG LOG</div>
+    <div class="sg-sub">MAINTENANCE</div>
+    <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
+      <button onclick="doRemigrateAudio()" class="sa-btn">RE-MIGRATE AUDIO TO LIBRARY</button>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.6">Run this if PADs lost their sounds after an update. Re-scans all boards and re-links audio hashes.</p>
+      <button onclick="doResetAllData()" class="sa-btn sa-del" style="margin-top:4px">RESET ALL DATA</button>
+      <p style="font-size:calc(10px * var(--font-scale));color:var(--blood-bright);margin:0;line-height:1.6">Permanently deletes all boards, PADs, and Library files. This cannot be undone.</p>
+    </div>
+   </div><!-- /.cx -->
+  </div>
+</div>
+
+<!-- SETTINGS: DEVELOPER -->
+<div id="sa-dev" class="screen">
+  <div style="flex:1;overflow-y:auto">
+   <div class="cx">
+    <button class="sg-back" onclick="show('sa')">← SETTINGS</button>
+    <div class="sg-hdr" style="margin-top:0;border-top:none;padding-top:4px">DEBUG LOG</div>
     <div class="sec-body">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <div class="trow" style="flex-shrink:0">
@@ -1968,8 +2052,12 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 155;
+const APP_VERSION = 156;
 const CHANGELOG=[
+  {v:156,date:'2026-05-25',items:[
+    "Pixel-art group icon: _grpIcon(open,sz) renders a 16×16 SVG folder shape (closed/open variants); replaces ◈ Unicode in all group chips, folder-tree nodes, move-to-group dropdowns, and libCard folder action button (now lca-icon class)",
+    "Settings split into sub-menus: #sa is now a navigation grid with 6 pixel-art icon cards (CONTROLS · APPEARANCE · VISUALS · KEYBINDING · DATA · DEVELOPER + KEY TEST); each sub-screen has a ← SETTINGS back button and its own SCREEN_CONFIG entry with targeted onShow callbacks; all settings content moved with added description texts"
+  ]},
   {v:155,date:'2026-05-25',items:[
     "Library Groups: folder system renamed to Groups throughout UI — sidebar label FOLDERS→GROUPS, ＋NEW FOLDER→＋NEW GROUP, all placeholders, action button tooltip, dropdown options, folder chips now use ◈ icon instead of emoji",
     "New group creation form: name input + ☑ ADD SELECTED (N) toggle (visible when items selected, default on) + ☑ SET AS TARGET toggle (default on) with confirm/cancel buttons; if ADD SELECTED: moves all selected files to new group on creation",
@@ -2706,6 +2794,11 @@ function _updateSidebarPin(hasSidebar){
   if(hasSidebar) renderSidebarContent(cur);
   else document.getElementById('sidebar-btn').style.display='none';
 }
+// ── GROUP ICONS ──
+const _GRP_D_CLOSED="M1 2h7v1H1zM1 3h1v1H1zM7 3h7v1H7zM1 4h1v1H1zM3 4h4v1H3zM13 4h2v1H13zM1 5h1v1H1zM3 5h1v1H3zM6 5h7v1H6zM14 5h1v1H14zM1 6h1v1H1zM3 6h5v1H3zM14 6h1v1H14zM1 7h1v1H1zM14 7h1v1H14zM1 8h1v1H1zM14 8h1v1H14zM1 9h1v1H1zM14 9h1v1H14zM1 10h1v1H1zM14 10h1v1H14zM1 11h1v1H1zM14 11h1v1H14zM1 12h1v1H1zM14 12h1v1H14zM1 13h14v1H1z";
+const _GRP_D_OPEN="M1 2h7v1H1zM1 3h1v1H1zM7 3h7v1H7zM1 4h1v1H1zM3 4h4v1H3zM13 4h2v1H13zM1 5h1v1H1zM3 5h1v1H3zM6 5h7v1H6zM14 5h1v1H14zM1 6h1v1H1zM3 6h1v1H3zM12 6h1v1H12zM14 6h1v1H14zM1 7h1v1H1zM3 7h1v1H3zM12 7h1v1H12zM14 7h1v1H14zM1 8h1v1H1zM3 8h1v1H3zM7 8h6v1H7zM14 8h1v1H14zM1 9h1v1H1zM3 9h5v1H3zM14 9h1v1H14zM1 10h1v1H1zM14 10h1v1H14zM1 11h1v1H1zM14 11h1v1H14zM1 12h1v1H1zM14 12h1v1H14zM1 13h14v1H1z";
+function _grpIcon(open=false,sz=13){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="${sz}" height="${sz}" style="display:inline-block;vertical-align:middle;fill:currentColor;flex-shrink:0;image-rendering:pixelated"><path d="${open?_GRP_D_OPEN:_GRP_D_CLOSED}"/></svg>`;}
+
 // ── FOLDER SYSTEM ──
 function _libFolderTreeHtml(tab, activeFolder, folderList){
   const nodes=folderList.map(name=>{
@@ -2720,7 +2813,7 @@ function _libFolderTreeHtml(tab, activeFolder, folderList){
       </div></div>`;
     }
     return `<div class="fld-node${isAct?' fld-act':''}" onclick="libSetFolder('${tab}',${isAct?'null':ejn})">
-      <span class="fld-node-name">◈ ${escHtml(name)}</span>
+      <span class="fld-node-name">${_grpIcon(isAct)} ${escHtml(name)}</span>
       ${rename}
     </div>`;
   }).join('');
@@ -2834,7 +2927,7 @@ function libFolderDropdown(evt, hash, tab, currentFolder){
   const folders=tab==='audio'?_libAudioFolderList:_libPadsFolderList;
   const opts=[
     ...(currentFolder?[`<div class="fld-dopt" onclick="libMoveToFolder('${hash}','${tab}',null)">— Unfiled</div>`]:[]),
-    ...folders.filter(f=>f!==currentFolder).map(f=>`<div class="fld-dopt" onclick="libMoveToFolder('${hash}','${tab}',${escHtml(JSON.stringify(f))})">◈ ${escHtml(f)}</div>`),
+    ...folders.filter(f=>f!==currentFolder).map(f=>`<div class="fld-dopt" onclick="libMoveToFolder('${hash}','${tab}',${escHtml(JSON.stringify(f))})">${_grpIcon()} ${escHtml(f)}</div>`),
     `<div class="fld-dsep"></div>`,
     `<div class="fld-dopt" onclick="_libDropNewFolder('${hash}','${tab}')">＋ New group…</div>`,
   ].join('');
@@ -2913,7 +3006,7 @@ function _libAudioMoveSelFolder(btn){
   _closeFldDrop();
   const folders=_libAudioFolderList;
   const opts=[
-    ...folders.map(f=>`<div class="fld-dopt" onclick="_libAudioMoveSelToFolder(${escHtml(JSON.stringify(f))})">◈ ${escHtml(f)}</div>`),
+    ...folders.map(f=>`<div class="fld-dopt" onclick="_libAudioMoveSelToFolder(${escHtml(JSON.stringify(f))})">${_grpIcon()} ${escHtml(f)}</div>`),
     `<div class="fld-dsep"></div>`,
     `<div class="fld-dopt" onclick="_libAudioMoveSelNewFolder()">＋ New group…</div>`,
     ...(folders.length?[`<div class="fld-dsep"></div>`,`<div class="fld-dopt" onclick="_libAudioMoveSelToFolder(null)">— Remove from folder</div>`]:[]),
@@ -3046,7 +3139,7 @@ function libCard({nameId,preHtml='',badge=null,nameHtml,nameStyle='',actions=[],
     if(a.type==='pos')  return `<button class="lca-pos" onclick="${a.onclick}">${a.label}</button>`;
     if(a.type==='del')  return `<button class="lca-del" onclick="${a.onclick}">✕</button>`;
     if(a.type==='icon') return `<button class="lca-icon" onclick="${a.onclick}"${a.id?` id="${a.id}"`:''}${a.title?` title="${a.title}"`:''}>${a.label}</button>`;
-    if(a.type==='folder') return `<button class="lca-dim" onclick="${a.onclick}" title="Move to group">◈</button>`;
+    if(a.type==='folder') return `<button class="lca-icon" onclick="${a.onclick}" title="Move to group">${_grpIcon(false,14)}</button>`;
     return '';
   }).join('');
   const subHtml=subLines.map(l=>`<div class="lib-card-sub">${l}</div>`).join('');
@@ -3914,7 +4007,7 @@ function renderLibList(entries,usedHashes){
         <span class="lib-card-sub">· ${escHtml(u.boardName)}</span>
       </div>`).join('');
     const folderChip=e.folder&&!_libAudioFolder
-      ?`<span class="fld-chip" onclick="libSetFolder('audio',${escHtml(JSON.stringify(e.folder))});event.stopPropagation()">◈ ${escHtml(e.folder)}</span>`:'';
+      ?`<span class="fld-chip" onclick="libSetFolder('audio',${escHtml(JSON.stringify(e.folder))});event.stopPropagation()">${_grpIcon()} ${escHtml(e.folder)}</span>`:'';
     const isSel=_libAudioSel.has(h);
     const durChip=e.duration?`<span class="lib-dur">${_fmtTime(e.duration)}</span> · `:'';
     return libCard({
@@ -4170,7 +4263,7 @@ async function renderLibPads(){
           const dateStr=new Date(e.added).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
           const fhT=pd.mode==='combo'?getComboFirstFileHash(pd.steps):(pd.files?.length?pd.files[0]:null);
           const folderChipT=e.folder&&!_libPadsFolder
-            ?`<span class="fld-chip" onclick="libSetFolder('pads',${escHtml(JSON.stringify(e.folder))});event.stopPropagation()">◈ ${escHtml(e.folder)}</span>`:'';
+            ?`<span class="fld-chip" onclick="libSetFolder('pads',${escHtml(JSON.stringify(e.folder))});event.stopPropagation()">${_grpIcon()} ${escHtml(e.folder)}</span>`:'';
           return libCard({
             nameId:`ltnm-${e.hash}`,
             badge:{color:mc, label:ml},
@@ -5079,7 +5172,13 @@ function updateMenuBackupBtns(){
 // ── SCREEN CONFIG — one entry per sub-menu screen ──
 const SCREEN_CONFIG = {
   sp:  { title: null,            hasSidebar: true,  accent: 'mode', hints: ['sp'],  onShow: ()=>{ renderBoard(); if(locked) focusKB(); } },
-  sa:  { title: 'SETTINGS',      hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{ initHelpSettings(); initThemeSettings(); _renderSwitchSoundRow(); _initPadLevelUI(); _initWakeLockUI(); _initAutoStopUI(); _initDebugLogUI(); } },
+  sa:       { title: 'SETTINGS',    hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{} },
+  'sa-ctrl':  { title: 'CONTROLS',   hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _renderSwitchSoundRow(); _initWakeLockUI(); _initAutoStopUI(); } },
+  'sa-appear':{ title: 'APPEARANCE', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initThemeSettings(); } },
+  'sa-vis':   { title: 'VISUALS',    hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initPadLevelUI(); } },
+  'sa-keys':  { title: 'KEYBINDING', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initHelpSettings(); } },
+  'sa-data':  { title: 'DATA',       hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ updateExportAge(); } },
+  'sa-dev':   { title: 'DEVELOPER',  hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initDebugLogUI(); } },
   sli: { title: 'LIBRARY',       hasSidebar: true,  accent: 'gold', hints: ['sli'], onShow: ()=>{ _libSsbUpdateSortUI(); if(libMainTab==='icons') renderLibIcons(); else if(libMainTab==='boards') loadBoardsMeta().then(renderBoardList); else if(libMainTab==='pads') renderLibPads(); else initLibScreen(); } },
   st:  { title: 'TIPS & TRICKS', hasSidebar: false, accent: 'gold', hints: null    },
   sab: { title: 'ABOUT',         hasSidebar: false, accent: 'gold', hints: null    },
