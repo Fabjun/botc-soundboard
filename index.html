@@ -1961,8 +1961,11 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 152;
+const APP_VERSION = 153;
 const CHANGELOG=[
+  {v:153,date:'2026-05-25',items:[
+    "Drag ripple fix: spawnRipple() returns the ripple element; onPadPointerDown stores it in _pendingRipple; when drag threshold (8px) is crossed _pendingRipple is removed before cloneNode so the ghost never inherits a mid-flight ripple; tap path unaffected"
+  ]},
   {v:152,date:'2026-05-25',items:[
     "Search+Sort bar in SETUP/GAME board view: .ssb bar above #pgrid; input filters PADs by name (case-insensitive substring); Sort dropdown: Default | Name A→Z | Name Z→A; sort uses CSS order property so pads[] array is unchanged and drag-reorder still works; sort key persisted in localStorage; count badge shows filtered/total when active; follows mode accent (blue SETUP, gold GAME)"
   ]},
@@ -3655,6 +3658,7 @@ function spawnRipple(padEl, e){
   el.style.cssText=`width:${sz}px;height:${sz}px;left:${x-sz/2}px;top:${y-sz/2}px`;
   padEl.appendChild(el);
   el.addEventListener('animationend',()=>el.remove());
+  return el;
 }
 function triggerModeFlash(){
   const el=document.getElementById('mode-flash');
@@ -6731,9 +6735,10 @@ function reorderPad(fromIdx, toIdx){
   });
   save(); renderBoard();
 }
+let _pendingRipple=null;
 function onPadPointerDown(e, id){
   e.preventDefault();
-  spawnRipple(e.currentTarget, e);
+  _pendingRipple=spawnRipple(e.currentTarget, e);
   dragSrc=id; dragStartX=e.clientX; dragStartY=e.clientY; dragMoved=false;
   if(!locked && pads[id]){
     _qrTimer=setTimeout(()=>{
@@ -6763,6 +6768,7 @@ function onDragMove(e){
     if(_qrTimer){ clearTimeout(_qrTimer); _qrTimer=null; }
     if(_pvTimer){ clearTimeout(_pvTimer); _pvTimer=null; }
     dragMoved=true;
+    if(_pendingRipple){ _pendingRipple.remove(); _pendingRipple=null; }
     const src=document.querySelector(`.pbtn[data-id="${dragSrc}"]`);
     const r=src.getBoundingClientRect();
     dragGhostW=r.width; dragGhostH=r.height;
@@ -6824,6 +6830,7 @@ function onDragEnd(e){
   if(_pvTimer){ clearTimeout(_pvTimer); _pvTimer=null; }
   document.removeEventListener('pointermove', onDragMove);
   document.removeEventListener('pointerup', onDragEnd);
+  _pendingRipple=null;
   if(!dragMoved){
     const id=dragSrc; dragSrc=null;
     if(locked){ if(pads[id]) togglePad(id); }
