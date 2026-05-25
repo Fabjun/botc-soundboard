@@ -64,7 +64,7 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 
 /* UNLOCK */
 #su{overflow-y:auto;background:radial-gradient(ellipse at center,#1a0a2e 0%,var(--night) 70%)}
-.sigil{font-size:calc(80px * var(--sym-scale));animation:fire-flicker 4s ease-in-out infinite,fire-color 5.5s ease-in-out infinite;color:var(--gold);position:relative;display:inline-block;line-height:1;transition:--fire-excite-mix 2s ease;cursor:pointer}
+.sigil{font-size:calc(110px * var(--sym-scale));animation:fire-flicker 15.3s ease-in-out infinite,fire-color 5.5s ease-in-out infinite;color:var(--gold);position:relative;display:inline-block;line-height:1;transition:--fire-excite-mix 2s ease;cursor:pointer}
 .sigil::before,.sigil::after{content:'';position:absolute;width:.06em;height:.06em;border-radius:50%;background:currentColor;filter:blur(.4px);pointer-events:none}
 .sigil::before{top:.1em;left:.42em;animation:sigil-spark-a 1.9s ease-out infinite .5s}
 .sigil::after{top:.15em;right:.32em;animation:sigil-spark-b 2.3s ease-out infinite 1.3s}
@@ -424,34 +424,42 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 
 @keyframes fire-flicker{
-  /* calm */
-  0%   {transform:scaleX(1)     scaleY(1)     skewX(0deg);    filter:brightness(1)    drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .28em rgba(201,168,76,.25))}
-  5%   {transform:scaleX(.998)  scaleY(1.002) skewX(-.2deg);  filter:brightness(1.03) drop-shadow(0 0 .13em currentColor) drop-shadow(0 0 .29em rgba(201,168,76,.27))}
-  12%  {transform:scaleX(1.002) scaleY(.998)  skewX(.3deg);   filter:brightness(.97)  drop-shadow(0 0 .10em currentColor) drop-shadow(0 0 .23em rgba(201,168,76,.22))}
-  /* burst 1 */
-  16%  {transform:scaleX(.95)   scaleY(1.05)  skewX(-2.5deg); filter:brightness(1.32) drop-shadow(0 0 .30em currentColor) drop-shadow(0 0 .60em rgba(255,215,0,.62))}
-  19%  {transform:scaleX(1.05)  scaleY(.95)   skewX(3deg);    filter:brightness(.72)  drop-shadow(0 0 .04em currentColor) drop-shadow(0 0 .09em rgba(201,168,76,.12))}
-  23%  {transform:scaleX(.97)   scaleY(1.03)  skewX(-1.2deg); filter:brightness(1.24) drop-shadow(0 0 .24em currentColor) drop-shadow(0 0 .48em rgba(255,140,0,.52))}
-  26%  {transform:scaleX(1.02)  scaleY(.98)   skewX(1.5deg);  filter:brightness(.88)  drop-shadow(0 0 .08em currentColor) drop-shadow(0 0 .16em rgba(201,168,76,.20))}
-  29%  {transform:scaleX(1)     scaleY(1)     skewX(.4deg);   filter:brightness(1.06) drop-shadow(0 0 .15em currentColor) drop-shadow(0 0 .32em rgba(201,168,76,.30))}
-  /* long calm */
-  38%  {transform:scaleX(1.003) scaleY(.997)  skewX(-.1deg);  filter:brightness(1.01) drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .26em rgba(201,168,76,.24))}
-  46%  {transform:scaleX(.998)  scaleY(1.002) skewX(.2deg);   filter:brightness(.99)  drop-shadow(0 0 .11em currentColor) drop-shadow(0 0 .25em rgba(201,168,76,.23))}
-  /* quick stutter */
-  49%  {transform:scaleX(.975)  scaleY(1.025) skewX(-1.8deg); filter:brightness(1.20) drop-shadow(0 0 .21em currentColor) drop-shadow(0 0 .42em rgba(255,140,0,.48))}
-  52%  {transform:scaleX(1.03)  scaleY(.97)   skewX(2deg);    filter:brightness(.82)  drop-shadow(0 0 .06em currentColor) drop-shadow(0 0 .12em rgba(201,168,76,.16))}
-  55%  {transform:scaleX(.99)   scaleY(1.01)  skewX(-.4deg);  filter:brightness(1.10) drop-shadow(0 0 .16em currentColor) drop-shadow(0 0 .34em rgba(201,168,76,.30))}
-  /* very long calm */
-  64%  {transform:scaleX(1.001) scaleY(.999)  skewX(.1deg);   filter:brightness(1.01) drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .27em rgba(201,168,76,.25))}
-  76%  {transform:scaleX(.999)  scaleY(1.001) skewX(-.15deg); filter:brightness(.985) drop-shadow(0 0 .11em currentColor) drop-shadow(0 0 .24em rgba(201,168,76,.22))}
-  /* strong burst */
-  79%  {transform:scaleX(.93)   scaleY(1.06)  skewX(-3deg);   filter:brightness(1.38) drop-shadow(0 0 .38em currentColor) drop-shadow(0 0 .70em rgba(255,215,0,.68))}
-  81%  {transform:scaleX(1.06)  scaleY(.94)   skewX(3.5deg);  filter:brightness(.68)  drop-shadow(0 0 .03em currentColor) drop-shadow(0 0 .07em rgba(201,168,76,.10))}
-  84%  {transform:scaleX(.96)   scaleY(1.04)  skewX(-2deg);   filter:brightness(1.28) drop-shadow(0 0 .28em currentColor) drop-shadow(0 0 .55em rgba(255,107,53,.58))}
-  87%  {transform:scaleX(1.03)  scaleY(.97)   skewX(2deg);    filter:brightness(.81)  drop-shadow(0 0 .06em currentColor) drop-shadow(0 0 .13em rgba(201,168,76,.18))}
-  90%  {transform:scaleX(.99)   scaleY(1.01)  skewX(-.6deg);  filter:brightness(1.14) drop-shadow(0 0 .18em currentColor) drop-shadow(0 0 .37em rgba(201,168,76,.32))}
-  /* cool down */
-  100% {transform:scaleX(1)     scaleY(1)     skewX(0deg);    filter:brightness(1)    drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .28em rgba(201,168,76,.25))}}
+  0%   {transform:scaleX(1)      scaleY(1)      skewX(0deg);    filter:brightness(1)    drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .28em rgba(201,168,76,.25))}
+  4%   {transform:scaleX(.998)   scaleY(1.002)  skewX(-.3deg);  filter:brightness(1.03) drop-shadow(0 0 .13em currentColor) drop-shadow(0 0 .29em rgba(201,168,76,.26))}
+  8%   {transform:scaleX(1.003)  scaleY(.997)   skewX(.4deg);   filter:brightness(.97)  drop-shadow(0 0 .10em currentColor) drop-shadow(0 0 .24em rgba(201,168,76,.22))}
+  12%  {transform:scaleX(.997)   scaleY(1.003)  skewX(-.5deg);  filter:brightness(1.04) drop-shadow(0 0 .14em currentColor) drop-shadow(0 0 .30em rgba(201,168,76,.27))}
+  /* burst 1 — moderate */
+  16%  {transform:scaleX(.965)   scaleY(1.035)  skewX(-2.2deg); filter:brightness(1.26) drop-shadow(0 0 .24em currentColor) drop-shadow(0 0 .48em rgba(255,180,50,.52))}
+  18%  {transform:scaleX(1.042)  scaleY(.958)   skewX(2.6deg);  filter:brightness(.78)  drop-shadow(0 0 .05em currentColor) drop-shadow(0 0 .11em rgba(201,168,76,.15))}
+  20%  {transform:scaleX(.978)   scaleY(1.022)  skewX(-1.3deg); filter:brightness(1.18) drop-shadow(0 0 .19em currentColor) drop-shadow(0 0 .38em rgba(255,140,0,.44))}
+  23%  {transform:scaleX(1.018)  scaleY(.982)   skewX(1.6deg);  filter:brightness(.87)  drop-shadow(0 0 .08em currentColor) drop-shadow(0 0 .17em rgba(201,168,76,.19))}
+  26%  {transform:scaleX(1.001)  scaleY(.999)   skewX(.4deg);   filter:brightness(1.05) drop-shadow(0 0 .15em currentColor) drop-shadow(0 0 .31em rgba(201,168,76,.28))}
+  29%  {transform:scaleX(.997)   scaleY(1.003)  skewX(-.3deg);  filter:brightness(.98)  drop-shadow(0 0 .11em currentColor) drop-shadow(0 0 .25em rgba(201,168,76,.23))}
+  32%  {transform:scaleX(1.004)  scaleY(.996)   skewX(.5deg);   filter:brightness(1.02) drop-shadow(0 0 .13em currentColor) drop-shadow(0 0 .28em rgba(201,168,76,.25))}
+  35%  {transform:scaleX(.999)   scaleY(1.001)  skewX(-.2deg);  filter:brightness(.96)  drop-shadow(0 0 .10em currentColor) drop-shadow(0 0 .23em rgba(201,168,76,.21))}
+  38%  {transform:scaleX(1.003)  scaleY(.997)   skewX(.4deg);   filter:brightness(1.03) drop-shadow(0 0 .13em currentColor) drop-shadow(0 0 .29em rgba(201,168,76,.26))}
+  42%  {transform:scaleX(.996)   scaleY(1.004)  skewX(-.4deg);  filter:brightness(1.06) drop-shadow(0 0 .15em currentColor) drop-shadow(0 0 .32em rgba(201,168,76,.28))}
+  /* burst 2 — strong */
+  45%  {transform:scaleX(.942)   scaleY(1.054)  skewX(-2.9deg); filter:brightness(1.34) drop-shadow(0 0 .31em currentColor) drop-shadow(0 0 .62em rgba(255,215,60,.62))}
+  47%  {transform:scaleX(1.056)  scaleY(.944)   skewX(3.3deg);  filter:brightness(.71)  drop-shadow(0 0 .03em currentColor) drop-shadow(0 0 .07em rgba(201,168,76,.11))}
+  49%  {transform:scaleX(.968)   scaleY(1.032)  skewX(-1.8deg); filter:brightness(1.24) drop-shadow(0 0 .24em currentColor) drop-shadow(0 0 .48em rgba(255,110,40,.52))}
+  52%  {transform:scaleX(1.028)  scaleY(.972)   skewX(2.2deg);  filter:brightness(.84)  drop-shadow(0 0 .07em currentColor) drop-shadow(0 0 .15em rgba(201,168,76,.18))}
+  55%  {transform:scaleX(1.001)  scaleY(.999)   skewX(.3deg);   filter:brightness(1.07) drop-shadow(0 0 .16em currentColor) drop-shadow(0 0 .33em rgba(201,168,76,.29))}
+  58%  {transform:scaleX(.998)   scaleY(1.002)  skewX(-.3deg);  filter:brightness(1.01) drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .27em rgba(201,168,76,.24))}
+  61%  {transform:scaleX(1.003)  scaleY(.997)   skewX(.4deg);   filter:brightness(.97)  drop-shadow(0 0 .10em currentColor) drop-shadow(0 0 .23em rgba(201,168,76,.21))}
+  64%  {transform:scaleX(.996)   scaleY(1.004)  skewX(-.5deg);  filter:brightness(1.04) drop-shadow(0 0 .14em currentColor) drop-shadow(0 0 .30em rgba(201,168,76,.27))}
+  67%  {transform:scaleX(1.002)  scaleY(.998)   skewX(.3deg);   filter:brightness(.99)  drop-shadow(0 0 .11em currentColor) drop-shadow(0 0 .26em rgba(201,168,76,.23))}
+  /* burst 3 — strongest */
+  70%  {transform:scaleX(.932)   scaleY(1.062)  skewX(-3.2deg); filter:brightness(1.40) drop-shadow(0 0 .37em currentColor) drop-shadow(0 0 .72em rgba(255,220,0,.68))}
+  72%  {transform:scaleX(1.064)  scaleY(.936)   skewX(3.6deg);  filter:brightness(.66)  drop-shadow(0 0 .02em currentColor) drop-shadow(0 0 .06em rgba(201,168,76,.10))}
+  74%  {transform:scaleX(.956)   scaleY(1.044)  skewX(-2.2deg); filter:brightness(1.30) drop-shadow(0 0 .27em currentColor) drop-shadow(0 0 .55em rgba(255,95,45,.58))}
+  77%  {transform:scaleX(1.026)  scaleY(.974)   skewX(1.8deg);  filter:brightness(.85)  drop-shadow(0 0 .07em currentColor) drop-shadow(0 0 .14em rgba(201,168,76,.19))}
+  80%  {transform:scaleX(1.002)  scaleY(.998)   skewX(.5deg);   filter:brightness(1.10) drop-shadow(0 0 .17em currentColor) drop-shadow(0 0 .36em rgba(201,168,76,.32))}
+  83%  {transform:scaleX(.997)   scaleY(1.003)  skewX(-.4deg);  filter:brightness(1.02) drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .27em rgba(201,168,76,.24))}
+  87%  {transform:scaleX(1.004)  scaleY(.996)   skewX(.4deg);   filter:brightness(.97)  drop-shadow(0 0 .10em currentColor) drop-shadow(0 0 .24em rgba(201,168,76,.22))}
+  91%  {transform:scaleX(.999)   scaleY(1.001)  skewX(-.2deg);  filter:brightness(1.02) drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .27em rgba(201,168,76,.24))}
+  95%  {transform:scaleX(1.002)  scaleY(.998)   skewX(.3deg);   filter:brightness(.99)  drop-shadow(0 0 .11em currentColor) drop-shadow(0 0 .25em rgba(201,168,76,.23))}
+  100% {transform:scaleX(1)      scaleY(1)      skewX(0deg);    filter:brightness(1)    drop-shadow(0 0 .12em currentColor) drop-shadow(0 0 .28em rgba(201,168,76,.25))}}
 @keyframes fire-color{
   0%  {color:color-mix(in srgb,#c9a84c calc(100% - var(--fire-excite-mix)),#4fc3f7)}
   15% {color:color-mix(in srgb,#ff8c35 calc(100% - var(--fire-excite-mix)),#2a9ff7)}
@@ -461,8 +469,8 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
   80% {color:color-mix(in srgb,#ff7c35 calc(100% - var(--fire-excite-mix)),#3498db)}
   100%{color:color-mix(in srgb,#c9a84c calc(100% - var(--fire-excite-mix)),#4fc3f7)}}
 @keyframes ltr-glow{
-  0%,100%{text-shadow:0 0 3px rgba(201,168,76,.12)}
-  42%,58%{text-shadow:0 0 7px rgba(255,210,80,.92),0 0 20px rgba(201,168,76,.58),0 0 42px rgba(255,140,0,.22)}
+  0%,100%{text-shadow:none}
+  50%{text-shadow:0 0 4px rgba(255,210,80,.38),0 0 12px rgba(201,168,76,.20)}
 }
 @keyframes sigil-spark-a{
   0%{transform:translate(0,0) scale(1.2);opacity:1}60%{opacity:.7}100%{transform:translate(-.23em,-.7em) scale(0);opacity:0}}
@@ -900,7 +908,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <!-- UNLOCK -->
 <div id="su" class="screen active">
   <div class="sc-wrap" style="text-align:center;gap:12px;padding:32px">
-    <div class="sigil" style="margin-bottom:12px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
+    <div class="sigil" style="margin-bottom:28px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
     <h1>Soundboard of Storytelling</h1>
     <p class="sub">A tool for Game-Masters<br>and other creative Creatures</p>
     <button class="unlock-btn" onclick="unlock()">TAP TO START</button>
@@ -911,7 +919,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <div id="smm" class="screen">
   <div class="sc-wrap" style="padding:32px 24px 20px;gap:0">
   <div class="m-title">
-    <div class="sigil" style="font-size:calc(60px * var(--sym-scale));margin-bottom:24px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
+    <div class="sigil" style="font-size:calc(80px * var(--sym-scale));margin-bottom:24px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
     <h1 style="font-family:var(--ff-hero);font-size:calc(22px * var(--font-scale));letter-spacing:.04em;color:var(--gold);line-height:1.3;margin:0 0 6px">Soundboard of Storytelling</h1>
     <p style="font-family:var(--ff-subtitle);font-size:calc(14px * var(--font-scale));color:var(--text-dim);margin-top:4px;line-height:1.5">A tool for Game-Masters<br>and other creative Creatures</p>
     <p id="ver-label" onclick="openChangelog()" style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin-top:10px;letter-spacing:.04em;cursor:pointer;display:inline-flex;align-items:center;gap:5px">v<span id="ver-num"></span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(11px * var(--font-scale));height:calc(11px * var(--font-scale));opacity:.6"><path d="M5 3h10v2H5zm14 4h-2V5h-2V3h2v2h2v2zm0 14H5V5h8v2H7v12h10V9h2v12zM9 9h6v2H9zm0 4h6v2H9zm0 4h4v2H9z"/></svg></p>
@@ -1938,8 +1946,14 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 150;
+const APP_VERSION = 151;
 const CHANGELOG=[
+  {v:151,date:'2026-05-25',items:[
+    "Fire animation overhaul: 33 keyframes over 15.3s with max 5% gap between stops (was 21 keyframes with 12% dead zones); three escalating bursts at ~16%, ~45%, ~70%; constant subtle breathing motion (scale +-0.5%, skew +-0.5deg, brightness 0.96-1.10) between bursts; no static periods",
+    "Fire sigil: main menu 60px -> 80px; start screen margin-bottom 12px -> 28px for more breathing room above title",
+    "Title glow redesigned as traveling wave: all chars share 10s cycle; delay = 4*(pos/N - 0.5)s causes glow to sweep left-to-right over 4 seconds every 10s; replaces per-char random timing",
+    "ltr-glow keyframe reduced to subtle intensity: peak text-shadow 4px at 0.38 opacity (was 7px at 0.92); no glow at 0%/100%"
+  ]},
   {v:150,date:'2026-05-25',items:[
     "Dynamic auto-icon: _autoIconFromName() scores all 2289 BUILTIN_ICONS against PAD name keywords (split on whitespace, min 3 chars); score 3 = exact id-word match, 2 = id substring, 1 = label-word match; threshold >= 2; _ICON_SYNONYMS map translates ~30 DE keywords to EN; result memoized in _autoIconCache{}; cache cleared on setAutoIcon() or setting change; replaces 7 hardcoded keyword blocks in ico()",
     "AUTO-ICON toggle in Settings -> GRAPHICS (default ON); setAutoIcon() clears cache and re-renders all PADs; persisted as 'auto-icon' in localStorage and SETTINGS_KEYS",
@@ -7390,14 +7404,14 @@ if('serviceWorker' in navigator){
 
 // ── TITLE GLOW ──
 function initTitleGlow(){
-  function h(i){ const x=Math.sin(i*127.1+311.7)*43758.5453; return x-Math.floor(x); }
+  const CYCLE=10, SPREAD=4;
   document.querySelectorAll('#su h1,#smm .m-title h1').forEach(el=>{
-    const txt=el.textContent;
-    el.innerHTML=txt.split('').map((c,i)=>{
+    const chars=el.textContent.split('');
+    const N=chars.length;
+    el.innerHTML=chars.map((c,i)=>{
       if(c===' ') return ' ';
-      const dur=(3+h(i)*5).toFixed(2);
-      const del=(h(i*7+3)*7).toFixed(2);
-      return `<span style="animation:ltr-glow ${dur}s ease-in-out -${del}s infinite">${c}</span>`;
+      const del=(SPREAD*(i/(N-1)-.5)).toFixed(2);
+      return `<span style="animation:ltr-glow ${CYCLE}s ease-in-out ${del}s infinite">${c}</span>`;
     }).join('');
   });
 }
