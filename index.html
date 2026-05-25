@@ -26,7 +26,7 @@
   --ff-body:'Share Tech Mono',monospace;
   --ff-hero:'DotGothic16',sans-serif;
   --ff-subtitle:'VT323',monospace;
-  --font-scale:1; --sym-scale:1; --ico-scale:1; --ico-density:1;
+  --font-scale:1; --sym-scale:1; --ico-scale:1; --ico-density:1; --pad-label-scale:1;
   /* Mode accent — used by board-internal elements (#sp) */
   --mode-accent:var(--active); --mode-accent-dim:rgba(79,195,247,.35); --mode-accent-glow:rgba(79,195,247,.2);
   /* Screen accent — set per-screen by updateTopBar(); default gold */
@@ -363,7 +363,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
   animation:breathe-gold 2.2s ease-in-out infinite}
 .pbtn.flash{background:var(--raised)}
 .pbtn .pico{font-size:calc((23px - 3px * var(--ico-density)) * var(--sym-scale) * var(--ico-scale));line-height:1;color:var(--mode-accent);position:relative;z-index:2}
-.pbtn .plbl{font-family:var(--ff-label);font-size:calc(var(--pad-sz) * 0.133 * var(--font-scale));letter-spacing:0;
+.pbtn .plbl{font-family:var(--ff-label);font-size:calc(var(--pad-sz) * 0.133 * var(--font-scale) * var(--pad-label-scale));letter-spacing:0;
   color:var(--text-dim);text-align:center;line-height:1.2;
   position:absolute;bottom:0;left:0;right:0;
   padding:2px 5px 3px;
@@ -372,7 +372,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
   z-index:1}
 .pbtn.playing .plbl,.pbtn.plooping .plbl{color:var(--text)}
 .pbtn .plbl-arc{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
-.pbtn .plbl-arc text{font-family:var(--ff-label);font-size:calc(var(--pad-sz) * 0.133 * var(--font-scale));fill:var(--text-dim);filter:drop-shadow(0 0 2px rgba(0,0,0,.9))}
+.pbtn .plbl-arc text{font-family:var(--ff-label);font-size:calc(var(--pad-sz) * 0.133 * var(--font-scale) * var(--pad-label-scale));fill:var(--text-dim);filter:drop-shadow(0 0 2px rgba(0,0,0,.9))}
 .pbtn.playing .plbl-arc text,.pbtn.plooping .plbl-arc text{fill:var(--text)}
 .pbtn .pnum{position:absolute;top:4px;left:0;right:0;text-align:center;
   font-size:calc(var(--pad-sz) * 0.155 * var(--font-scale));
@@ -1239,6 +1239,17 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       </p>
     </div>
 
+    <div class="sg-sub">AUTO-ICON</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="ai-on" onclick="setAutoIcon(true)">ON</div>
+        <div class="topt" id="ai-off" onclick="setAutoIcon(false)">OFF</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        When no icon is assigned, automatically picks one by matching the PAD name against all built-in icons. Supports German and English keywords.
+      </p>
+    </div>
+
     <!-- DATA -->
     <div class="sg-hdr">DATA</div>
     <div class="sec-body" style="display:flex;flex-direction:column;gap:8px">
@@ -1911,6 +1922,10 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
         <span class="gc-ico">⊞ DENS</span>
         <input type="range" id="ico-density-slider" min="-3" max="3" step="0.1" value="1">
       </div>
+      <div class="gc-row">
+        <span class="gc-ico">T LBL</span>
+        <input type="range" id="lbl-scale-slider" min="0.5" max="2.0" step="0.1" value="1">
+      </div>
       <div class="trow">
         <div class="topt" id="sh-sq" onclick="setPadShape('0px','sq')">◼ SQ</div>
         <div class="topt" id="sh-rd" onclick="setPadShape('8px','rd')">▢ RD</div>
@@ -1923,8 +1938,13 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 149;
+const APP_VERSION = 150;
 const CHANGELOG=[
+  {v:150,date:'2026-05-25',items:[
+    "Dynamic auto-icon: _autoIconFromName() scores all 2289 BUILTIN_ICONS against PAD name keywords (split on whitespace, min 3 chars); score 3 = exact id-word match, 2 = id substring, 1 = label-word match; threshold >= 2; _ICON_SYNONYMS map translates ~30 DE keywords to EN; result memoized in _autoIconCache{}; cache cleared on setAutoIcon() or setting change; replaces 7 hardcoded keyword blocks in ico()",
+    "AUTO-ICON toggle in Settings -> GRAPHICS (default ON); setAutoIcon() clears cache and re-renders all PADs; persisted as 'auto-icon' in localStorage and SETTINGS_KEYS",
+    "PAD label font size slider: --pad-label-scale CSS variable applied to .pbtn .plbl and .pbtn .plbl-arc text; T LBL slider in PAD STYLE sidebar (0.5x - 2.0x); persisted as 'pad-label-scale' in localStorage and SETTINGS_KEYS"
+  ]},
   {v:149,date:'2026-05-25',items:[
     "Trim section labels translated to English: TRIM / BESCHNEIDEN → TRIM, STARTZEIT → START TIME, ENDZEIT / DAUER → END TIME",
     "Fade-out and Trim-End sliders visually reversed (scaleX(-1)): thumb starts at right edge (Off / Full) and moves left as value increases — matches audio direction (both effects apply from the right/end)",
@@ -2087,7 +2107,7 @@ const CHANGELOG=[
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
 console.assert(CHANGELOG[0].v===APP_VERSION,'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon'];
 // ── DEBUG LOG ──
 let _debugLogEnabled = localStorage.getItem('debug-log') === '1';
 const _DEBUG_LOG_MAX = 200;
@@ -3105,6 +3125,7 @@ function unlock(){
   s.buffer=b; s.connect(ctx.destination); s.start(0);
   initTheme();
   initGridCtrl();
+  initAutoIcon();
   openDB().then(load).then(async ()=>{
     await migrateToLibrary();
     await loadLibIcons();
@@ -5083,6 +5104,14 @@ function initGridCtrl(){
   document.getElementById('ico-density-slider').addEventListener('input',()=>{
     applyGridCtrl(); localStorage.setItem('ico-density',document.getElementById('ico-density-slider').value);
   });
+  const lblScale=localStorage.getItem('pad-label-scale')||'1';
+  document.getElementById('lbl-scale-slider').value=lblScale;
+  document.documentElement.style.setProperty('--pad-label-scale',lblScale);
+  document.getElementById('lbl-scale-slider').addEventListener('input',()=>{
+    const v=document.getElementById('lbl-scale-slider').value;
+    document.documentElement.style.setProperty('--pad-label-scale',v);
+    localStorage.setItem('pad-label-scale',v);
+  });
 }
 
 // ── MODE ──
@@ -6383,20 +6412,58 @@ function renderPadIconArea(p){
   else inner=svgs.join('');
   return `<div class="pico pico-g pico-g${svgs.length}">${inner}</div>`;
 }
+const _ICON_SYNONYMS={'donner':'thunder','nacht':'night','tag':'day','tod':'death','hahn':'rooster',
+  'abstimm':'vote','abstimmung':'vote','nom':'nomination','musik':'music','feuer':'fire',
+  'wasser':'water','wind':'wind','wald':'forest','burg':'castle','dorf':'village',
+  'magie':'magic','gift':'poison','blut':'blood','geist':'ghost','fluch':'curse',
+  'messer':'knife','schwert':'sword','stern':'star','mond':'moon','sonne':'sun',
+  'wolf':'wolf','teufel':'devil','engel':'angel','glocke':'bell','regen':'rain',
+  'nebel':'fog','blitz':'lightning','dunkel':'dark','licht':'light','herbst':'autumn',
+  'winter':'winter','schrei':'scream','trommel':'drum','pfeife':'pipe',
+  'geist':'ghost','schatten':'shadow','wache':'guard','richter':'judge',
+  'trinken':'drink','essen':'eat','schlafen':'sleep','laufen':'run',
+  'spieler':'player','runde':'round','phase':'phase','nacht':'night',
+};
+let _autoIconCache={};
+function _autoIconFromName(name){
+  if((localStorage.getItem('auto-icon')||'1')!=='1') return null;
+  if(_autoIconCache[name]!==undefined) return _autoIconCache[name]==='__none__'?null:_autoIconCache[name];
+  const words=name.toLowerCase().replace(/[^a-z0-9äöüß ]/g,' ').split(/\s+/).filter(w=>w.length>=3);
+  const kws=[...new Set(words.flatMap(w=>{const s=_ICON_SYNONYMS[w]; return s&&s!==w?[w,s]:[w];}))];
+  let best=null,bestScore=0;
+  for(const icon of BUILTIN_ICONS){
+    const idParts=icon.id.split('-');
+    const lblParts=(icon.label||'').toLowerCase().split(/\s+/);
+    let score=0;
+    for(const kw of kws){
+      if(idParts.includes(kw)) score+=3;
+      else if(icon.id.includes(kw)) score+=2;
+      else if(lblParts.includes(kw)) score+=1;
+    }
+    if(score>bestScore){bestScore=score;best=icon;}
+  }
+  const result=(best&&bestScore>=2)?svgI(`<path d="${best.d}"/>`,best.v||'0 0 24 24'):null;
+  _autoIconCache[name]=result||'__none__';
+  return result;
+}
+function setAutoIcon(v){
+  setToptSetting('auto-icon','ai-',['on','off'],v?'on':'off');
+  _autoIconCache={};
+  renderPerf();
+}
+function initAutoIcon(){
+  const v=localStorage.getItem('auto-icon')||'1';
+  setToptSetting('auto-icon','ai-',['on','off'],v==='1'||v==='on'?'on':'off');
+}
+
 function ico(p){
   if(!p) return '·';
   if(p.icon?.b){ const f=BUILTIN_ICONS.find(x=>x.id===p.icon.b); if(f) return svgI(`<path d="${f.d}"/>`,f.v||'0 0 24 24'); }
   if(p.icon?.h && iconSvgCache[p.icon.h]){
     return iconSvgCache[p.icon.h].replace(/width="[^"]*"/,'width="1em"').replace(/height="[^"]*"/,'height="1em"').replace(/<svg /,'<svg style="vertical-align:middle" ');
   }
-  const n=(p.name||'').toLowerCase();
-  if(n.includes('donner')||n.includes('thunder')) return svgI('<path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/>');
-  if(n.includes('nacht')||n.includes('night')) return svgI('<path d="M18 22H8v-2h10v2ZM8 20H6v-2h2v2Zm12 0h-2v-2h2v2ZM6 18H4v-2h2v2Zm16 0h-2v-4h-2v-2h2v-2h2v8ZM4 16H2V6h2v10Zm14 0h-6v-2h6v2Zm-6-2h-2v-2h2v2Zm-2-2H8V6h2v6ZM6 6H4V4h2v2Zm8-2h-2v2h-2V4H6V2h8v2Z"/>');
-  if(n.includes('hahn')||n.includes('tag')||n.includes('day')) return svgI('<path d="M14 22H4v-2h10v2ZM4 20H2v-4h2v4Zm12 0h-2v-4h2v4Zm-6-2H8v-2h2v2Zm-2-2H4v-2h4v2Zm6 0h-2v-2h2v2Zm-2-2H8v-2h4v2Zm12-1h-4v-2h4v2Zm-6-1h-2v-2h2v2ZM8 10H6V8h2v2Zm8 0h-2V8h2v2Zm-2-2H8V6h6v2ZM6 6H4V4h2v2Zm14 0h-2V4h2v2ZM4 4H2V2h2v2Zm9 0h-2V0h2v4Zm9 0h-2V2h2v2Z"/>');
-  if(n.includes('musik')||n.includes('music')||n.includes('ambient')) return svgI('<path d="M4 12h4v2H4zm-2 2h2v4H2zm2 4h4v2H4zM8 6h2v12H8zm10 0h2v12h-2zm-6 8h2v4h-2zm2-2h4v2h-4zm0 6h4v2h-4zM10 4h8v2h-8z"/>');
-  if(n.includes('tod')||n.includes('death')) return svgI('<path d="M7 20h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zm-6-4h2v4H9zm4 0h2v4h-2zm-8-2h2v6H5zm12 0h2v6h-2z"/><path d="M3 14h4v2H3zM1 4h2v10H1zm20 0h2v10h-2zM3 2h18v2H3zm14 12h4v2h-4zM8 7h2v4H8zm6 0h2v4h-2z"/>');
-  if(n.includes('abstimm')||n.includes('vote')) return svgI('<path d="M13 9h2v2h-2zm2-2h2v2h-2zm2-2h2v2h-2zm2-2h2v8h-2z"/><path d="M13 3h8v2h-8zm-2 12H9v-2h2zm-2 2H7v-2h2zm-2 2H5v-2h2zm-2 2H3v-8h2z"/><path d="M11 21H3v-2h8z"/>');
-  if(n.includes('nom')) return svgI('<path d="M21 7h2v5h-2zm-4-2h2v7h-2zm-4-2h2v8h-2zM9 3h2v8H9zM5 5h2v8H5zm14 0h2v2h-2zm-4-2h2v2h-2zm-4-2h2v2h-2zM7 3h2v2H7zm-4 8h2v2H3zm-2 2h2v2H1zm0 2h2v2H1zm2 2h2v2H3zm2 2h2v2H5zm2 2h12v2H7zm12-2h2v2h-2zm2-7h2v7h-2zM5 13h2v2H5zm2 2h2v2H7z"/>');
+  const autoIco=_autoIconFromName(p.name||'');
+  if(autoIco) return autoIco;
   if(p.mode==='combo') return svgI('<path d="M4 13h8v6h2v2h-2v2h-2v-8H2v-4h2v2Zm12 6h-2v-2h2v2Zm2-2h-2v-2h2v2Zm2-2h-2v-2h2v2Zm-6-6h8v4h-2v-2h-8V5h-2V3h2V1h2v8Zm-8 2H4V9h2v2Zm2-2H6V7h2v2Zm2-2H8V5h2v2Z"/>');
   if(p.mode==='loop') return svgI('<path d="M17 5h2v2h-2zM5 17h2v2H5zm6-14h2v6h-2zM9 1h2v8H9zm0 8h2v2H9zm10 8H9v2h10zM5 7H3v10h2z"/><path d="M13 15h-2v6h2zm2-2h-2v8h2zm0 8h-2v2h2zM5 5h10v2H5zm14 12h2V7h-2z"/>');
   if(p.mode==='playlist') return p.shuffle?svgI('<path d="M10 19H2v-2h8v2Zm12 0h-8v-2h8v2Zm-10-2h-2v-6h2v6Zm6-10h2v2h2v2h-2v2h-2v2h-2v-4h-4V9h4V5h2v2ZM8 11H2V9h6v2Z"/>'):svgI('<path d="M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"/>');
