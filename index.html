@@ -2416,8 +2416,11 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 176;
+const APP_VERSION = 177;
 const CHANGELOG=[
+  {v:177,date:'2026-05-25',items:[
+    "Code review fixes: remove redundant entry.buf.slice(0) in lib-preview (toggleLibPreview) and lpPlay — IDB get() returns a structured clone so the copy is unnecessary, saves 5-8 MB per call; add await to decodeWaveform(fi) in _processFilesSerial fallback path — without it, multiple concurrent decodes could fire when addToLib peak-computation fails for several files in a row"
+  ]},
   {v:176,date:'2026-05-25',items:[
     "Section label + divider system applied to UI: .sg-hdr upgraded to flex row with repeating-gradient dashes before/after (replaces old border-top rule); .sb-lbl upgraded similarly with ◆ prefix glyph + trailing dash line; sectionLabel() applied to sidebar FILTER/SCOPE/GROUPS headings in renderSidebarContent() and _libFolderTreeHtml(); three PixelDividers added between independent setting groups in #sa-appear (THEME|CONTENT WIDTH|FONT SIZE|SYMBOL SIZE)"
   ]},
@@ -4943,7 +4946,7 @@ async function toggleLibPreview(hash){
   const entry=await libGet(hash);
   if(!entry?.buf){ showToast('Audio not found in Library.'); return; }
   let decoded;
-  try{ decoded=await ctx.decodeAudioData(entry.buf.slice(0)); }
+  try{ decoded=await ctx.decodeAudioData(entry.buf); }
   catch(e){ showToast('Cannot preview this file.'); return; }
   const node=ctx.createBufferSource();
   node.buffer=decoded;
@@ -6093,7 +6096,7 @@ function lpPlay(hash){
     if(!buf){
       const entry=await libGet(hash);
       if(!entry) return;
-      try{ libBufs[hash]=await ctx.decodeAudioData(entry.buf.slice(0)); _lruBufSet(hash); buf=libBufs[hash]; }catch(e){ return; }
+      try{ libBufs[hash]=await ctx.decodeAudioData(entry.buf); _lruBufSet(hash); buf=libBufs[hash]; }catch(e){ return; }
     }
     const src=ctx.createBufferSource();
     src.buffer=buf;
@@ -7485,7 +7488,7 @@ async function _processFilesSerial(files, isFirst){
     eFiles.push({name:f.name, hash, size:buf.byteLength}); // no raw buf in eFiles — saved via IDB by addToLib
     const entry=await libGet(hash);
     if(entry?.peaks && entry.duration!=null) waveforms[fi]={peaks:entry.peaks, duration:entry.duration};
-    else decodeWaveform(fi);
+    else await decodeWaveform(fi);
     updFB();
     if(isFirst && i===0){
       const nameEl=document.getElementById('en');
