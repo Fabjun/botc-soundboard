@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.18';
+const APP_VERSION = '1.5.19';
 
 const CHANGELOG = [
+  { v: '1.5.19', date: '2026-05-26', items: [
+    'One-time migration from V1 localStorage settings (runs on first V1.5 launch)',
+    'Migrates: master volume, wake lock, auto-stop, auto-stop minutes, theme, start mode',
+    'Theme names mapped (retro/modern→DEFAULT, verdant/neon/crimson→uppercase); start-mode "unlocked"→"setup"',
+  ]},
   { v: '1.5.18', date: '2026-05-26', items: [
     'Pad drag-to-reorder: drag an assigned pad to any other slot in SETUP mode to swap/move it',
     'Ghost follows cursor; drop target highlighted; click after drag suppressed',
@@ -3352,7 +3357,30 @@ function _showSwUpdateBanner(waitingSW) {
   };
 }
 
+function _migrateFromV1() {
+  if (localStorage.getItem('sos-migrated')) return;
+  const get1  = k => localStorage.getItem(k);
+  const set15 = (k, v) => { if (v !== null && get1(k) === null) localStorage.setItem(k, v); };
+
+  set15('sos-master-vol',    get1('master-vol'));
+  set15('sos-wake-lock',     get1('wake-lock-enabled'));
+  set15('sos-auto-stop',     get1('auto-stop-enabled'));
+  set15('sos-auto-stop-min', get1('auto-stop-minutes'));
+
+  const themeMap = { retro: 'DEFAULT', modern: 'DEFAULT', verdant: 'VERDANT', neon: 'NEON', crimson: 'CRIMSON' };
+  const v1Theme  = get1('theme');
+  if (v1Theme !== null) set15('sos-theme', themeMap[v1Theme] || 'DEFAULT');
+
+  const modeMap = { unlocked: 'setup', setup: 'setup', game: 'game', remember: 'remember' };
+  const v1Mode  = get1('start-mode');
+  if (v1Mode !== null) set15('sos-start-mode', modeMap[v1Mode] || 'setup');
+
+  localStorage.setItem('sos-migrated', '1');
+}
+
 async function init() {
+  _migrateFromV1();
+  S.theme = localStorage.getItem('sos-theme') || '';
   applyTheme(S.theme);
   try {
     await openDB();
