@@ -1,8 +1,14 @@
 'use strict';
 
-const APP_VERSION = '1.5.14';
+const APP_VERSION = '1.5.15';
 
 const CHANGELOG = [
+  { v: '1.5.15', date: '2026-05-25', items: [
+    'Playlist pad: pad type LIST ☰ — ordered sequence of audio tracks, auto-advances on natural end',
+    'Shuffle toggle per playlist pad; state resets on manual stop',
+    'Pad opts: third type button (LIST ☰), shuffle row, track list with remove, ADD TRACK picker',
+    'Hotkeys work with playlist pads; playlist pads shown with ☰ badge (violet)',
+  ]},
   { v: '1.5.14', date: '2026-05-25', items: [
     'Master volume: live slider in Settings, applied via masterGain node in audio engine',
     'Persisted to localStorage; applied at AudioContext init so the engine always starts at the saved level',
@@ -1148,6 +1154,11 @@ let _bdSetOptsId    = null;
 let _bdSetOptsCfm   = false;
 let _bdSetAddOpen   = false;
 
+// Playlist pad state
+const _plState = {};             // padId → { order: number[], pos: number }
+let _editingPlaylistFiles = [];  // files being edited in pad opts sheet
+let _bdPickerMode = 'single';    // 'single' | 'playlist-add'
+
 /** @returns {string} */
 function boardHTML() {
   if (!S.boardId) {
@@ -1264,10 +1275,12 @@ function renderPadGrid() {
 
 /** @param {Object} pad @returns {string} */
 function padCellHTML(pad) {
-  const playing = audioIsPlaying(pad.id);
-  const isLoop  = pad.type === 'loop';
-  return `<div class="pad is-assigned${playing ? ' is-playing' : ''}${isLoop ? ' is-loop' : ''}" data-pad-slot="${pad.slot}" data-pad-id="${escAttr(pad.id)}" data-action="bd-pad-tap">
-    ${isLoop ? `<span class="pad-loop-badge">↻</span>` : ''}
+  const playing    = audioIsPlaying(pad.id);
+  const isLoop     = pad.type === 'loop';
+  const isPlaylist = pad.type === 'playlist';
+  return `<div class="pad is-assigned${playing ? ' is-playing' : ''}${isLoop ? ' is-loop' : ''}${isPlaylist ? ' is-playlist' : ''}" data-pad-slot="${pad.slot}" data-pad-id="${escAttr(pad.id)}" data-action="bd-pad-tap">
+    ${isLoop     ? `<span class="pad-loop-badge">↻</span>` : ''}
+    ${isPlaylist ? `<span class="pad-loop-badge pad-pl-badge">☰</span>` : ''}
     <div class="pad-wave">${_waveMiniFromHash(pad.hash)}</div>
     <div class="pad-name">${escHtml(pad.name || '—')}</div>
     ${pad.hotkey ? `<span class="pad-hotkey">${escHtml(pad.hotkey)}</span>` : ''}
@@ -1386,10 +1399,58 @@ function openPadPicker(slot) {
 function closePadPicker() {
   _bdPickerSlot    = null;
   _bdSetPickerSlot = null;
+  _bdPickerMode    = 'single';
   document.getElementById('pad-picker')?.remove();
 }
 
+function openPlaylistTrackPicker() {
+  // Don't close pad-opts — it stays open; just replace/open the picker overlay
+  document.getElementById('pad-picker')?.remove();
+  _bdPickerMode = 'playlist-add';
+  const content = document.getElementById('bd-content');
+  if (!content) return;
+  const sorted = _libEntries.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  content.insertAdjacentHTML('beforeend', `<div class="pad-picker" id="pad-picker">
+    <div class="pad-picker-header">
+      <span>Add track to playlist</span>
+      <button class="act-btn" data-action="bd-picker-close">×</button>
+    </div>
+    <div class="pad-picker-search">
+      <div class="search-bar" style="margin:0;border-radius:0;clip-path:none;border-left:none;border-right:none;border-top:none">
+        ${pi('search', 13, 'var(--text-mute)')}
+        <input class="search-input" type="text" placeholder="Search…" id="pad-picker-q">
+      </div>
+    </div>
+    <div class="pad-picker-list" id="pad-picker-list">
+      ${sorted.map(e => `<div class="pad-picker-item" data-action="bd-picker-pick" data-hash="${e.hash}" data-name="${escAttr(e.name)}">
+        <div class="pad-picker-wave">${_waveMini(e.peaks)}</div>
+        <span class="pad-picker-item-name">${escHtml(e.name)}</span>
+        <span class="pad-picker-item-dur">${fmtDur(e.duration)}</span>
+      </div>`).join('')}
+      ${!sorted.length ? '<p class="lib-empty">No audio in library yet.</p>' : ''}
+    </div>
+  </div>`);
+  const q = document.getElementById('pad-picker-q');
+  if (q) {
+    q.focus();
+    q.oninput = () => {
+      const term = q.value.toLowerCase().trim();
+      document.querySelectorAll('.pad-picker-item').forEach(item => {
+        const name = item.querySelector('.pad-picker-item-name')?.textContent || '';
+        item.style.display = name.toLowerCase().includes(term) ? '' : 'none';
+      });
+    };
+  }
+}
+
 async function handlePadPick(hash, name) {
+  if (_bdPickerMode === 'playlist-add') {
+    _editingPlaylistFiles.push({ hash, name });
+    document.getElementById('pad-picker')?.remove();
+    _bdPickerMode = 'single';
+    _renderPlaylistTracks();
+    return;
+  }
   if (_bdPickerSlot !== null && _bdScene) {
     const slot = _bdPickerSlot;
     closePadPicker();
@@ -1417,12 +1478,69 @@ async function handlePadPick(hash, name) {
   }
 }
 
+/* ── PLAYLIST HELPERS ──────────────────────────────────────── */
+
+/** @param {Object} pad @returns {{order:number[],pos:number}} */
+function _plInit(pad) {
+  const n = (pad.files || []).length;
+  const order = Array.from({ length: n }, (_, i) => i);
+  if (pad.shuffle) {
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+  }
+  return { order, pos: 0 };
+}
+
+/** @param {Object} pad @returns {string|null} */
+function _plCurrentHash(pad) {
+  const st = _plState[pad.id];
+  if (!st || !pad.files?.length) return null;
+  return pad.files[st.order[st.pos]]?.hash || null;
+}
+
+/** @param {string} padId @param {number} len */
+function _plAdvance(padId, len) {
+  const st = _plState[padId];
+  if (!st || !len) return;
+  st.pos = (st.pos + 1) % len;
+}
+
+/** @param {string} padId @returns {Object|null} */
+function _findPadById(padId) {
+  return (_bdScene?.pads || []).find(p => p.id === padId)
+      || (_bdSet?.pads   || []).find(p => p.id === padId)
+      || null;
+}
+
+/** @returns {string} */
+function _renderPlaylistTracksHTML() {
+  if (!_editingPlaylistFiles.length) {
+    return '<p class="pl-empty-hint">No tracks yet — use ADD TRACK below.</p>';
+  }
+  return _editingPlaylistFiles.map((f, i) =>
+    `<div class="pl-track-item">
+      <span class="pl-track-num">${i + 1}.</span>
+      <span class="pl-track-name">${escHtml(f.name)}</span>
+      <button class="act-btn" data-action="bd-opts-pl-remove" data-idx="${i}">×</button>
+    </div>`
+  ).join('');
+}
+
+function _renderPlaylistTracks() {
+  const el = document.getElementById('pl-tracks');
+  if (el) el.innerHTML = _renderPlaylistTracksHTML();
+}
+
 /* pad options bottom sheet */
 
 /** @param {Object} pad @returns {string} */
 function _padOptsHTML(pad) {
-  const t   = pad.type || 'single';
-  const vol = pad.volume ?? 80;
+  const t       = pad.type || 'single';
+  const vol     = pad.volume ?? 80;
+  const shuffle = !!pad.shuffle;
+  const isList  = t === 'playlist';
   return `<div class="pad-opts" id="pad-opts">
     <div class="pad-opts-title">${escHtml(pad.name || '—')}</div>
     <div class="pad-opts-row">
@@ -1432,8 +1550,9 @@ function _padOptsHTML(pad) {
     <div class="pad-opts-row">
       <span class="pad-opts-label">Type</span>
       <div class="pad-type-picker">
-        <button class="pad-type-btn${t === 'single' ? ' is-active' : ''}" data-action="bd-opts-type" data-type="single">SINGLE</button>
-        <button class="pad-type-btn${t === 'loop' ? ' is-active' : ''}" data-action="bd-opts-type" data-type="loop">LOOP ↻</button>
+        <button class="pad-type-btn${t === 'single'   ? ' is-active' : ''}" data-action="bd-opts-type" data-type="single">SINGLE</button>
+        <button class="pad-type-btn${t === 'loop'     ? ' is-active' : ''}" data-action="bd-opts-type" data-type="loop">LOOP ↻</button>
+        <button class="pad-type-btn${t === 'playlist' ? ' is-active' : ''}" data-action="bd-opts-type" data-type="playlist">LIST ☰</button>
       </div>
     </div>
     <div class="pad-opts-row">
@@ -1445,8 +1564,19 @@ function _padOptsHTML(pad) {
       <span class="pad-opts-label">Hotkey</span>
       <input class="audio-name-input" id="pad-opts-hotkey" type="text" value="${escAttr(pad.hotkey || '')}" maxlength="4" style="width:60px">
     </div>
+    <div class="pad-opts-section" id="pl-section"${isList ? '' : ' style="display:none"'}>
+      <div class="pad-opts-row">
+        <span class="pad-opts-label">Shuffle</span>
+        <div class="pad-type-picker">
+          <button class="pad-type-btn${shuffle  ? ' is-active' : ''}" data-action="bd-opts-shuffle" data-shuffle="1">ON</button>
+          <button class="pad-type-btn${!shuffle ? ' is-active' : ''}" data-action="bd-opts-shuffle" data-shuffle="0">OFF</button>
+        </div>
+      </div>
+      <div class="pl-tracks" id="pl-tracks">${_renderPlaylistTracksHTML()}</div>
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-top:4px" data-action="bd-opts-pl-add">+ ADD TRACK</button>
+    </div>
     <div class="pad-opts-actions">
-      <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="bd-opts-change">Change Audio</button>
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" id="pad-opts-change-btn" data-action="bd-opts-change"${isList ? ' style="display:none"' : ''}>Change Audio</button>
       <button class="sb-btn sb-btn-sm sb-btn-danger" data-action="bd-opts-clear">Clear</button>
       <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="bd-opts-save">Save</button>
     </div>
@@ -1459,6 +1589,7 @@ function openPadOpts(slot) {
   const pad = _bdScene?.pads.find(p => p.slot === slot);
   if (!pad) { openPadPicker(slot); return; }
   _bdOptsSlot = slot;
+  _editingPlaylistFiles = (pad.files || []).map(f => ({ ...f }));
   document.getElementById('bd-content')?.insertAdjacentHTML('beforeend', _padOptsHTML(pad));
   document.getElementById('pad-opts-name')?.focus();
 }
@@ -1470,17 +1601,30 @@ function closePadOpts() {
 }
 
 async function handlePadOptsSave() {
-  const name   = document.getElementById('pad-opts-name')?.value.trim() || '';
-  const hotkey = document.getElementById('pad-opts-hotkey')?.value.trim() || '';
-  const type   = document.querySelector('.pad-type-btn.is-active')?.dataset.type || 'single';
-  const volume = Math.max(0, Math.min(100, +(document.getElementById('pad-opts-volume')?.value ?? 80)));
+  const name    = document.getElementById('pad-opts-name')?.value.trim() || '';
+  const hotkey  = document.getElementById('pad-opts-hotkey')?.value.trim() || '';
+  const type    = document.querySelector('.pad-type-btn.is-active')?.dataset.type || 'single';
+  const volume  = Math.max(0, Math.min(100, +(document.getElementById('pad-opts-volume')?.value ?? 80)));
+  const isList  = type === 'playlist';
+  const files   = isList ? _editingPlaylistFiles.map(f => ({ hash: f.hash, name: f.name })) : undefined;
+  const shuffle = isList ? document.querySelector('[data-action="bd-opts-shuffle"].is-active')?.dataset.shuffle === '1' : undefined;
+
+  function _applyPad(p) {
+    const base = { ...p, name, hotkey, type, volume };
+    if (!isList) return base;
+    base.files   = files;
+    base.shuffle = shuffle;
+    base.hash    = files?.length ? files[0].hash : (p.hash || null); // first track for waveform
+    return base;
+  }
+
   if (_bdOptsSlot !== null && _bdScene) {
     const slot = _bdOptsSlot; closePadOpts();
-    _bdScene.pads = _bdScene.pads.map(p => p.slot === slot ? { ...p, name, hotkey, type, volume } : p);
+    _bdScene.pads = _bdScene.pads.map(p => p.slot === slot ? _applyPad(p) : p);
     await scenePut(_bdScene); renderPadGrid();
   } else if (_bdSetOptsSlot !== null && _bdSet) {
     const slot = _bdSetOptsSlot; closePadOpts();
-    _bdSet.pads = _bdSet.pads.map(p => p.slot === slot ? { ...p, name, hotkey, type, volume } : p);
+    _bdSet.pads = _bdSet.pads.map(p => p.slot === slot ? _applyPad(p) : p);
     await setPut(_bdSet); renderSetStrip();
   }
 }
@@ -1592,6 +1736,7 @@ function openSetPadOpts(slot) {
   const pad = _bdSet?.pads.find(p => p.slot === slot);
   if (!pad) { openSetPadPicker(slot); return; }
   _bdSetOptsSlot = slot;
+  _editingPlaylistFiles = (pad.files || []).map(f => ({ ...f }));
   document.getElementById('bd-content')?.insertAdjacentHTML('beforeend', _padOptsHTML(pad));
   document.getElementById('pad-opts-name')?.focus();
 }
@@ -1603,8 +1748,28 @@ async function handleQaPadTap(slot) {
     else openSetPadPicker(slot);
     return;
   }
-  if (!pad?.hash) return;
+  if (!pad) return;
   const el = document.querySelector(`[data-pad-id="${CSS.escape(pad.id)}"]`);
+  if (pad.type === 'playlist') {
+    if (!pad.files?.length) return;
+    if (audioIsPlaying(pad.id)) {
+      delete _plState[pad.id];
+      audioStop(pad.id, { fade: pad.fadeOut || 0 });
+      el?.classList.remove('is-playing');
+    } else {
+      if (!_plState[pad.id]) _plState[pad.id] = _plInit(pad);
+      const hash = _plCurrentHash(pad);
+      if (!hash) return;
+      audioPlay(pad.id, hash, {
+        type: 'single', volume: pad.volume ?? 80,
+        fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
+      });
+      el?.classList.add('is-playing');
+      _resetAutoStop();
+    }
+    return;
+  }
+  if (!pad.hash) return;
   if (audioIsPlaying(pad.id)) {
     audioStop(pad.id, { fade: pad.fadeOut || 0 });
     el?.classList.remove('is-playing');
@@ -1933,8 +2098,28 @@ async function handleBdPadTap(slot) {
     return;
   }
   // GAME mode
-  if (!pad?.hash) return;
+  if (!pad) return;
   const el = document.querySelector(`[data-pad-id="${CSS.escape(pad.id)}"]`);
+  if (pad.type === 'playlist') {
+    if (!pad.files?.length) return;
+    if (audioIsPlaying(pad.id)) {
+      delete _plState[pad.id]; // reset position before audioStop so audio:ended won't auto-advance
+      audioStop(pad.id, { fade: pad.fadeOut || 0 });
+      el?.classList.remove('is-playing');
+    } else {
+      if (!_plState[pad.id]) _plState[pad.id] = _plInit(pad);
+      const hash = _plCurrentHash(pad);
+      if (!hash) return;
+      audioPlay(pad.id, hash, {
+        type: 'single', volume: pad.volume ?? 80,
+        fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
+      });
+      el?.classList.add('is-playing');
+      _resetAutoStop();
+    }
+    return;
+  }
+  if (!pad.hash) return;
   if (audioIsPlaying(pad.id)) {
     audioStop(pad.id, { fade: pad.fadeOut || 0 });
     el?.classList.remove('is-playing');
@@ -2556,7 +2741,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (_importModalOpen)      { closeImportModal(); return; }
     if (_clOpen)               { closeChangelog(); return; }
-    if (_bdPickerSlot !== null) { closePadPicker(); return; }
+    if (_bdPickerSlot !== null || _bdPickerMode === 'playlist-add') { closePadPicker(); return; }
     if (_bdOptsSlot   !== null) { closePadOpts();   return; }
     if (_bdSceneOptsId !== null){ closeSceneOpts(); return; }
     if (_bdSceneAddOpen)        { closeSceneAdd();  return; }
@@ -2570,18 +2755,34 @@ document.addEventListener('keydown', e => {
     if (key.length === 1 || (e.key.startsWith('Numpad') && e.key.length > 6)) {
       const k = e.key.length === 1 ? key : e.key.replace('Numpad','');
       const pad = _bdScene?.pads.find(p => p.hotkey?.toUpperCase() === k);
-      if (pad?.hash) {
+      if (pad) {
         e.preventDefault();
         const padEl = document.querySelector(`[data-pad-id="${CSS.escape(pad.id)}"]`);
-        if (audioIsPlaying(pad.id)) {
-          audioStop(pad.id, { fade: pad.fadeOut || 0 });
-          padEl?.classList.remove('is-playing');
-        } else {
-          audioPlay(pad.id, pad.hash, {
-            type: pad.type || 'single', volume: pad.volume ?? 80,
-            fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
-          });
-          padEl?.classList.add('is-playing');
+        if (pad.type === 'playlist') {
+          if (!pad.files?.length) return;
+          if (audioIsPlaying(pad.id)) {
+            delete _plState[pad.id];
+            audioStop(pad.id, { fade: pad.fadeOut || 0 });
+            padEl?.classList.remove('is-playing');
+          } else {
+            if (!_plState[pad.id]) _plState[pad.id] = _plInit(pad);
+            const hash = _plCurrentHash(pad);
+            if (hash) {
+              audioPlay(pad.id, hash, { type: 'single', volume: pad.volume ?? 80, fadeIn: pad.fadeIn || 0 });
+              padEl?.classList.add('is-playing');
+            }
+          }
+        } else if (pad.hash) {
+          if (audioIsPlaying(pad.id)) {
+            audioStop(pad.id, { fade: pad.fadeOut || 0 });
+            padEl?.classList.remove('is-playing');
+          } else {
+            audioPlay(pad.id, pad.hash, {
+              type: pad.type || 'single', volume: pad.volume ?? 80,
+              fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
+            });
+            padEl?.classList.add('is-playing');
+          }
         }
       }
     }
@@ -2613,8 +2814,8 @@ document.addEventListener('click', e => {
     }
   }
 
-  // close pad picker when clicking outside it (scene or set context)
-  if ((_bdPickerSlot !== null || _bdSetPickerSlot !== null) && !e.target.closest('#pad-picker')) {
+  // close pad picker when clicking outside it
+  if ((_bdPickerSlot !== null || _bdSetPickerSlot !== null || _bdPickerMode === 'playlist-add') && !e.target.closest('#pad-picker')) {
     closePadPicker();
     return;
   }
@@ -2728,10 +2929,27 @@ function handleAction(action, el) {
     case 'bd-opts-save':      handlePadOptsSave(); break;
     case 'bd-opts-clear':     handlePadOptsClear(); break;
     case 'bd-opts-change':    handlePadOptsChange(); break;
-    case 'bd-opts-type':
+    case 'bd-opts-type': {
       document.querySelectorAll('.pad-type-btn').forEach(b =>
         b.classList.toggle('is-active', b.dataset.type === el.dataset.type));
+      const isList = el.dataset.type === 'playlist';
+      const plSec  = document.getElementById('pl-section');
+      if (plSec) plSec.style.display = isList ? '' : 'none';
+      const chBtn  = document.getElementById('pad-opts-change-btn');
+      if (chBtn) chBtn.style.display = isList ? 'none' : '';
       break;
+    }
+    case 'bd-opts-shuffle':
+      document.querySelectorAll('[data-action="bd-opts-shuffle"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.shuffle === el.dataset.shuffle));
+      break;
+    case 'bd-opts-pl-add':   openPlaylistTrackPicker(); break;
+    case 'bd-opts-pl-remove': {
+      const idx = +el.dataset.idx;
+      _editingPlaylistFiles.splice(idx, 1);
+      _renderPlaylistTracks();
+      break;
+    }
 
     // settings — board + session
     case 'sett-start-mode':
@@ -2842,8 +3060,21 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// When audio ends naturally, remove the is-playing class from the pad cell
+// When audio ends naturally: advance playlist or remove is-playing
 document.addEventListener('audio:ended', e => {
-  const el = document.querySelector(`[data-pad-id="${CSS.escape(e.detail.padId)}"]`);
+  const padId = e.detail.padId;
+  const pad = _findPadById(padId);
+  if (pad?.type === 'playlist' && pad.files?.length && _plState[padId]) {
+    _plAdvance(padId, pad.files.length);
+    const hash = _plCurrentHash(pad);
+    if (hash) {
+      audioPlay(padId, hash, {
+        type: 'single', volume: pad.volume ?? 80,
+        fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
+      });
+      return; // keep is-playing class
+    }
+  }
+  const el = document.querySelector(`[data-pad-id="${CSS.escape(padId)}"]`);
   el?.classList.remove('is-playing');
 });
