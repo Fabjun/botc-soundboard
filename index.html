@@ -391,6 +391,7 @@ body.mode-play{--mode-accent:var(--gold);--mode-accent-dim:var(--gold-dim);--mod
 @keyframes spark-fly{
   0%{transform:translate(0,0) scale(1);opacity:1}
   100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0}}
+canvas.flame-cv{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 @keyframes switch-breathe-gold{
   0%,100%{box-shadow:0 0 5px rgba(201,168,76,.12),0 0 12px rgba(201,168,76,.05)}
   50%    {box-shadow:0 0 18px rgba(201,168,76,.42),0 0 34px rgba(201,168,76,.16)}}
@@ -1064,7 +1065,7 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 <!-- UNLOCK -->
 <div id="su" class="screen active">
   <div class="sc-wrap" style="text-align:center;gap:12px;padding:32px">
-    <div class="sigil" style="margin-bottom:28px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
+    <div id="flame-intro" style="margin-bottom:28px;display:flex;justify-content:center"></div>
     <h1>Soundboard of Storytelling</h1>
     <p class="sub">A tool for Game-Masters<br>and other creative Creatures</p>
     <button class="unlock-btn" onclick="unlock()">TAP TO START</button>
@@ -1075,7 +1076,7 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 <div id="smm" class="screen">
   <div class="sc-wrap" style="padding:32px 24px 20px;gap:0">
   <div class="m-title">
-    <div class="sigil" style="font-size:calc(80px * var(--sym-scale));margin-bottom:24px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" style="vertical-align:middle"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg></div>
+    <div id="flame-menu" style="margin-bottom:24px;display:flex;justify-content:center"></div>
     <h1 style="font-family:var(--ff-hero);font-size:calc(22px * var(--font-scale));letter-spacing:.04em;color:var(--gold);line-height:1.3;margin:0 0 6px">Soundboard of Storytelling</h1>
     <p style="font-family:var(--ff-subtitle);font-size:calc(14px * var(--font-scale));color:var(--text-dim);margin-top:4px;line-height:1.5">A tool for Game-Masters<br>and other creative Creatures</p>
     <p id="ver-label" onclick="openChangelog()" style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin-top:10px;letter-spacing:.04em;cursor:pointer;display:inline-flex;align-items:center;gap:5px">v<span id="ver-num"></span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(11px * var(--font-scale));height:calc(11px * var(--font-scale));opacity:.6"><path d="M5 3h10v2H5zm14 4h-2V5h-2V3h2v2h2v2zm0 14H5V5h8v2H7v12h10V9h2v12zM9 9h6v2H9zm0 4h6v2H9zm0 4h4v2H9z"/></svg></p>
@@ -2354,8 +2355,11 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 171;
+const APP_VERSION = 172;
 const CHANGELOG=[
+  {v:172,date:'2026-05-25',items:[
+    "Animated Pixel Flame (Phase 9): replaces the static SVG sigil on the intro screen and main menu with a canvas-based pixel-art flame (16×17 grid, cellSize 6/5); warm flame (orange/gold, flicker+sway+embers+tongue-lick) = GAME mode; frozen crystal (blue/cyan, ice facets+icicles+glitter) = SETUP mode; intro flame is interactive — tap to freeze/spawn sparks or ice chips; main menu flame is mode-linked — applyModeVisuals() calls _flameSetMode(locked) for an animated warm↔freeze transition; features: tip flicker at 12fps, body sway ±0.4px sine, vertical breath ±3%, rising ember streams, radial halo with pulse, frost vignette, ice-facet overlay, icicles below base; particle system: 9–13 sparks on warm tap (rise+cool), 5–7 ice chips on frozen tap (gravity+rotation+fade); _makeFlame/_flameTick/_flameTap/_flameSetMode/_drawFlame/_initFlames/_lerpHexRGB/_lerpHexStr/_flameColor added"
+  ]},
   {v:171,date:'2026-05-25',items:[
     "Stepped corners (Phase 8): clip-path polygon(5px…) on .pbtn for non-MODERN non-circle themes; 4px chamfer on .qa-item and .ep-card; 6px on .cp palette panel; body.theme-modern and body.pad-ci excluded; glow keyframes (breathe-gold, pad-aura) converted from outer box-shadow to filter:drop-shadow() so glow still bleeds outside clip region; .pbtn.playing/.plooping base outer box-shadow removed (glow driven by keyframe filter); --cc CSS variable holds the 5px polygon"
   ]},
@@ -4483,6 +4487,155 @@ async function _refreshCpItems(){
   if(_cp&&_cp.overlay.classList.contains('open')) _cpRender();
 }
 
+// ── Animated Pixel Flame ──────────────────────────────────────────────────────
+// Pixel art: 16×17 grid. Each pixel = [x, y, layer(0=outer,1=mid,2=core)]
+const _FBODY=[6,2,0,7,2,2,8,2,2,9,2,0,6,3,0,7,3,2,8,3,2,9,3,0,5,4,0,6,4,1,7,4,2,8,4,2,9,4,1,10,4,0,5,5,0,6,5,1,7,5,2,8,5,2,9,5,1,10,5,0,4,6,0,5,6,1,6,6,2,7,6,2,8,6,2,9,6,2,10,6,1,11,6,0,4,7,0,5,7,1,6,7,2,7,7,2,8,7,2,9,7,2,10,7,1,11,7,0,3,8,0,4,8,1,5,8,2,6,8,2,7,8,2,8,8,2,9,8,2,10,8,2,11,8,1,12,8,0,3,9,0,4,9,1,5,9,2,6,9,2,7,9,2,8,9,2,9,9,2,10,9,2,11,9,1,12,9,0,3,10,0,4,10,1,5,10,2,6,10,2,7,10,2,8,10,2,9,10,2,10,10,2,11,10,1,12,10,0,4,11,0,5,11,1,6,11,2,7,11,2,8,11,2,9,11,2,10,11,1,11,11,0,4,12,0,5,12,1,6,12,2,7,12,2,8,12,2,9,12,2,10,12,1,11,12,0,5,13,0,6,13,1,7,13,2,8,13,2,9,13,1,10,13,0,5,14,0,6,14,0,7,14,1,8,14,1,9,14,0,10,14,0,6,15,0,7,15,0,8,15,0,9,15,0];
+const _FTIP=[7,0,2,8,0,2,7,1,1,8,1,1];
+const _FFACETS=[[4,7],[5,8],[6,9],[7,10],[11,7],[10,8],[9,9],[6,11],[7,12],[8,13],[4,5],[11,5],[3,10],[12,10],[5,13],[10,13]];
+const _FCHIPS=[[4,7],[5,5],[6,8],[7,10],[10,5],[11,7],[10,8],[9,9],[4,9],[5,11],[10,11],[6,13],[9,13],[5,8],[11,9]];
+const _FGLITTER=[[4,5],[5,5],[10,5],[11,5],[5,7],[10,7],[4,9],[11,9],[6,11],[9,11],[5,13],[10,13],[7,8],[8,8],[3,10],[12,10]];
+const _WFLAME={o:'#C46818',m:'#E8881E',c:'#F5C242',h:'#FFE8A0'};
+const _CFLAME={o:'#3F88B8',m:'#5BAFD8',c:'#9FD8EE',h:'#E8F8FF'};
+let _flameIntroState=null,_flameMenuState=null;
+
+function _lerpHexRGB(a,b,t){
+  const p=s=>[parseInt(s.slice(1,3),16),parseInt(s.slice(3,5),16),parseInt(s.slice(5,7),16)];
+  const[r1,g1,b1]=p(a),[r2,g2,b2]=p(b);
+  return[r1+(r2-r1)*t|0,g1+(g2-g1)*t|0,b1+(b2-b1)*t|0];
+}
+function _lerpHexStr(a,b,t){const[r,g,c]=_lerpHexRGB(a,b,t);return`rgb(${r},${g},${c})`;}
+function _flameColor(lay,cold){const w=_WFLAME,c=_CFLAME;return _lerpHexStr(lay===0?w.o:lay===1?w.m:w.c,lay===0?c.o:lay===1?c.m:c.c,cold);}
+
+function _makeFlame(container,cellSz,interactive){
+  const cv=document.createElement('canvas'),W=16*cellSz,H=17*cellSz;
+  cv.className='flame-cv';cv.width=W;cv.height=H;
+  cv.style.cssText=`width:${W}px;height:${H}px${interactive?';cursor:pointer':''}`;
+  container.appendChild(cv);
+  const s={cv,ctx:cv.getContext('2d'),cell:cellSz,cold:0,time:0,raf:null,
+    parts:[],glitter:[],lick:{side:0,until:0},lastTap:performance.now()-9000,
+    thaw:1.6,glT:0,interactive,targetCold:null,_last:null};
+  if(interactive) cv.addEventListener('click',e=>{e.stopPropagation();_flameTap(s);});
+  const tick=now=>{_flameTick(s,now);s.raf=requestAnimationFrame(tick);};
+  s.raf=requestAnimationFrame(tick);
+  return s;
+}
+
+function _flameTick(s,now){
+  const dt=s._last?Math.min(50,now-s._last)/1000:0;s._last=now;
+  s.time+=dt;
+  if(s.targetCold!==null){
+    const d=s.targetCold-s.cold;
+    s.cold=Math.abs(d)<0.005?s.targetCold:s.cold+d*Math.min(1,dt*1.8);
+  } else if((now-s.lastTap)/1000>s.thaw&&s.cold>0){
+    s.cold=Math.max(0,s.cold-dt*0.45);
+  }
+  for(let i=s.parts.length-1;i>=0;i--){
+    const p=s.parts[i];
+    p.x+=p.vx*dt;p.y+=p.vy*dt;
+    if(p.k==='c'){p.vy+=26*dt;p.rot+=p.spin*dt;p.vx*=(1-dt*.25);}
+    else{p.vy-=4*dt;p.vx*=(1-dt*.6);}
+    p.life-=dt;if(p.life<=0)s.parts.splice(i,1);
+  }
+  if(s.cold<0.55&&now>s.lick.until&&Math.random()<dt*1.6)
+    s.lick={side:Math.random()<.5?-1:1,until:now+80+Math.random()*140};
+  s.glT-=dt;
+  if(s.cold>0.7&&s.glT<=0){
+    s.glT=0.22+Math.random()*.5;
+    const[gx,gy]=_FGLITTER[Math.random()*16|0];
+    s.glitter.push({x:gx,y:gy,life:.42,mx:.42});
+  }
+  for(let i=s.glitter.length-1;i>=0;i--){s.glitter[i].life-=dt;if(s.glitter[i].life<=0)s.glitter.splice(i,1);}
+  _drawFlame(s);
+}
+
+function _flameTap(s){
+  s.lastTap=performance.now();const c=s.cold;
+  if(c<0.55) for(let i=0;i<9+(Math.random()*5|0);i++){
+    const a=-Math.PI/2+(Math.random()-.5)*Math.PI*1.2,sp=7+Math.random()*10,li=.7+Math.random()*.7;
+    s.parts.push({k:'s',x:8+(Math.random()-.5)*3,y:4+Math.random()*3,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:li,mx:li,sz:.45+Math.random()*.7,wm:Math.random()});
+  }
+  if(c>0.7) for(let i=0;i<5+(Math.random()*3|0);i++){
+    const[px,py]=_FCHIPS[Math.random()*15|0],a=Math.atan2(py-9,px-8)+(Math.random()-.5)*.55,sp=5+Math.random()*7,li=.9+Math.random()*.8;
+    s.parts.push({k:'c',x:px+.5,y:py+.5,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-3,life:li,mx:li,sz:.7+Math.random()*.7,rot:Math.random()*360,spin:(Math.random()-.5)*700});
+  }
+  s.cold=Math.min(1,s.cold+0.18);
+}
+
+function _flameSetMode(s,warm){s.targetCold=warm?0:1;}
+
+function _drawFlame(s){
+  const ctx=s.ctx,c=s.cold,t=s.time,cell=s.cell,W=16*cell,H=17*cell;
+  ctx.clearRect(0,0,W,H);
+  // Halo
+  const rgb=_lerpHexRGB(c<0.5?'#E8821E':'#9F88E8',c<0.5?'#9F88E8':'#5BAFD8',c<0.5?c*2:(c-.5)*2);
+  const flk=Math.max(0,1-c*1.4);
+  const hA=Math.max(0,(0.55-c*.33)*(1+Math.sin(t*3)*.06*flk));
+  const gr=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*.7);
+  gr.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${hA.toFixed(2)})`);
+  gr.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=gr;ctx.fillRect(0,0,W,H);
+  // Body sway + breathe
+  const sway=Math.sin(t*1.4)*.4*flk*cell;
+  const bY=1+Math.sin(t*2.3)*.03*flk;
+  ctx.save();
+  ctx.translate(sway,0);
+  ctx.transform(1,0,0,bY,0,H*(1-bY));
+  function px(x,y,lay,a){ctx.globalAlpha=a===undefined?1:a;ctx.fillStyle=_flameColor(lay,c);ctx.fillRect(x*cell,y*cell,cell,cell);}
+  // Body
+  for(let i=0;i<_FBODY.length;i+=3)px(_FBODY[i],_FBODY[i+1],_FBODY[i+2]);
+  // Heart pulse
+  if(c<0.85){ctx.globalAlpha=(.7+.3*Math.sin(t*4)*flk)*(1-c);ctx.fillStyle=_lerpHexStr(_WFLAME.h,_CFLAME.h,c);ctx.fillRect(7*cell,9*cell,2*cell,2*cell);}ctx.globalAlpha=1;
+  // Tip flicker
+  const tFr=Math.floor(t*12)%16;
+  if(c<0.88){
+    for(let i=0;i<_FTIP.length;i+=3){const x=_FTIP[i],y=_FTIP[i+1],l=_FTIP[i+2];if(((tFr*11+(i/3|0)*17)%13)/13<(y===0?.4:.6)+flk*.4)px(x,y,l);}
+    if(flk>0.4){const e=Math.floor(t*4)%5;if(e===0)px(7,-1,2);if(e===1){px(7,-1,2);px(8,-1,1);}if(e===2)px(8,-1,2);}
+  }else{px(7,0,2);px(8,0,2);px(7,1,1);px(8,1,1);}
+  // Tongue lick
+  if(performance.now()<s.lick.until&&c<0.55){const bx=s.lick.side>0?11:4;px(bx,5,0);px(bx+s.lick.side,6,0);}
+  // Rising embers
+  const e1=(t*.7)%1,e2=((t*.7)+.5)%1;
+  if(flk>0.25){ctx.globalAlpha=(1-e1)*flk*.85;ctx.fillStyle=_flameColor(2,c);ctx.fillRect((7+Math.sin(t*2)*1.2)*cell,(4-e1*5)*cell,.6*cell,.6*cell);}
+  if(flk>0.4){ctx.globalAlpha=(1-e2)*flk*.7;ctx.fillStyle=_lerpHexStr(_WFLAME.m,'#FFFFFF',e2*.4);ctx.fillRect((8+Math.cos(t*1.8))*cell,(3-e2*6)*cell,.5*cell,.5*cell);}
+  ctx.globalAlpha=1;
+  // Ice facets
+  if(c>0.5){const fa=Math.max(0,(c-.5)*2);_FFACETS.forEach(([x,y],i)=>{ctx.globalAlpha=fa*(i<11?.85:1);ctx.fillStyle=i<11?_lerpHexStr(_CFLAME.c,'#FFFFFF',.3):'#FFFFFF';ctx.fillRect(x*cell,y*cell,cell,cell);});ctx.globalAlpha=1;}
+  // Icicles
+  if(c>0.7){const ia=Math.max(0,(c-.7)*3.3);ctx.globalAlpha=ia;ctx.fillStyle=_lerpHexStr(_CFLAME.m,'#FFFFFF',.4);[[5,15],[6,16],[8,16],[10,15],[11,16]].forEach(([x,y])=>ctx.fillRect(x*cell,y*cell,cell,cell));ctx.globalAlpha=1;}
+  // Frozen glitter
+  s.glitter.forEach(g=>{ctx.globalAlpha=1-Math.abs(g.life/g.mx-.5)*2;ctx.fillStyle='#FFFFFF';ctx.fillRect(g.x*cell,g.y*cell,cell,cell);});ctx.globalAlpha=1;
+  ctx.restore();
+  // Particles (fly free of body transform)
+  s.parts.forEach(p=>{
+    const pt=Math.max(0,p.life/p.mx);
+    if(p.k==='s'){
+      ctx.globalAlpha=Math.min(1,pt*1.5);
+      ctx.fillStyle=_lerpHexStr('#FFFFFF',_lerpHexStr(_WFLAME.c,_WFLAME.m,p.wm),1-pt*.4);
+      ctx.fillRect((p.x-p.sz/2)*cell,(p.y-p.sz/2)*cell,p.sz*cell,p.sz*cell);
+    } else {
+      ctx.save();ctx.translate(p.x*cell,p.y*cell);ctx.rotate(p.rot*Math.PI/180);
+      ctx.globalAlpha=Math.min(1,pt*1.4);ctx.fillStyle=_lerpHexStr(_CFLAME.c,'#FFFFFF',.35);
+      ctx.fillRect(-p.sz*cell/2,-p.sz*cell/2,p.sz*cell,p.sz*cell);
+      ctx.globalAlpha=Math.min(1,pt*1.6);ctx.fillStyle='#FFFFFF';
+      ctx.fillRect(-p.sz*cell/4,-p.sz*cell/4,p.sz*cell/3,p.sz*cell/3);
+      ctx.restore();
+    }
+  });
+  ctx.globalAlpha=1;
+  // Frost vignette
+  if(c>0.3){
+    const fv=(c-.3)*.18,fg=ctx.createRadialGradient(W/2,H/2,W*.25,W/2,H/2,W*.7);
+    fg.addColorStop(0,'rgba(0,0,0,0)');fg.addColorStop(1,`rgba(155,210,235,${fv})`);
+    ctx.fillStyle=fg;ctx.fillRect(0,0,W,H);
+  }
+}
+
+function _initFlames(){
+  const ic=document.getElementById('flame-intro'),mc=document.getElementById('flame-menu');
+  if(ic) _flameIntroState=_makeFlame(ic,7,true);
+  if(mc){_flameMenuState=_makeFlame(mc,5,false);_flameMenuState.targetCold=locked?0:1;}
+}
+
 function _getComboDefaultDelay(){ return +(localStorage.getItem('combo-delay')??1); }
 function setComboDefaultDelay(v){
   const clamped=isNaN(v)||v<0?0:Math.min(10,+v);
@@ -6047,6 +6200,7 @@ function applyModeVisuals(){
   document.body.classList.toggle('mode-edit',!locked);
   document.body.classList.toggle('mode-play',locked);
   if(cur==='sp') _applyScreenAccent('mode');
+  if(_flameMenuState) _flameSetMode(_flameMenuState,locked);
 }
 function applyStartMode(){
   const sm=localStorage.getItem('start-mode')||'unlocked';
@@ -8314,6 +8468,7 @@ document.addEventListener('visibilitychange', ()=>{
 });
 
 scheduleAmbientSpark();
+_initFlames();
 
 // Set version label
 (()=>{ const el=document.getElementById('ver-num'); if(el) el.textContent=APP_VERSION; })();
