@@ -1660,11 +1660,11 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
       <div class="ep-sub-body" id="ep-trim" style="display:none; padding-top:8px;">
         <div class="fg">
           <label class="fl">STARTZEIT — <span id="ets-lbl">0.0</span>s</label>
-          <input type="range" id="ets" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ets-lbl').textContent=this.value==='0'?'0.0':this.value" style="width:100%;accent-color:var(--gold)">
+          <input type="range" id="ets" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ets-lbl').textContent=this.value==='0'?'0.0':this.value;drawScrubber()" style="width:100%;accent-color:var(--gold)">
         </div>
         <div class="fg" style="margin-bottom:0">
           <label class="fl">ENDZEIT / DAUER — <span id="ete-lbl">Full</span></label>
-          <input type="range" id="ete" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ete-lbl').textContent=this.value==='0'?'Full':(this.value+'s')" style="width:100%;accent-color:var(--gold)">
+          <input type="range" id="ete" min="0" max="300" step="0.5" value="0" oninput="document.getElementById('ete-lbl').textContent=this.value==='0'?'Full':(this.value+'s');drawScrubber()" style="width:100%;accent-color:var(--gold)">
         </div>
       </div>
     </div>
@@ -1923,8 +1923,13 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 146;
+const APP_VERSION = 147;
 const CHANGELOG=[
+  {v:147,date:'2026-05-25',items:[
+    "Trim tool visual scrubber: two amber markers (vertical line + inward-pointing triangles) show trim-start and trim-end positions on the waveform canvas; regions outside the active trim range are covered with a diagonal-stripe zebra overlay (dark base + hatching lines); markers are always visible when audio is loaded — right marker at right edge when no end-trim is set; draw order: waveform → trim zones → fade overlays → trim markers → playhead",
+    "Trim markers draggable: scrubber hit-zones ±10px around each marker; drag modes 'ts' (trim start) and 'te' (trim end) added to initScrub(); priority: playhead > trim markers > fade zones; left marker clamped to [0, te-0.5]; right marker snaps to 0 (Full) when dragged past 97% width; sliders and labels sync live during drag",
+    "Trim sliders now call drawScrubber() on oninput so scrubber updates immediately as sliders move"
+  ]},
   {v:146,date:'2026-05-25',items:[
     "Fix PAD editor audio preview on iOS: replaced HTML Audio (new Audio() + Object URL) with Web Audio API; the old previewFile() was async and called await libGet() before play(), which broke iOS Safari's user gesture requirement, causing silent failure; new implementation initialises AudioContext synchronously before the first await, then uses _ensureLibBuf() + AudioBufferSourceNode — identical engine as the library picker and pad playback; playhead tracking uses ctx.currentTime arithmetic instead of HTMLAudioElement.currentTime",
     "Fix Combo PAD icons: icon picker was wired only to PAD editor (islot-0..3); Combo PAD editor now has a VISUAL section with cslot-0..3 slots; openComboEditor loads/resets eIcons from pad.icons; doSaveCombo persists icons; updIconPreview() refactored with _updSlotEl() helper and auto-detects active editor via combo-ov.open to target the correct slot prefix"
@@ -5737,6 +5742,34 @@ async function decodeWaveform(fi){
     drawScrubber();
   }).catch(()=>{ waveforms[fi]=null; }).finally(()=>{ tmpAC.close(); });
 }
+function _drawTrimZone(g, x0, x1, H){
+  if(x1<=x0+0.5) return;
+  g.save();
+  g.beginPath(); g.rect(x0,0,x1-x0,H); g.clip();
+  g.fillStyle='rgba(0,0,0,0.52)'; g.fillRect(x0,0,x1-x0,H);
+  g.strokeStyle='rgba(255,255,255,0.09)'; g.lineWidth=2;
+  const pitch=8;
+  for(let x=x0-H; x<x1+pitch; x+=pitch){
+    g.beginPath(); g.moveTo(x,H); g.lineTo(x+H,0); g.stroke();
+  }
+  g.restore();
+}
+function _drawTrimMarker(g, x, pointRight, H){
+  const sz=7, lx=Math.round(x);
+  g.save();
+  g.shadowColor='rgba(201,168,76,0.8)'; g.shadowBlur=5;
+  g.fillStyle='rgba(201,168,76,0.95)';
+  g.fillRect(lx-1,0,2,H);
+  g.beginPath();
+  if(pointRight){ g.moveTo(lx,0); g.lineTo(lx+sz,0); g.lineTo(lx,sz); }
+  else           { g.moveTo(lx,0); g.lineTo(lx-sz,0); g.lineTo(lx,sz); }
+  g.closePath(); g.fill();
+  g.beginPath();
+  if(pointRight){ g.moveTo(lx,H); g.lineTo(lx+sz,H); g.lineTo(lx,H-sz); }
+  else           { g.moveTo(lx,H); g.lineTo(lx-sz,H); g.lineTo(lx,H-sz); }
+  g.closePath(); g.fill();
+  g.restore();
+}
 function drawScrubber(){
   const c=document.getElementById('scrub'); if(!c) return;
   const W=c.offsetWidth; if(!W){ requestAnimationFrame(drawScrubber); return; }
@@ -5757,10 +5790,17 @@ function drawScrubber(){
       g.fillStyle=i/wf.length<=frac?'rgba(122,95,40,0.85)':'rgba(74,74,122,0.7)';
       g.fillRect(x+0.5, mid-h, Math.max(bw-1,1), h*2);
     }
-    // fade overlays
     if(dur>0){
-      const fi=+( document.getElementById('eft')?.value||0);
-      const fo=+( document.getElementById('efo')?.value||0);
+      const ts=+(document.getElementById('ets')?.value||0);
+      const te=+(document.getElementById('ete')?.value||0);
+      const tsX=(ts/dur)*W;
+      const teX=te>0?(te/dur)*W:W;
+      // Trim zone zebra overlays
+      _drawTrimZone(g, 0, tsX, H);
+      _drawTrimZone(g, teX, W, H);
+      // Fade overlays (on top of trim zones, within active region)
+      const fi=+(document.getElementById('eft')?.value||0);
+      const fo=+(document.getElementById('efo')?.value||0);
       if(fi>0){
         const fiW=Math.min(fi/dur,1)*W;
         const grad=g.createLinearGradient(0,0,fiW,0);
@@ -5777,6 +5817,9 @@ function drawScrubber(){
         grad.addColorStop(1,'rgba(200,50,210,0.38)');
         g.fillStyle=grad; g.fillRect(W-foW,0,foW,H);
       }
+      // Trim markers (drawn on top of all overlays)
+      _drawTrimMarker(g, tsX, true,  H);
+      _drawTrimMarker(g, teX, false, H);
     }
     if(dur>0||_prevPausePos>0){
       const px=Math.round(frac*W);
@@ -5815,9 +5858,18 @@ function initScrub(){
   function getDur(){ return _prevGetDur(); }
   function getMode(frac){
     const dur=getDur(); if(!dur) return 'seek';
-    // playhead always wins within ±8px hit zone
+    const cw=c.offsetWidth||1;
+    // playhead: ±8px
     const seekFrac=dur>0?(_prevGetPos()/dur):0;
-    if(Math.abs(frac-seekFrac)*(c.offsetWidth||1)<8) return 'seek';
+    if(Math.abs(frac-seekFrac)*cw<8) return 'seek';
+    // trim markers: ±10px (higher priority than fade zones)
+    const ts=+(document.getElementById('ets')?.value||0);
+    const te=+(document.getElementById('ete')?.value||0);
+    const tsFrac=ts/dur;
+    const teFrac=te>0?te/dur:1.0;
+    if(Math.abs(frac-tsFrac)*cw<10) return 'ts';
+    if(Math.abs(frac-teFrac)*cw<10) return 'te';
+    // fade zones
     const fi=+(document.getElementById('eft')?.value||0);
     const fo=+(document.getElementById('efo')?.value||0);
     if(fi>0&&frac<Math.min(fi/dur,1)) return 'fi';
@@ -5839,6 +5891,20 @@ function initScrub(){
     } else if(dragMode==='fo'&&dur>0){
       const v=Math.min(Math.round((1-frac)*dur*2)/2,10);
       document.getElementById('efo').value=v; updFadeLabel('efo');
+    } else if(dragMode==='ts'&&dur>0){
+      const teV=+(document.getElementById('ete')?.value||0);
+      const maxTs=(teV>0?teV:dur)-0.5;
+      const newTs=Math.max(0,Math.min(Math.round(frac*dur*2)/2,maxTs));
+      const el=document.getElementById('ets');
+      if(el){ el.value=newTs; document.getElementById('ets-lbl').textContent=newTs===0?'0.0':newTs.toFixed(1); }
+      drawScrubber();
+    } else if(dragMode==='te'&&dur>0){
+      const tsV=+(document.getElementById('ets')?.value||0);
+      const rawTe=Math.round(frac*dur*2)/2;
+      const newTe=frac>0.97?0:Math.max(tsV+0.5,Math.min(rawTe,dur));
+      const el=document.getElementById('ete');
+      if(el){ el.value=newTe; document.getElementById('ete-lbl').textContent=newTe===0?'Full':newTe.toFixed(1)+'s'; }
+      drawScrubber();
     } else if(dragMode==='seek'){
       const dur=getDur(); if(dur>0) _prevPausePos=frac*dur;
       drawScrubber();
