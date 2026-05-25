@@ -1923,8 +1923,11 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 147;
+const APP_VERSION = 148;
 const CHANGELOG=[
+  {v:148,date:'2026-05-25',items:[
+    "Fade effects anchored to trim boundaries (visual + audio): fade-in overlay starts at trim-start position; fade-out overlay ends at trim-end position; both overlays clamped to active region width so they never bleed into trimmed-out zones; auto fade-out for once-mode pads: when trim-end is set and fade-out > 0, a gain ramp is pre-scheduled to reach 0 exactly at trim-end; foStart = max(after-fade-in, dur-fo) to handle overlap with fade-in; manual stop still overrides via cancelScheduledValues in stopPad"
+  ]},
   {v:147,date:'2026-05-25',items:[
     "Trim tool visual scrubber: two amber markers (vertical line + inward-pointing triangles) show trim-start and trim-end positions on the waveform canvas; regions outside the active trim range are covered with a diagonal-stripe zebra overlay (dark base + hatching lines); markers are always visible when audio is loaded — right marker at right edge when no end-trim is set; draw order: waveform → trim zones → fade overlays → trim markers → playhead",
     "Trim markers draggable: scrubber hit-zones ±10px around each marker; drag modes 'ts' (trim start) and 'te' (trim end) added to initScrub(); priority: playhead > trim markers > fade zones; left marker clamped to [0, te-0.5]; right marker snaps to 0 (Full) when dragged past 97% width; sliders and labels sync live during drag",
@@ -3167,7 +3170,7 @@ async function play(id){
 
   if(ctx?.state==='suspended') ctx.resume().catch(()=>{});
   flash(id);
-  const vol=(p.volume||80)/100, fi=p.fadeIn||0;
+  const vol=(p.volume||80)/100, fi=p.fadeIn||0, fo=p.fadeOut||0;
 
   const tStart = p.trimStart || 0;
   const tEnd = p.trimEnd || 0;
@@ -3179,8 +3182,13 @@ async function play(id){
     stopPad(id,true);
     const s=ctx.createBufferSource(), g=ctx.createGain();
     fadeInGain(g,vol,fi);
+    if(hasDuration&&fo>0){
+      const foStart=Math.max(ctx.currentTime+fi,ctx.currentTime+dur-fo);
+      g.gain.setValueAtTime(vol,foStart);
+      g.gain.linearRampToValueAtTime(0,ctx.currentTime+dur);
+    }
     s.buffer=b; s.connect(g); _connectGainToMaster(id,g);
-    
+
     if(hasDuration) s.start(0, tStart, dur); else s.start(0, tStart);
     
     srcs[id]=[s]; gains[id]=g;
@@ -5802,20 +5810,20 @@ function drawScrubber(){
       const fi=+(document.getElementById('eft')?.value||0);
       const fo=+(document.getElementById('efo')?.value||0);
       if(fi>0){
-        const fiW=Math.min(fi/dur,1)*W;
-        const grad=g.createLinearGradient(0,0,fiW,0);
+        const fiW=Math.min(fi/dur*W, teX-tsX);
+        const grad=g.createLinearGradient(tsX,0,tsX+fiW,0);
         grad.addColorStop(0,'rgba(200,50,210,0.38)');
         grad.addColorStop(0.75,'rgba(200,50,210,0.28)');
         grad.addColorStop(1,'rgba(200,50,210,0)');
-        g.fillStyle=grad; g.fillRect(0,0,fiW,H);
+        g.fillStyle=grad; g.fillRect(tsX,0,fiW,H);
       }
       if(fo>0){
-        const foW=Math.min(fo/dur,1)*W;
-        const grad=g.createLinearGradient(W-foW,0,W,0);
+        const foW=Math.min(fo/dur*W, teX-tsX);
+        const grad=g.createLinearGradient(teX-foW,0,teX,0);
         grad.addColorStop(0,'rgba(200,50,210,0)');
         grad.addColorStop(0.25,'rgba(200,50,210,0.28)');
         grad.addColorStop(1,'rgba(200,50,210,0.38)');
-        g.fillStyle=grad; g.fillRect(W-foW,0,foW,H);
+        g.fillStyle=grad; g.fillRect(teX-foW,0,foW,H);
       }
       // Trim markers (drawn on top of all overlays)
       _drawTrimMarker(g, tsX, true,  H);
