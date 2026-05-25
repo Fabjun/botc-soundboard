@@ -1,12 +1,11 @@
 // Cache name — bump whenever any cached asset changes.
-const VERSION = 177;
+const VERSION = 178;
 const CACHE = `storyteller-v${VERSION}`;
 
 // All assets required for offline-first operation.
 // Fonts and static data files are separate; add new ones here when added.
 const SHELL = [
   './',
-  'icons.js',
   'fonts/press-start-2p.woff2',
   'fonts/share-tech-mono.woff2',
   'fonts/vt323.woff2',
