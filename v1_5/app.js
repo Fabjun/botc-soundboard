@@ -1,8 +1,14 @@
 'use strict';
 
-const APP_VERSION = '1.5.20';
+const APP_VERSION = '1.5.21';
 
 const CHANGELOG = [
+  { v: '1.5.21', date: '2026-05-26', items: [
+    'Pad icons: assign any of 1,476 pixel-art icons to a pad in SETUP mode (VISUAL section in pad opts)',
+    'Icon picker: searchable by name, filterable by 15 categories, full-screen overlay',
+    'Icons show in pad cell (replaces waveform mini when set); color matches pad type accent',
+    'Library ICONS tab: browse all icons without assigning',
+  ]},
   { v: '1.5.20', date: '2026-05-26', items: [
     'Import fix: board ID collision now correctly remaps all scene/set IDs and boardId references',
     'Backup age indicator in main menu now shows time since last export',
@@ -830,7 +836,7 @@ function libraryHTML() {
       </main>
     </div>
     <div class="tab-panel${_libTab==='icons'?' is-active':''}" id="tab-icons">
-      <main class="lib-main lib-main-stub"><p class="stub-sub" style="margin-top:40px">Icon library — coming in Slice 6</p></main>
+      <main class="lib-main lib-main-stub"><p class="stub-sub" style="margin-top:40px">Loading icons…</p></main>
     </div>
   </div>
 
@@ -878,6 +884,7 @@ async function mountLibrary() {
 
   await _libRefresh();
   if (_libTab === 'boards') renderBoardsTab();
+  else if (_libTab === 'icons') renderIconsTab();
   else renderAudioList();
 }
 
@@ -967,6 +974,7 @@ function handleLibTab(tab) {
   if (s) s.textContent = tab.toUpperCase();
   if (tab === 'boards') renderBoardsTab();
   else if (tab === 'audio') renderAudioList();
+  else if (tab === 'icons') renderIconsTab();
 }
 
 function handleLibFilter(filter) {
@@ -1086,6 +1094,45 @@ async function handleLibBdDelete(boardId) {
     const btn = document.querySelector(`.act-btn.danger[data-board-id="${boardId}"]`);
     if (btn) { btn.classList.add('is-confirm'); btn.textContent = 'SURE?'; }
   }
+}
+
+function renderIconsTab() {
+  const el = document.getElementById('tab-icons');
+  if (!el) return;
+  if (typeof PAD_ICONS === 'undefined') {
+    el.innerHTML = '<main class="lib-main lib-main-stub"><p class="stub-sub">Icon library not loaded.</p></main>';
+    return;
+  }
+  const cats = ['all', ...new Set(PAD_ICONS.map(i => i.cat))];
+  let libSearch = '', libCat = 'all';
+
+  function buildGrid() {
+    const q = libSearch.toLowerCase();
+    const icons = PAD_ICONS.filter(i =>
+      (libCat === 'all' || i.cat === libCat) && (!q || i.label.toLowerCase().includes(q)));
+    return icons.length
+      ? `<div class="ip-grid lib-ip-grid">${icons.map(i =>
+          `<div class="ip-cell" title="${escAttr(i.label)}">${padIconSvg(i.id, 24, 'var(--text-dim)')}</div>`
+        ).join('')}</div>`
+      : '<p class="lib-empty">No icons found.</p>';
+  }
+
+  el.innerHTML = `<main class="lib-main" style="display:flex;flex-direction:column;overflow:hidden">
+    <div class="lib-icons-top">
+      <input class="ip-search" id="lib-ip-search" type="text" placeholder="Search icons…" autocomplete="off">
+      <select class="ip-cat-select" id="lib-ip-cat">
+        ${cats.map(c => `<option value="${escAttr(c)}">${c === 'all' ? 'All' : escHtml(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="lib-ip-wrap" id="lib-ip-wrap">${buildGrid()}</div>
+  </main>`;
+
+  document.getElementById('lib-ip-search')?.addEventListener('input', e => {
+    libSearch = e.target.value; document.getElementById('lib-ip-wrap').innerHTML = buildGrid();
+  });
+  document.getElementById('lib-ip-cat')?.addEventListener('change', e => {
+    libCat = e.target.value; document.getElementById('lib-ip-wrap').innerHTML = buildGrid();
+  });
 }
 
 /* ── SCREEN: BOARD LIST ──────────────────────────────────────── */
@@ -1252,6 +1299,13 @@ const _plState = {};             // padId → { order: number[], pos: number }
 let _editingPlaylistFiles = [];  // files being edited in pad opts sheet
 let _bdPickerMode = 'single';    // 'single' | 'playlist-add'
 
+// Icon picker state
+let _ipOpen      = false;
+let _ipCtx       = null;   // 'pad-opts' | 'library' | null
+let _ipSearch    = '';
+let _ipCat       = 'all';
+let _editingIconId = null; // iconId being edited in pad opts sheet (null = none)
+
 // Quick-volume long-press state
 let _lpTimer  = null;
 let _lpFired  = false;
@@ -1394,10 +1448,14 @@ function padCellHTML(pad) {
   const playing    = audioIsPlaying(pad.id);
   const isLoop     = pad.type === 'loop';
   const isPlaylist = pad.type === 'playlist';
+  const accentVar  = isLoop ? 'var(--pad-loop)' : isPlaylist ? 'var(--pad-playlist)' : 'var(--pad-single)';
+  const iconHtml   = pad.iconId && typeof padIconSvg === 'function'
+    ? `<div class="pad-icon">${padIconSvg(pad.iconId, 32, accentVar)}</div>`
+    : `<div class="pad-wave">${_waveMiniFromHash(pad.hash)}</div>`;
   return `<div class="pad is-assigned${playing ? ' is-playing' : ''}${isLoop ? ' is-loop' : ''}${isPlaylist ? ' is-playlist' : ''}" data-pad-slot="${pad.slot}" data-pad-id="${escAttr(pad.id)}" data-action="bd-pad-tap">
     ${isLoop     ? `<span class="pad-loop-badge">↻</span>` : ''}
     ${isPlaylist ? `<span class="pad-loop-badge pad-pl-badge">☰</span>` : ''}
-    <div class="pad-wave">${_waveMiniFromHash(pad.hash)}</div>
+    ${iconHtml}
     <div class="pad-name">${escHtml(pad.name || '—')}</div>
     ${pad.hotkey ? `<span class="pad-hotkey">${escHtml(pad.hotkey)}</span>` : ''}
   </div>`;
@@ -1691,6 +1749,14 @@ function _padOptsHTML(pad) {
       <div class="pl-tracks" id="pl-tracks">${_renderPlaylistTracksHTML()}</div>
       <button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-top:4px" data-action="bd-opts-pl-add">+ ADD TRACK</button>
     </div>
+    <div class="pad-opts-section">
+      <div class="pad-opts-row">
+        <span class="pad-opts-label">Icon</span>
+        <div class="pad-icon-preview" id="pad-icon-preview">${pad.iconId && typeof padIconSvg === 'function' ? padIconSvg(pad.iconId, 24, 'var(--gold)') : '<span style="font-family:var(--font-mono);font-size:11px;color:var(--text-mute)">none</span>'}</div>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-left:6px" data-action="bd-opts-icon-pick">CHANGE</button>
+        ${pad.iconId ? `<button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-left:4px" data-action="bd-opts-icon-clear">✕</button>` : ''}
+      </div>
+    </div>
     <div class="pad-opts-actions">
       <button class="sb-btn sb-btn-sm sb-btn-ghost" id="pad-opts-change-btn" data-action="bd-opts-change"${isList ? ' style="display:none"' : ''}>Change Audio</button>
       <button class="sb-btn sb-btn-sm sb-btn-danger" data-action="bd-opts-clear">Clear</button>
@@ -1706,6 +1772,7 @@ function openPadOpts(slot) {
   if (!pad) { openPadPicker(slot); return; }
   _bdOptsSlot = slot;
   _editingPlaylistFiles = (pad.files || []).map(f => ({ ...f }));
+  _editingIconId = pad.iconId || null;
   document.getElementById('bd-content')?.insertAdjacentHTML('beforeend', _padOptsHTML(pad));
   document.getElementById('pad-opts-name')?.focus();
 }
@@ -1727,10 +1794,12 @@ async function handlePadOptsSave() {
 
   function _applyPad(p) {
     const base = { ...p, name, hotkey, type, volume };
+    if (_editingIconId) base.iconId = _editingIconId;
+    else delete base.iconId;
     if (!isList) return base;
     base.files   = files;
     base.shuffle = shuffle;
-    base.hash    = files?.length ? files[0].hash : (p.hash || null); // first track for waveform
+    base.hash    = files?.length ? files[0].hash : (p.hash || null);
     return base;
   }
 
@@ -1853,6 +1922,7 @@ function openSetPadOpts(slot) {
   if (!pad) { openSetPadPicker(slot); return; }
   _bdSetOptsSlot = slot;
   _editingPlaylistFiles = (pad.files || []).map(f => ({ ...f }));
+  _editingIconId = pad.iconId || null;
   document.getElementById('bd-content')?.insertAdjacentHTML('beforeend', _padOptsHTML(pad));
   document.getElementById('pad-opts-name')?.focus();
 }
@@ -2697,6 +2767,79 @@ async function executeImport() {
   }
 }
 
+/* ── ICON PICKER ─────────────────────────────────────────────── */
+
+function _ipCategories() {
+  if (typeof PAD_ICONS === 'undefined') return [];
+  return ['all', ...new Set(PAD_ICONS.map(i => i.cat))];
+}
+
+function _ipFilteredIcons() {
+  if (typeof PAD_ICONS === 'undefined') return [];
+  const q = _ipSearch.toLowerCase();
+  return PAD_ICONS.filter(i =>
+    (_ipCat === 'all' || i.cat === _ipCat) &&
+    (!q || i.label.toLowerCase().includes(q) || i.id.toLowerCase().includes(q))
+  );
+}
+
+function _ipRenderGrid() {
+  const el = document.getElementById('ip-grid');
+  if (!el) return;
+  const icons = _ipFilteredIcons();
+  if (!icons.length) { el.innerHTML = '<p class="ip-empty">No icons found.</p>'; return; }
+  el.innerHTML = icons.map(i =>
+    `<div class="ip-cell" data-action="ip-select" data-icon-id="${escAttr(i.id)}" title="${escAttr(i.label)}">
+      ${padIconSvg(i.id, 24, 'var(--text-dim)')}
+    </div>`
+  ).join('');
+}
+
+function openIconPicker(ctx) {
+  if (_ipOpen) return;
+  _ipOpen   = true;
+  _ipCtx    = ctx;
+  _ipSearch = '';
+  _ipCat    = 'all';
+  const cats = _ipCategories();
+  document.body.insertAdjacentHTML('beforeend', `<div class="ip-overlay" id="icon-picker">
+    <div class="ip-top">
+      <button class="ip-back" data-action="ip-back">← BACK</button>
+      <input class="ip-search" id="ip-search" type="text" placeholder="Search icons…" autocomplete="off">
+      <select class="ip-cat-select" id="ip-cat">
+        ${cats.map(c => `<option value="${escAttr(c)}">${c === 'all' ? 'All categories' : escHtml(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="ip-grid" id="ip-grid"></div>
+  </div>`);
+  _ipRenderGrid();
+  document.getElementById('ip-search')?.addEventListener('input', e => {
+    _ipSearch = e.target.value;
+    _ipRenderGrid();
+  });
+  document.getElementById('ip-cat')?.addEventListener('change', e => {
+    _ipCat = e.target.value;
+    _ipRenderGrid();
+  });
+}
+
+function closeIconPicker() {
+  _ipOpen = false;
+  _ipCtx  = null;
+  document.getElementById('icon-picker')?.remove();
+}
+
+function handleIconSelect(iconId) {
+  if (_ipCtx === 'pad-opts') {
+    _editingIconId = iconId;
+    const preview = document.getElementById('pad-icon-preview');
+    if (preview && typeof padIconSvg === 'function') preview.innerHTML = padIconSvg(iconId, 24, 'var(--gold)');
+    closeIconPicker();
+  } else if (_ipCtx === 'library') {
+    closeIconPicker();
+  }
+}
+
 /* ── SCREEN: SETTINGS ───────────────────────────────────────── */
 
 /** @returns {string} */
@@ -3166,6 +3309,9 @@ document.addEventListener('click', e => {
   // close import modal on backdrop click
   if (_importModalOpen && !e.target.closest('#import-modal')) { closeImportModal(); return; }
 
+  // icon picker is full-screen — no backdrop click needed; ip-back handles close
+  if (_ipOpen) return;
+
   // close changelog on backdrop click
   if (_clOpen && !e.target.closest('#cl-modal')) { closeChangelog(); return; }
 
@@ -3345,6 +3491,16 @@ function handleAction(action, el) {
       _renderPlaylistTracks();
       break;
     }
+    case 'bd-opts-icon-pick': openIconPicker('pad-opts'); break;
+    case 'bd-opts-icon-clear': {
+      _editingIconId = null;
+      const preview = document.getElementById('pad-icon-preview');
+      if (preview) preview.innerHTML = '<span style="font-family:var(--font-mono);font-size:11px;color:var(--text-mute)">none</span>';
+      el.remove();
+      break;
+    }
+    case 'ip-back':    closeIconPicker(); break;
+    case 'ip-select':  handleIconSelect(el.dataset.iconId); break;
 
     // settings — board + session
     case 'sett-start-mode':
