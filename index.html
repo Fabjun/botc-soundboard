@@ -2140,8 +2140,11 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 162;
+const APP_VERSION = 163;
 const CHANGELOG=[
+  {v:163,date:'2026-05-25',items:[
+    "Fix combo FADE OUT ALL step: replaced stopAll(id,true)+fadeOutAll() pair with _fadeOutAllExcept(exceptComboId,fadeTime); the old approach was doubly broken — stopAll with isFade=true was a no-op (entire body gated on !isFade), and fadeOutAll only ramped gains[] which never contains sub-pad GainNodes created by createPadInstance; _fadeOutAllExcept: (1) immediately stops other running combos via stopCombo, (2) ramps down gains[] of regular pads, (3) cleans up after fade delay without touching srcs[exceptComboId] so the current combo's sentinel and button state are preserved; also fixed stopAll to skip srcs[exceptComboId] so STOP ALL steps no longer briefly grey-out the current combo's button; fade duration is controlled by the step's duration input (default 2.5s for fadeOutAll steps)"
+  ]},
   {v:162,date:'2026-05-25',items:[
     "Combo default delay: Settings → CONTROLS → COMBO DEFAULT DELAY number input (0–10s, step 0.5, default 1); _getComboDefaultDelay() reads combo-delay from localStorage; new steps created via addComboStep, insertComboStep, and openComboEditor (new combo) use the global default instead of hardcoded 1; renderComboSteps defaultPause also uses global default for display; combo-delay added to SETTINGS_KEYS"
   ]},
@@ -3749,8 +3752,7 @@ function playComboStep(id,state,steps,stepIdx){
   
   if (steps[stepIdx].fadeOutAll) {
     const customFadeTime = steps[stepIdx].dur || 2.5;
-    stopAll(id, true);
-    fadeOutAll(customFadeTime);
+    _fadeOutAllExcept(id, customFadeTime);
     delayNext = (customFadeTime * 1000) + 100;
   }
 
@@ -3826,6 +3828,44 @@ function fadeOutAll(fadeTime) {
     chkNP();
   }, (fadeTime * 1000) + 50);
 }
+
+function _fadeOutAllExcept(exceptComboId, fadeTime){
+  _cancelAutoStop();
+  if(!ctx || ctx.state==='suspended') return;
+
+  // Stop other combos immediately (their audio is in local GainNodes, not in gains[])
+  Object.keys(comboState).forEach(cid=>{
+    if(+cid!==exceptComboId) stopCombo(+cid);
+  });
+
+  // Ramp down gains[] of regular pads
+  const fadingPids=[];
+  Object.keys(gains).forEach(gid=>{
+    const pid=+gid;
+    if(pid===exceptComboId) return;
+    const g=gains[pid];
+    if(g && g.gain){
+      try{
+        g.gain.cancelScheduledValues(ctx.currentTime);
+        g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0, ctx.currentTime+fadeTime);
+        fadingPids.push(pid);
+      }catch(e){}
+    }
+  });
+
+  // Clean up regular pads after fade; preserve the current combo's sentinel
+  setTimeout(()=>{
+    fadingPids.forEach(pid=>{
+      if(srcs[pid]){ srcs[pid].forEach(s=>{try{s.onended=null;s.stop();}catch(e){}}); delete srcs[pid]; }
+      delete gains[pid]; delete playPos[pid];
+      _detachPadAnalyser(pid); updBtn(pid,false);
+    });
+    _playStack=[];
+    chkNP();
+  }, (fadeTime*1000)+50);
+}
+
 function finishCombo(id,state){
   clearTimeout(state.pauseTimer);
   state.bgInstances.forEach(i=>i.stop());
@@ -3863,6 +3903,7 @@ function stopAll(exceptComboId = null, isFade = false){
   _cancelAutoStop();
   Object.keys(srcs).forEach(id=>{
     const pid=+id;
+    if(exceptComboId!==null && pid===exceptComboId) return;
     if (!isFade) {
       srcs[pid].forEach(s=>{try{s.onended=null;s.stop();}catch(e){}});
       delete srcs[pid];
