@@ -2099,6 +2099,14 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
           <div class="topt" id="pi-off" onclick="setPadIconsVisible(false)">OFF</div>
         </div>
       </div>
+      <div class="trow">
+        <div class="topt" id="pc-auto" style="flex:2" onclick="setPadCols('auto')">AUTO</div>
+        <div class="topt" id="pc-2" onclick="setPadCols(2)">2</div>
+        <div class="topt" id="pc-3" onclick="setPadCols(3)">3</div>
+        <div class="topt" id="pc-4" onclick="setPadCols(4)">4</div>
+        <div class="topt" id="pc-5" onclick="setPadCols(5)">5</div>
+        <div class="topt" id="pc-6" onclick="setPadCols(6)">6</div>
+      </div>
     </div>
   </div>
   <div id="sb-library" style="display:contents"></div>
@@ -2106,8 +2114,11 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 158;
+const APP_VERSION = 159;
 const CHANGELOG=[
+  {v:159,date:'2026-05-25',items:[
+    "PAD grid columns: AUTO/2/3/4/5/6 toggle row in PAD STYLE sidebar; fixed-column mode sets #pgrid inline style gridTemplateColumns=repeat(N,1fr); AUTO clears the override to restore auto-fill behaviour; survives renderBoard() since the #pgrid element is never replaced; pad-cols in SETTINGS_KEYS"
+  ]},
   {v:158,date:'2026-05-25',items:[
     "Master volume: global GainNode slider in Settings → CONTROLS → MASTER VOLUME (0–100%, default 100%); setMasterVolume() sets masterGain.gain.value live; persisted as master-vol in SETTINGS_KEYS; _initMasterVolumeUI() called at startup and on sa-ctrl.onShow"
   ]},
@@ -2308,7 +2319,7 @@ const CHANGELOG=[
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
 console.assert(CHANGELOG[0].v===APP_VERSION,'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations','master-vol'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-cols','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations','master-vol'];
 // ── DEBUG LOG ──
 let _debugLogEnabled = localStorage.getItem('debug-log') === '1';
 const _DEBUG_LOG_MAX = 200;
@@ -5368,6 +5379,7 @@ function initGridCtrl(){
     localStorage.setItem('pad-label-scale',v);
   });
   _initPadIconsUI();
+  _initPadColsUI();
 }
 
 // ── MODE ──
@@ -5414,6 +5426,19 @@ function _initPadIconsUI(){
   document.getElementById('pi-on')?.classList.toggle('al',v);
   document.getElementById('pi-off')?.classList.toggle('al',!v);
 }
+function setPadCols(v){
+  const key=String(v);
+  localStorage.setItem('pad-cols',key);
+  const grid=document.getElementById('pgrid');
+  if(grid) grid.style.gridTemplateColumns=(key==='auto')?'':(`repeat(${key},1fr)`);
+  ['auto','2','3','4','5','6'].forEach(k=>{
+    document.getElementById('pc-'+k)?.classList.toggle('al',k===key);
+  });
+}
+function _initPadColsUI(){
+  setPadCols(localStorage.getItem('pad-cols')||'auto');
+}
+
 function setAnimations(v){
   localStorage.setItem('animations',v?'1':'0');
   document.body.classList.toggle('no-anim',!v);
