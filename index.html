@@ -1218,6 +1218,20 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">Stops all audio after this many minutes without any tap or key press. The timer resets on every interaction and pauses automatically when nothing is playing.</p>
     </div>
+    <div class="sg-sub">LONG-PRESS ACTION (GAME)</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="lp-vol" onclick="setLongPressAction('vol')">VOLUME</div>
+        <div class="topt" id="lp-rename" onclick="setLongPressAction('rename')">RENAME</div>
+        <div class="topt" id="lp-off" onclick="setLongPressAction('off')">OFF</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        What a 500 ms long-press on a PAD does in GAME mode.
+        <b style="color:var(--text)">VOLUME</b> opens the quick volume slider (only when the pad is playing) ·
+        <b style="color:var(--text)">RENAME</b> opens the quick rename overlay ·
+        <b style="color:var(--text)">OFF</b> disables long-press.
+      </p>
+    </div>
    </div><!-- /.cx -->
   </div>
 </div>
@@ -2114,8 +2128,11 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 160;
+const APP_VERSION = 161;
 const CHANGELOG=[
+  {v:161,date:'2026-05-25',items:[
+    "Configurable long-press action in GAME mode: Settings → CONTROLS → LONG-PRESS ACTION; three options: VOLUME (long-press on playing pad opens volume slider, default), RENAME (long-press on any occupied pad opens quick-rename), OFF (disables long-press entirely); persisted as lp-action in SETTINGS_KEYS; _initLongPressUI() called at startup and on sa-ctrl.onShow"
+  ]},
   {v:160,date:'2026-05-25',items:[
     "Double-tap stops PAD in GAME mode: _tapPad(id) replaces togglePad() in onDragEnd; single tap on a playing pad is a no-op (records timestamp); second tap on the same pad within 300ms calls stopPad(); tap on non-playing pad always calls play() immediately; keyboard path (playFromKey) unchanged"
   ]},
@@ -2322,7 +2339,7 @@ const CHANGELOG=[
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
 console.assert(CHANGELOG[0].v===APP_VERSION,'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-cols','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations','master-vol'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-cols','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations','master-vol','lp-action'];
 // ── DEBUG LOG ──
 let _debugLogEnabled = localStorage.getItem('debug-log') === '1';
 const _DEBUG_LOG_MAX = 200;
@@ -3384,6 +3401,7 @@ function unlock(){
   initGridCtrl();
   initAutoIcon();
   _initAnimationsUI();
+  _initLongPressUI();
   _initMasterVolumeUI();
   _boardSsbUpdateSortUI();
   openDB().then(load).then(async ()=>{
@@ -3849,6 +3867,14 @@ function stopAll(exceptComboId = null, isFade = false){
 }
 
 function togglePad(id){ if(srcs[id]) stopPad(id); else play(id); }
+function setLongPressAction(v){
+  localStorage.setItem('lp-action',v);
+  ['vol','rename','off'].forEach(k=>document.getElementById('lp-'+k)?.classList.toggle('al',k===v));
+}
+function _initLongPressUI(){
+  setLongPressAction(localStorage.getItem('lp-action')||'vol');
+}
+
 function _tapPad(id){
   const now=Date.now();
   if(srcs[id]){
@@ -5261,7 +5287,7 @@ function updateMenuBackupBtns(){
 const SCREEN_CONFIG = {
   sp:  { title: null,            hasSidebar: true,  accent: 'mode', hints: ['sp'],  onShow: ()=>{ renderBoard(); if(locked) focusKB(); } },
   sa:       { title: 'SETTINGS',    hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{} },
-  'sa-ctrl':  { title: 'CONTROLS',   hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initMasterVolumeUI(); _renderSwitchSoundRow(); _initWakeLockUI(); _initAutoStopUI(); } },
+  'sa-ctrl':  { title: 'CONTROLS',   hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initMasterVolumeUI(); _renderSwitchSoundRow(); _initWakeLockUI(); _initAutoStopUI(); _initLongPressUI(); } },
   'sa-appear':{ title: 'APPEARANCE', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initThemeSettings(); } },
   'sa-vis':   { title: 'VISUALS',    hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initPadLevelUI(); _initAnimationsUI(); } },
   'sa-keys':  { title: 'KEYBINDING', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initHelpSettings(); } },
@@ -7032,14 +7058,16 @@ function onPadPointerDown(e, id){
       _openQuickRename(id);
     }, 500);
   }
-  if(locked && pads[id] && srcs[id]){
-    _pvTimer=setTimeout(()=>{
-      _pvTimer=null;
-      dragSrc=null;
-      document.removeEventListener('pointermove', onDragMove);
-      document.removeEventListener('pointerup', onDragEnd);
-      _openPadVolSlider(id);
-    }, 500);
+  if(locked && pads[id]){
+    const lp=localStorage.getItem('lp-action')||'vol';
+    if((lp==='vol'&&srcs[id])||lp==='rename'){
+      _pvTimer=setTimeout(()=>{
+        _pvTimer=null; dragSrc=null;
+        document.removeEventListener('pointermove', onDragMove);
+        document.removeEventListener('pointerup', onDragEnd);
+        if(lp==='rename') _openQuickRename(id); else _openPadVolSlider(id);
+      }, 500);
+    }
   }
   document.addEventListener('pointermove', onDragMove, {passive:false});
   document.addEventListener('pointerup', onDragEnd);
