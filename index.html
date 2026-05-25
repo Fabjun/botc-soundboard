@@ -2114,8 +2114,11 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 159;
+const APP_VERSION = 160;
 const CHANGELOG=[
+  {v:160,date:'2026-05-25',items:[
+    "Double-tap stops PAD in GAME mode: _tapPad(id) replaces togglePad() in onDragEnd; single tap on a playing pad is a no-op (records timestamp); second tap on the same pad within 300ms calls stopPad(); tap on non-playing pad always calls play() immediately; keyboard path (playFromKey) unchanged"
+  ]},
   {v:159,date:'2026-05-25',items:[
     "PAD grid columns: AUTO/2/3/4/5/6 toggle row in PAD STYLE sidebar; fixed-column mode sets #pgrid inline style gridTemplateColumns=repeat(N,1fr); AUTO clears the override to restore auto-fill behaviour; survives renderBoard() since the #pgrid element is never replaced; pad-cols in SETTINGS_KEYS"
   ]},
@@ -2449,6 +2452,7 @@ let dragSrc=null, dragGhost=null, dragMoved=false;
 let dragStartX=0, dragStartY=0, dragGhostW=0, dragGhostH=0;
 let _qrTimer=null, _qrId=null;
 let _pvTimer=null, _pvId=null;
+let _dtTapId=null, _dtTapTime=0;
 let _dragInsertAt=null, _dragSwapWith=null;
 
 // ── DB ──
@@ -3845,6 +3849,15 @@ function stopAll(exceptComboId = null, isFade = false){
 }
 
 function togglePad(id){ if(srcs[id]) stopPad(id); else play(id); }
+function _tapPad(id){
+  const now=Date.now();
+  if(srcs[id]){
+    if(id===_dtTapId && now-_dtTapTime<300){ stopPad(id); _dtTapId=null; }
+    else { _dtTapId=id; _dtTapTime=now; }
+  } else {
+    _dtTapId=id; _dtTapTime=now; play(id);
+  }
+}
 function playFromKey(id){ if(srcs[id]) return; play(id); }
 
 function flash(id){
@@ -7103,7 +7116,7 @@ function onDragEnd(e){
   _pendingRipple=null;
   if(!dragMoved){
     const id=dragSrc; dragSrc=null;
-    if(locked){ if(pads[id]) togglePad(id); }
+    if(locked){ if(pads[id]) _tapPad(id); }
     else { if(pads[id]) openEP(id); else openPadTypePicker(); }
     return;
   }
