@@ -553,6 +553,24 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
 @keyframes breathe-gold{
   0%,100%{box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 8px var(--pad-glow,rgba(212,178,92,.25))}
   50%    {box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 22px var(--pad-glow,rgba(212,178,92,.55))}}
+@keyframes pad-aura{
+  0%,100%{box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 8px var(--pad-glow,rgba(212,178,92,.25))}
+  50%    {box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35),0 0 28px var(--pad-glow,rgba(212,178,92,.65)),0 0 50px var(--pad-glow,rgba(212,178,92,.15))}}
+@keyframes pad-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.018)}}
+body.aura-on .pbtn.playing {animation:pad-aura 2s ease-in-out infinite}
+body.aura-on .pbtn.plooping{animation:pad-aura 2.4s ease-in-out infinite}
+body.breathing-on .pbtn.plooping[data-mode="loop"]{animation:pad-breathe 3s ease-in-out infinite}
+body.aura-on.breathing-on .pbtn.plooping[data-mode="loop"]{animation:pad-aura 2.4s ease-in-out infinite,pad-breathe 3s ease-in-out infinite}
+body.hearth-on #pgrid::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 90% 60% at 50% 100%,var(--gold-soft,rgba(212,178,92,.18)) 0%,transparent 70%);
+  pointer-events:none;z-index:0}
+@keyframes ember-float{
+  0%{transform:translateY(0) translateX(0) scale(1);opacity:.65}
+  70%{opacity:.4}
+  100%{transform:translateY(-110px) translateX(var(--ember-x,8px)) scale(0.3);opacity:0}}
+.ember{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--flame,#E8821E);
+  pointer-events:none;z-index:1;
+  animation:ember-float var(--ember-dur,4s) ease-in var(--ember-delay,0s) infinite}
 @keyframes screen-in{from{opacity:0}to{opacity:1}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes ripple-anim{to{transform:scale(3);opacity:0}}
@@ -1168,7 +1186,7 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
       </div>
       <div class="sa-nav-card" onclick="show('sa-vis')">
         <div class="sa-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="22" height="22" fill="currentColor" style="image-rendering:pixelated"><path d="M5 2h5v1H5zM3 3h3v1H3zM9 3h3v1H9zM2 4h2v1H2zM11 4h2v1H11zM1 5h2v1H1zM9 5h1v1H9zM12 5h2v1H12zM0 6h2v1H0zM4 6h1v1H4zM10 6h1v1H10zM13 6h2v1H13zM0 7h1v1H0zM3 7h2v1H3zM10 7h2v1H10zM14 7h1v1H14zM0 8h2v1H0zM3 8h3v1H3zM9 8h3v1H9zM13 8h2v1H13zM1 9h2v1H1zM4 9h7v1H4zM12 9h2v1H12zM2 10h2v1H2zM6 10h3v1H6zM11 10h2v1H11zM3 11h3v1H3zM9 11h3v1H9zM5 12h5v1H5z"/></svg></div>
-        <div><div class="sa-nav-lbl">VISUALS</div><div class="sa-nav-sub">PAD level meter · auto-icon assignment</div></div>
+        <div><div class="sa-nav-lbl">VISUALS</div><div class="sa-nav-sub">PAD level meter · auto-icon · atmosphere effects</div></div>
       </div>
       <div class="sa-nav-card" onclick="show('sa-keys')">
         <div class="sa-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="22" height="22" fill="currentColor" style="image-rendering:pixelated"><path d="M1 2h13v1H1zM1 3h1v1H1zM4 3h3v1H4zM8 3h3v1H8zM13 3h1v1H13zM1 4h1v1H1zM4 4h3v1H4zM8 4h3v1H8zM13 4h1v1H13zM1 5h1v1H1zM4 5h3v1H4zM8 5h3v1H8zM13 5h1v1H13zM1 6h1v1H1zM4 6h3v1H4zM8 6h3v1H8zM13 6h1v1H13zM1 7h1v1H1zM4 7h3v1H4zM8 7h3v1H8zM13 7h1v1H13zM1 8h1v1H1zM5 8h1v1H5zM9 8h1v1H9zM13 8h1v1H13zM1 9h1v1H1zM5 9h1v1H5zM9 9h1v1H9zM13 9h1v1H13zM1 10h1v1H1zM5 10h1v1H5zM9 10h1v1H9zM13 10h1v1H13zM1 11h1v1H1zM5 11h1v1H5zM9 11h1v1H9zM13 11h1v1H13zM1 12h1v1H1zM5 12h1v1H5zM9 12h1v1H9zM13 12h1v1H13zM1 13h13v1H1z"/></svg></div>
@@ -1391,6 +1409,47 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
       </div>
       <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
         Enables all CSS animations, glow pulses, fire effects, and transitions. Turn off for a fully static UI — reduces battery drain and suits motion sensitivity. Playing-state borders and colors remain visible regardless.
+      </p>
+    </div>
+    <div class="sg-hdr">ATMOSPHERE</div>
+    <div class="sg-sub">NOW-PLAYING AURA</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="aura-atm-on" onclick="setAtmosphere('aura',true)">ON</div>
+        <div class="topt" id="aura-atm-off" onclick="setAtmosphere('aura',false)">OFF</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        Enhances the glow pulse on playing PADs with a wide aura in the PAD's type color. Replaces the standard breathe animation. Default ON.
+      </p>
+    </div>
+    <div class="sg-sub">BREATHING PADS</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="breathing-atm-on" onclick="setAtmosphere('breathing',true)">ON</div>
+        <div class="topt" id="breathing-atm-off" onclick="setAtmosphere('breathing',false)">OFF</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        LOOP-type PADs slowly scale up and down while playing — a subtle inhale/exhale effect. Default OFF.
+      </p>
+    </div>
+    <div class="sg-sub">HEARTH GLOW</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="hearth-atm-on" onclick="setAtmosphere('hearth',true)">ON</div>
+        <div class="topt" id="hearth-atm-off" onclick="setAtmosphere('hearth',false)">OFF</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        Warm radial glow rising from the bottom of the PAD grid. Adapts to the theme accent color. Pure CSS. Default ON.
+      </p>
+    </div>
+    <div class="sg-sub">AMBIENT EMBERS</div>
+    <div class="sec-body">
+      <div class="trow">
+        <div class="topt" id="embers-atm-on" onclick="setAtmosphere('embers',true)">ON</div>
+        <div class="topt" id="embers-atm-off" onclick="setAtmosphere('embers',false)">OFF</div>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        Small floating embers drift upward over the board. 18 animated particles in the theme's flame color. Respects global ANIMATIONS toggle. Default OFF.
       </p>
     </div>
    </div><!-- /.cx -->
@@ -2193,8 +2252,11 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 166;
+const APP_VERSION = 167;
 const CHANGELOG=[
+  {v:167,date:'2026-05-25',items:[
+    "Atmosphere effects (Phase 4): 4 new toggles in Settings → VISUALS → ATMOSPHERE; NOW-PLAYING AURA (default ON) — pad-aura keyframe replaces breathe-gold with wider outer glow in pad type color; BREATHING PADS (default OFF) — LOOP-type pads scale 1→1.018 while plooping via pad-breathe keyframe; combined aura+breathing rule for plooping[data-mode=loop]; HEARTH GLOW (default ON) — radial gradient on #pgrid::before, adapts via --gold-soft; AMBIENT EMBERS (default OFF) — 18 absolutely-positioned .ember divs in #sp, random left/bottom/duration/delay, float-up via ember-float keyframe using --flame color; _applyEmbers creates divs lazily on first enable; _initAtmosphereUI() called at startup and on sa-vis.onShow; aura/breathing/hearth/embers added to SETTINGS_KEYS"
+  ]},
   {v:166,date:'2026-05-25',items:[
     "3 new themes (Phase 3): VERDANT (forest green, D&D warmth — overrides night/surface/raised/border/text/gold/pad-loop), NEON (cyberpunk cyan/pink — full PAD type color override, --gold becomes cyan), CRIMSON (horror gothic deep red — overrides night/surface/raised/border/text/gold/pad-loop/pad-playlist); setTheme() updated to handle all 5 themes (modern/verdant/neon/crimson); theme picker in Settings → APPEARANCE split into two rows (base themes + color themes); body.theme-modern.mode-edit override keeps solid borders (no dashed in modern theme)"
   ]},
@@ -2419,7 +2481,7 @@ const CHANGELOG=[
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
 console.assert(CHANGELOG[0].v===APP_VERSION,'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-cols','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations','master-vol','lp-action','combo-delay'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-cols','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations','master-vol','lp-action','combo-delay','aura','breathing','hearth','embers'];
 // ── DEBUG LOG ──
 let _debugLogEnabled = localStorage.getItem('debug-log') === '1';
 const _DEBUG_LOG_MAX = 200;
@@ -3480,6 +3542,7 @@ function unlock(){
   initGridCtrl();
   initAutoIcon();
   _initAnimationsUI();
+  _initAtmosphereUI();
   _initLongPressUI();
   _initComboDelayUI();
   _initMasterVolumeUI();
@@ -5417,7 +5480,7 @@ const SCREEN_CONFIG = {
   sa:       { title: 'SETTINGS',    hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{} },
   'sa-ctrl':  { title: 'CONTROLS',   hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initMasterVolumeUI(); _renderSwitchSoundRow(); _initWakeLockUI(); _initAutoStopUI(); _initLongPressUI(); _initComboDelayUI(); } },
   'sa-appear':{ title: 'APPEARANCE', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initThemeSettings(); } },
-  'sa-vis':   { title: 'VISUALS',    hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initPadLevelUI(); _initAnimationsUI(); } },
+  'sa-vis':   { title: 'VISUALS',    hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initPadLevelUI(); _initAnimationsUI(); _initAtmosphereUI(); } },
   'sa-keys':  { title: 'KEYBINDING', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initHelpSettings(); } },
   'sa-data':  { title: 'DATA',       hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ updateExportAge(); } },
   'sa-dev':   { title: 'DEVELOPER',  hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initDebugLogUI(); } },
@@ -5617,6 +5680,43 @@ function _initAnimationsUI(){
   document.body.classList.toggle('no-anim',!v);
   document.getElementById('anim-on')?.classList.toggle('al',v);
   document.getElementById('anim-off')?.classList.toggle('al',!v);
+}
+
+// ── ATMOSPHERE EFFECTS ──
+const _ATM_DEFAULTS={aura:'1',breathing:'0',hearth:'1',embers:'0'};
+let _embersCreated=false;
+function setAtmosphere(key,v){
+  localStorage.setItem(key,v?'1':'0');
+  document.body.classList.toggle(key+'-on',v);
+  document.getElementById(key+'-atm-on')?.classList.toggle('al',v);
+  document.getElementById(key+'-atm-off')?.classList.toggle('al',!v);
+  if(key==='embers') _applyEmbers(v);
+}
+function _applyEmbers(on){
+  const sp=document.getElementById('sp'); if(!sp) return;
+  if(on && !_embersCreated){
+    for(let i=0;i<18;i++){
+      const e=document.createElement('div'); e.className='ember';
+      const left=5+Math.random()*90;
+      const bottom=2+Math.random()*60;
+      const dur=(3+Math.random()*4).toFixed(1);
+      const delay=(-(Math.random()*(+dur))).toFixed(1);
+      const dx=(-15+Math.random()*30).toFixed(0);
+      e.style.cssText=`left:${left.toFixed(1)}%;bottom:${bottom.toFixed(0)}px;--ember-dur:${dur}s;--ember-delay:${delay}s;--ember-x:${dx}px`;
+      sp.appendChild(e);
+    }
+    _embersCreated=true;
+  }
+  document.querySelectorAll('#sp .ember').forEach(e=>e.style.display=on?'':'none');
+}
+function _initAtmosphereUI(){
+  Object.entries(_ATM_DEFAULTS).forEach(([k,def])=>{
+    const v=(localStorage.getItem(k)??def)!=='0';
+    document.body.classList.toggle(k+'-on',v);
+    document.getElementById(k+'-atm-on')?.classList.toggle('al',v);
+    document.getElementById(k+'-atm-off')?.classList.toggle('al',!v);
+    if(k==='embers') _applyEmbers(v);
+  });
 }
 
 // ── PAD FILTER + BOARD SSB ──
