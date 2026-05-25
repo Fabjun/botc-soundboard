@@ -1,8 +1,11 @@
 'use strict';
 
-const APP_VERSION = '1.5.5';
+const APP_VERSION = '1.5.6';
 
 const CHANGELOG = [
+  { v: '1.5.6', date: '2026-05-25', items: [
+    'Scrollbar styling: global ::-webkit-scrollbar + html scrollbar-color using design tokens (--border, --sunk, --gold-dim)',
+  ]},
   { v: '1.5.5', date: '2026-05-25', items: [
     'Fix blank screen: openDB() now handles onblocked (DB upgrade blocked by another tab) and rejects with a clear message',
     'Fix blank screen: init() wrapped in try-catch — shows an error screen instead of silent blank',
