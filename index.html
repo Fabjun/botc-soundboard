@@ -1232,6 +1232,18 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
         <b style="color:var(--text)">OFF</b> disables long-press.
       </p>
     </div>
+    <div class="sg-sub">COMBO DEFAULT DELAY</div>
+    <div class="sec-body">
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="number" id="combo-delay-inp" min="0" max="10" step="0.5" value="1"
+          style="width:60px;background:var(--surface);border:1px solid var(--border);border-radius:2px;color:var(--text);font-family:var(--ff-body);font-size:calc(13px * var(--font-scale));padding:5px 7px;text-align:center"
+          oninput="setComboDefaultDelay(+this.value)">
+        <span style="font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));color:var(--text-dim)">sec.</span>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin-top:9px;line-height:1.7">
+        Default pause added to every <b style="color:var(--text)">new</b> combo step. Existing steps keep their own duration. Set to <b style="color:var(--text)">0</b> to skip the pause by default.
+      </p>
+    </div>
    </div><!-- /.cx -->
   </div>
 </div>
@@ -2128,8 +2140,11 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 161;
+const APP_VERSION = 162;
 const CHANGELOG=[
+  {v:162,date:'2026-05-25',items:[
+    "Combo default delay: Settings → CONTROLS → COMBO DEFAULT DELAY number input (0–10s, step 0.5, default 1); _getComboDefaultDelay() reads combo-delay from localStorage; new steps created via addComboStep, insertComboStep, and openComboEditor (new combo) use the global default instead of hardcoded 1; renderComboSteps defaultPause also uses global default for display; combo-delay added to SETTINGS_KEYS"
+  ]},
   {v:161,date:'2026-05-25',items:[
     "Configurable long-press action in GAME mode: Settings → CONTROLS → LONG-PRESS ACTION; three options: VOLUME (long-press on playing pad opens volume slider, default), RENAME (long-press on any occupied pad opens quick-rename), OFF (disables long-press entirely); persisted as lp-action in SETTINGS_KEYS; _initLongPressUI() called at startup and on sa-ctrl.onShow"
   ]},
@@ -2339,7 +2354,7 @@ const CHANGELOG=[
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
 console.assert(CHANGELOG[0].v===APP_VERSION,'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-cols','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations','master-vol','lp-action'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','pad-cols','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations','master-vol','lp-action','combo-delay'];
 // ── DEBUG LOG ──
 let _debugLogEnabled = localStorage.getItem('debug-log') === '1';
 const _DEBUG_LOG_MAX = 200;
@@ -3402,6 +3417,7 @@ function unlock(){
   initAutoIcon();
   _initAnimationsUI();
   _initLongPressUI();
+  _initComboDelayUI();
   _initMasterVolumeUI();
   _boardSsbUpdateSortUI();
   openDB().then(load).then(async ()=>{
@@ -3873,6 +3889,16 @@ function setLongPressAction(v){
 }
 function _initLongPressUI(){
   setLongPressAction(localStorage.getItem('lp-action')||'vol');
+}
+
+function _getComboDefaultDelay(){ return +(localStorage.getItem('combo-delay')??1); }
+function setComboDefaultDelay(v){
+  const clamped=isNaN(v)||v<0?0:Math.min(10,+v);
+  localStorage.setItem('combo-delay',clamped);
+  const inp=document.getElementById('combo-delay-inp'); if(inp) inp.value=clamped;
+}
+function _initComboDelayUI(){
+  const inp=document.getElementById('combo-delay-inp'); if(inp) inp.value=_getComboDefaultDelay();
 }
 
 function _tapPad(id){
@@ -5287,7 +5313,7 @@ function updateMenuBackupBtns(){
 const SCREEN_CONFIG = {
   sp:  { title: null,            hasSidebar: true,  accent: 'mode', hints: ['sp'],  onShow: ()=>{ renderBoard(); if(locked) focusKB(); } },
   sa:       { title: 'SETTINGS',    hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{} },
-  'sa-ctrl':  { title: 'CONTROLS',   hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initMasterVolumeUI(); _renderSwitchSoundRow(); _initWakeLockUI(); _initAutoStopUI(); _initLongPressUI(); } },
+  'sa-ctrl':  { title: 'CONTROLS',   hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initMasterVolumeUI(); _renderSwitchSoundRow(); _initWakeLockUI(); _initAutoStopUI(); _initLongPressUI(); _initComboDelayUI(); } },
   'sa-appear':{ title: 'APPEARANCE', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initThemeSettings(); } },
   'sa-vis':   { title: 'VISUALS',    hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initPadLevelUI(); _initAnimationsUI(); } },
   'sa-keys':  { title: 'KEYBINDING', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initHelpSettings(); } },
@@ -5705,7 +5731,7 @@ function openComboEditor(editId=null){
     _srcIcons.slice(0,4).forEach((ic,i)=>{ eIcons[i]=ic; });
   } else {
     cn.value=''; ck.value=''; ck.dataset.code='';
-    comboSteps=[{pads:[],dur:1,chipOpts:[]}];
+    comboSteps=[{pads:[],dur:_getComboDefaultDelay(),chipOpts:[]}];
     comboChipExpanded.clear();
     eIcons=[null,null,null,null];
   }
@@ -5743,8 +5769,8 @@ function captureComboKey(e){
   } else { cw.style.display='none'; }
 }
 
-function addComboStep(){ comboSteps.push({pads:[],dur:1,chipOpts:[]}); renderComboSteps(); }
-function insertComboStep(i){ comboSteps.splice(i,0,{pads:[],dur:1,chipOpts:[]}); renderComboSteps(); }
+function addComboStep(){ comboSteps.push({pads:[],dur:_getComboDefaultDelay(),chipOpts:[]}); renderComboSteps(); }
+function insertComboStep(i){ comboSteps.splice(i,0,{pads:[],dur:_getComboDefaultDelay(),chipOpts:[]}); renderComboSteps(); }
 
 function removeComboStep(i){
   showConfirmDel(`Remove step ${i+1} from this combo?`,()=>{
@@ -5816,7 +5842,7 @@ function renderComboSteps(){
     
     const combinedContent = actionChipHtml + chips;
     const dur=comboSteps[si].dur||0;
-    const defaultPause = step.fadeOutAll ? 2.5 : 1;
+    const defaultPause = step.fadeOutAll ? 2.5 : _getComboDefaultDelay();
     
     // Die korrigierte UI-Logik: Zeigt das Zeit-Feld auch bei globalen Aktionen an
     const stepBody = (chips === '' || step.stopAll || step.fadeOutAll) ? 
