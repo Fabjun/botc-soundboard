@@ -1,4 +1,4 @@
-const VERSION = '1.5.2';
+const VERSION = '1.5.3';
 const CACHE = `sos-v1_5-${VERSION}`;
 const ASSETS = [
   './index.html',

@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.2';
+const APP_VERSION = '1.5.3';
 
 const CHANGELOG = [
+  { v: '1.5.3', date: '2026-05-25', items: [
+    'SW auto-update: controllerchange → window.location.reload() (only when a previous SW was controlling)',
+    'SW proactive check: reg.update() on every init so new versions are detected immediately',
+    'Version label in menu: data-action="check-update" → reg.update() + reload if new SW waiting',
+  ]},
   { v: '1.5.2', date: '2026-05-25', items: [
     'Slice 3: Board + Scene + Pad CRUD',
     'DB v1→v2: adds scenes and sets object stores',
@@ -499,7 +504,7 @@ function menuHTML() {
       </div>
       <p class="su-sub" style="margin-top:4px">A tool for Game-Masters and other creative Creatures</p>
       <div class="pix-div" style="margin-top:10px">◆</div>
-      <div class="ver-label">
+      <div class="ver-label" data-action="check-update" title="Check for updates">
         <span>v ${APP_VERSION}</span>
         ${pi('info', 11)}
       </div>
@@ -1379,6 +1384,16 @@ function handleAction(action, el) {
     // menu
     case 'backup':            alert('Backup — coming in Slice 7'); break;
     case 'import':            alert('Import — coming in Slice 7'); break;
+    case 'check-update':
+      navigator.serviceWorker?.getRegistration?.()?.then(reg => {
+        if (!reg) return;
+        reg.update().then(() => {
+          const w = reg.waiting || reg.installing;
+          if (w) { w.postMessage({ type: 'SKIP_WAITING' }); }
+          else { alert(`v ${APP_VERSION} — already up to date.`); }
+        });
+      });
+      break;
 
     // library
     case 'lib-upload':        document.getElementById('lib-audio-input')?.click(); break;
@@ -1419,7 +1434,16 @@ async function init() {
   applyTheme(S.theme);
   await openDB();
   renderScreen(S.screen);
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+  if ('serviceWorker' in navigator) {
+    const hadController = !!navigator.serviceWorker.controller;
+    // Auto-reload page when a new SW takes control (skipWaiting + clients.claim in sw.js)
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController) window.location.reload();
+    });
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      reg.update(); // proactively check for a newer sw.js on every load
+    });
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
