@@ -1933,6 +1933,8 @@ const CHANGELOG=[
     "Fade zone hit-detection in scrubber updated to be trim-anchored: fade-in drag zone starts at tsFrac, fade-out drag zone ends at teFrac; delta calculation updated so dragging sets fi = cursor - trimStart and fo = trimEnd - cursor"
   ]},
   {v:148,date:'2026-05-25',items:[
+    "Fade effects anchored to trim boundaries (visual + audio): fade-in overlay starts at trim-start position; fade-out overlay ends at trim-end position; both overlays clamped to active region width so they never bleed into trimmed-out zones; auto fade-out for once-mode pads: when trim-end is set and fade-out > 0, a gain ramp is pre-scheduled to reach 0 exactly at trim-end; foStart = max(after-fade-in, dur-fo) to handle overlap with fade-in; manual stop still overrides via cancelScheduledValues in stopPad"
+  ]},
   {v:147,date:'2026-05-25',items:[
     "Trim tool visual scrubber: two amber markers (vertical line + inward-pointing triangles) show trim-start and trim-end positions on the waveform canvas; regions outside the active trim range are covered with a diagonal-stripe zebra overlay (dark base + hatching lines); markers are always visible when audio is loaded — right marker at right edge when no end-trim is set; draw order: waveform → trim zones → fade overlays → trim markers → playhead",
     "Trim markers draggable: scrubber hit-zones ±10px around each marker; drag modes 'ts' (trim start) and 'te' (trim end) added to initScrub(); priority: playhead > trim markers > fade zones; left marker clamped to [0, te-0.5]; right marker snaps to 0 (Full) when dragged past 97% width; sliders and labels sync live during drag",
