@@ -1760,6 +1760,21 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 <div id="sp" class="screen">
   <div id="edge-glow"></div>
   <textarea id="kfocus" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+  <div class="ssb" id="board-ssb">
+    <div class="ssb-search">
+      <input class="ssb-input" id="board-ssb-q" type="search" placeholder="Search PADs…" oninput="_boardSsbInput(this.value)">
+      <button class="ssb-clear" id="board-ssb-clear" onclick="_boardSsbClear()" tabindex="-1">×</button>
+    </div>
+    <span class="ssb-count" id="board-ssb-count"></span>
+    <div class="ssb-sort-wrap">
+      <button class="ssb-sort-btn" id="board-ssb-sort-btn" onclick="_boardSsbSortToggle()">SORT ▾</button>
+      <div class="ssb-drop" id="board-ssb-drop">
+        <div class="ssb-opt" data-s="default" onclick="_boardSsbSortOpt('default')">Default</div>
+        <div class="ssb-opt" data-s="az" onclick="_boardSsbSortOpt('az')">Name A→Z</div>
+        <div class="ssb-opt" data-s="za" onclick="_boardSsbSortOpt('za')">Name Z→A</div>
+      </div>
+    </div>
+  </div>
   <div class="pgrid" id="pgrid"></div>
   <div id="np">
     <canvas id="eq-cv" height="25"></canvas>
@@ -1946,8 +1961,11 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 151;
+const APP_VERSION = 152;
 const CHANGELOG=[
+  {v:152,date:'2026-05-25',items:[
+    "Search+Sort bar in SETUP/GAME board view: .ssb bar above #pgrid; input filters PADs by name (case-insensitive substring); Sort dropdown: Default | Name A→Z | Name Z→A; sort uses CSS order property so pads[] array is unchanged and drag-reorder still works; sort key persisted in localStorage; count badge shows filtered/total when active; follows mode accent (blue SETUP, gold GAME)"
+  ]},
   {v:151,date:'2026-05-25',items:[
     "Fire animation overhaul: 33 keyframes over 15.3s with max 5% gap between stops (was 21 keyframes with 12% dead zones); three escalating bursts at ~16%, ~45%, ~70%; constant subtle breathing motion (scale +-0.5%, skew +-0.5deg, brightness 0.96-1.10) between bursts; no static periods",
     "Fire sigil: main menu 60px -> 80px; start screen margin-bottom 12px -> 28px for more breathing room above title",
@@ -3140,6 +3158,7 @@ function unlock(){
   initTheme();
   initGridCtrl();
   initAutoIcon();
+  _boardSsbUpdateSortUI();
   openDB().then(load).then(async ()=>{
     await migrateToLibrary();
     await loadLibIcons();
@@ -5159,7 +5178,7 @@ function renderBoard(){
   if(locked) renderPerf(); else renderSetup();
 }
 
-// ── PAD FILTER ──
+// ── PAD FILTER + BOARD SSB ──
 let padFilter='all';
 function setPadFilter(f){
   padFilter=f;
@@ -5169,15 +5188,68 @@ function setPadFilter(f){
   });
   applyPadFilter();
 }
+
+let _boardQ='';
+let _boardSort=localStorage.getItem('board-ssb-sort')||'default';
+
+function _boardSsbInput(v){
+  _boardQ=v;
+  document.getElementById('board-ssb-clear').classList.toggle('on',!!v);
+  applyPadFilter();
+}
+function _boardSsbClear(){
+  _boardQ='';
+  const inp=document.getElementById('board-ssb-q');
+  if(inp) inp.value='';
+  document.getElementById('board-ssb-clear').classList.remove('on');
+  applyPadFilter();
+}
+function _boardSsbSortToggle(){
+  const drop=document.getElementById('board-ssb-drop');
+  if(!drop) return;
+  const opening=!drop.classList.contains('open');
+  drop.classList.toggle('open',opening);
+  if(opening) setTimeout(()=>document.addEventListener('click',_boardSsbCloseOnce,{once:true}),0);
+}
+function _boardSsbCloseOnce(){ document.getElementById('board-ssb-drop')?.classList.remove('open'); }
+function _boardSsbSortOpt(key){
+  _boardSort=key;
+  localStorage.setItem('board-ssb-sort',key);
+  document.getElementById('board-ssb-drop').classList.remove('open');
+  _boardSsbUpdateSortUI();
+  applyPadFilter();
+}
+function _boardSsbUpdateSortUI(){
+  const btn=document.getElementById('board-ssb-sort-btn');
+  if(!btn) return;
+  const labels={default:'SORT ▾',az:'A→Z ▾',za:'Z→A ▾'};
+  btn.textContent=labels[_boardSort]||'SORT ▾';
+  btn.classList.toggle('active',_boardSort!=='default');
+  document.getElementById('board-ssb-drop')?.querySelectorAll('.ssb-opt').forEach(o=>o.classList.toggle('active',o.dataset.s===_boardSort));
+}
+
 function applyPadFilter(){
-  document.querySelectorAll('#pgrid [data-id]').forEach(btn=>{
+  const q=_boardQ.toLowerCase().trim();
+  const all=document.querySelectorAll('#pgrid [data-id]');
+  all.forEach(btn=>{ btn.style.order=''; });
+  let visible=[];
+  all.forEach(btn=>{
     const id=+btn.dataset.id;
     const p=pads[id];
     if(!p){ btn.style.display=''; return; }
     const isCombo=p.mode==='combo';
-    const show=padFilter==='all'||(padFilter==='audio'&&!isCombo)||(padFilter==='combo'&&isCombo);
+    const typeOk=padFilter==='all'||(padFilter==='audio'&&!isCombo)||(padFilter==='combo'&&isCombo);
+    const nameOk=!q||(p.name||'').toLowerCase().includes(q);
+    const show=typeOk&&nameOk;
     btn.style.display=show?'':'none';
+    if(show) visible.push({btn,p});
   });
+  if(_boardSort==='az') visible.sort((a,b)=>(a.p.name||'').localeCompare(b.p.name||''));
+  else if(_boardSort==='za') visible.sort((a,b)=>(b.p.name||'').localeCompare(a.p.name||''));
+  if(_boardSort!=='default') visible.forEach((item,idx)=>{ item.btn.style.order=idx; });
+  const total=pads.filter(p=>p!=null).length;
+  const countEl=document.getElementById('board-ssb-count');
+  if(countEl) countEl.textContent=(q||padFilter!=='all')&&visible.length<total?`${visible.length}/${total}`:'';
 }
 
 // ── SETUP ──
