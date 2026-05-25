@@ -1,8 +1,14 @@
 'use strict';
 
-const APP_VERSION = '1.5.8';
+const APP_VERSION = '1.5.9';
 
 const CHANGELOG = [
+  { v: '1.5.9', date: '2026-05-25', items: [
+    'Slice 6: Sets + Quick Access strip at bottom of board',
+    'Create, rename, delete Sets; quick-access horizontal pad strip per set',
+    'Set pad picker + opts (same as scene pads, shared picker element)',
+    'Set pads play/stop audio in GAME mode; is-playing state on strip',
+  ]},
   { v: '1.5.8', date: '2026-05-25', items: [
     'Slice 5: Complete scene model — no more browser prompt() dialogs',
     'Scene opts bottom sheet: inline name editing, grid-cols picker (2-5), 2-tap delete',
@@ -362,6 +368,52 @@ function sceneDelete(id) {
     tx.onerror = () => res();
     tx.objectStore('scenes').delete(id).onsuccess = () => res();
   });
+}
+
+/* ── SETS IDB ───────────────────────────────────────────────── */
+
+/** @param {Object} set @returns {Promise<void>} */
+function setPut(set) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction('sets', 'readwrite');
+    tx.objectStore('sets').put(set).onsuccess = () => res();
+    tx.onerror = ev => rej(new Error(ev.target?.error?.message ?? 'setPut failed'));
+  });
+}
+
+/** @param {string} id @returns {Promise<Object|null>} */
+function setGet(id) {
+  return new Promise(res => {
+    const req = db.transaction('sets', 'readonly').objectStore('sets').get(id);
+    req.onerror   = () => res(null);
+    req.onsuccess = e  => res(e.target.result || null);
+  });
+}
+
+/** @param {string} id @returns {Promise<void>} */
+function setDelete(id) {
+  return new Promise(res => {
+    const tx = db.transaction('sets', 'readwrite');
+    tx.onerror = () => res();
+    tx.objectStore('sets').delete(id).onsuccess = () => res();
+  });
+}
+
+/**
+ * Creates a new set on a board (mutates + saves board).
+ * @param {Object} board
+ * @param {string} name
+ * @returns {Promise<Object>} the new set
+ */
+async function setCreate(board, name) {
+  const id  = _newId('st');
+  const set = { id, boardId: board.id, name, pads: [], created: Date.now() };
+  board.sets       = [...(board.sets || []), { id, name }];
+  board.activeSetId = id;
+  board.updated    = Date.now();
+  await setPut(set);
+  await boardPut(board);
+  return set;
 }
 
 /**
@@ -971,11 +1023,17 @@ async function handleBlDelete(id) {
 
 let _bdBoard        = null;
 let _bdScene        = null;
-let _bdPickerSlot   = null;
-let _bdOptsSlot     = null;
+let _bdSet          = null;
+let _bdPickerSlot   = null;  // scene pad picker slot
+let _bdSetPickerSlot = null; // set pad picker slot
+let _bdOptsSlot     = null;  // scene pad opts slot
+let _bdSetOptsSlot  = null;  // set pad opts slot
 let _bdSceneOptsId  = null;
 let _bdSceneOptsCfm = false;
 let _bdSceneAddOpen = false;
+let _bdSetOptsId    = null;
+let _bdSetOptsCfm   = false;
+let _bdSetAddOpen   = false;
 
 /** @returns {string} */
 function boardHTML() {
@@ -1003,6 +1061,7 @@ function boardHTML() {
   <div class="bd-content" id="bd-content">
     <div class="bd-grid-wrap" id="bd-grid-wrap"></div>
   </div>
+  <div class="bd-qa-wrap" id="bd-qa-wrap"></div>
   <div class="sb-status-bar">
     <span class="sb-status-section" style="color:var(--gold)">BOARD</span>
     <span class="sb-status-section" id="bd-status-name">—</span>
@@ -1019,6 +1078,9 @@ async function mountBoard() {
   const sceneId = _bdBoard.activeSceneId || _bdBoard.scenes?.[0]?.id;
   _bdScene = sceneId ? await sceneGet(sceneId) : null;
 
+  const setId = _bdBoard.activeSetId || _bdBoard.sets?.[0]?.id || null;
+  _bdSet = setId ? await setGet(setId) : null;
+
   if (!_libEntries.length) await _libRefresh();
 
   renderBoardUI();
@@ -1032,6 +1094,7 @@ function renderBoardUI() {
 
   renderSceneBar();
   renderPadGrid();
+  renderQA();
 
   const sName  = document.getElementById('bd-status-name');
   const sScene = document.getElementById('bd-status-scene');
@@ -1095,6 +1158,62 @@ function emptyPadCellHTML(slot) {
   return `<div class="pad is-empty is-game"></div>`;
 }
 
+/* ── QUICK ACCESS (QA) ──────────────────────────────────────── */
+
+function renderQA() {
+  const el = document.getElementById('bd-qa-wrap');
+  if (!el) return;
+  const isSetup = S.boardMode === 'setup';
+  const sets    = _bdBoard?.sets || [];
+
+  if (!sets.length) {
+    el.innerHTML = isSetup
+      ? `<div class="bd-qa-empty"><button class="bd-qa-add-set" data-action="bd-set-add">+ ADD SET</button></div>`
+      : '';
+    return;
+  }
+
+  el.innerHTML = `<div class="bd-set-bar" id="bd-set-bar"></div><div class="bd-set-strip" id="bd-set-strip"></div>`;
+  renderSetBar();
+  renderSetStrip();
+}
+
+function renderSetBar() {
+  const el = document.getElementById('bd-set-bar');
+  if (!el || !_bdBoard) return;
+  const isSetup = S.boardMode === 'setup';
+  el.innerHTML = (_bdBoard.sets || []).map(s => {
+    const active = s.id === _bdSet?.id;
+    return `<div class="bd-set-tab${active ? ' is-active' : ''}" data-action="bd-set-switch" data-set-id="${s.id}">
+      <span class="bd-set-tab-name">${escHtml(s.name)}</span>
+      ${active && isSetup ? `<button class="bd-set-opts-btn" data-action="bd-set-opts" data-set-id="${s.id}">⋯</button>` : ''}
+    </div>`;
+  }).join('') + (isSetup ? `<button class="bd-set-add" data-action="bd-set-add" title="Add set">+</button>` : '');
+}
+
+function renderSetStrip() {
+  const el = document.getElementById('bd-set-strip');
+  if (!el || !_bdSet) { if (el) el.innerHTML = ''; return; }
+
+  const isSetup = S.boardMode === 'setup';
+  const pads    = (_bdSet.pads || []).slice().sort((a, b) => a.slot - b.slot);
+  const nextSlot = pads.length ? Math.max(...pads.map(p => p.slot)) + 1 : 0;
+
+  let html = pads.map(p => setpadCellHTML(p)).join('');
+  if (isSetup) {
+    html += `<div class="set-pad is-empty" data-set-pad-slot="${nextSlot}" data-action="bd-set-pad-tap"><span class="set-pad-add">+</span></div>`;
+  }
+  el.innerHTML = html;
+}
+
+/** @param {Object} pad @returns {string} */
+function setpadCellHTML(pad) {
+  const playing = audioIsPlaying(pad.id);
+  return `<div class="set-pad is-assigned${playing ? ' is-playing' : ''}" data-set-pad-slot="${pad.slot}" data-pad-id="${escAttr(pad.id)}" data-action="bd-set-pad-tap">
+    <div class="set-pad-name">${escHtml(pad.name || '—')}</div>
+  </div>`;
+}
+
 /* pad picker */
 
 function openPadPicker(slot) {
@@ -1140,26 +1259,37 @@ function openPadPicker(slot) {
 }
 
 function closePadPicker() {
-  _bdPickerSlot = null;
+  _bdPickerSlot    = null;
+  _bdSetPickerSlot = null;
   document.getElementById('pad-picker')?.remove();
 }
 
 async function handlePadPick(hash, name) {
-  if (_bdPickerSlot === null || !_bdScene) return;
-  const slot = _bdPickerSlot;
-  closePadPicker();
-
-  const existing = _bdScene.pads.find(p => p.slot === slot);
-  const newPad   = existing
-    ? { ...existing, hash, name: existing.name || name }
-    : { id: _newId('p'), slot, type: 'single', name, hash, hotkey: '', volume: 1, fadeIn: 0, fadeOut: 0 };
-
-  _bdScene.pads = existing
-    ? _bdScene.pads.map(p => p.slot === slot ? newPad : p)
-    : [..._bdScene.pads, newPad];
-
-  await scenePut(_bdScene);
-  renderPadGrid();
+  if (_bdPickerSlot !== null && _bdScene) {
+    const slot = _bdPickerSlot;
+    closePadPicker();
+    const existing = _bdScene.pads.find(p => p.slot === slot);
+    const newPad   = existing
+      ? { ...existing, hash, name: existing.name || name }
+      : { id: _newId('p'), slot, type: 'single', name, hash, hotkey: '', volume: 1, fadeIn: 0, fadeOut: 0 };
+    _bdScene.pads = existing
+      ? _bdScene.pads.map(p => p.slot === slot ? newPad : p)
+      : [..._bdScene.pads, newPad];
+    await scenePut(_bdScene);
+    renderPadGrid();
+  } else if (_bdSetPickerSlot !== null && _bdSet) {
+    const slot = _bdSetPickerSlot;
+    closePadPicker();
+    const existing = _bdSet.pads.find(p => p.slot === slot);
+    const newPad   = existing
+      ? { ...existing, hash, name: existing.name || name }
+      : { id: _newId('p'), slot, type: 'single', name, hash, hotkey: '', volume: 1, fadeIn: 0, fadeOut: 0 };
+    _bdSet.pads = existing
+      ? _bdSet.pads.map(p => p.slot === slot ? newPad : p)
+      : [..._bdSet.pads, newPad];
+    await setPut(_bdSet);
+    renderSetStrip();
+  }
 }
 
 /* pad options bottom sheet */
@@ -1192,34 +1322,43 @@ function openPadOpts(slot) {
 }
 
 function closePadOpts() {
-  _bdOptsSlot = null;
+  _bdOptsSlot    = null;
+  _bdSetOptsSlot = null;
   document.getElementById('pad-opts')?.remove();
 }
 
 async function handlePadOptsSave() {
-  if (_bdOptsSlot === null || !_bdScene) return;
-  const slot   = _bdOptsSlot;
   const name   = document.getElementById('pad-opts-name')?.value.trim() || '';
   const hotkey = document.getElementById('pad-opts-hotkey')?.value.trim() || '';
-  closePadOpts();
-  _bdScene.pads = _bdScene.pads.map(p => p.slot === slot ? { ...p, name, hotkey } : p);
-  await scenePut(_bdScene);
-  renderPadGrid();
+  if (_bdOptsSlot !== null && _bdScene) {
+    const slot = _bdOptsSlot; closePadOpts();
+    _bdScene.pads = _bdScene.pads.map(p => p.slot === slot ? { ...p, name, hotkey } : p);
+    await scenePut(_bdScene); renderPadGrid();
+  } else if (_bdSetOptsSlot !== null && _bdSet) {
+    const slot = _bdSetOptsSlot; closePadOpts();
+    _bdSet.pads = _bdSet.pads.map(p => p.slot === slot ? { ...p, name, hotkey } : p);
+    await setPut(_bdSet); renderSetStrip();
+  }
 }
 
 async function handlePadOptsClear() {
-  if (_bdOptsSlot === null || !_bdScene) return;
-  const slot = _bdOptsSlot;
-  closePadOpts();
-  _bdScene.pads = _bdScene.pads.filter(p => p.slot !== slot);
-  await scenePut(_bdScene);
-  renderPadGrid();
+  if (_bdOptsSlot !== null && _bdScene) {
+    const slot = _bdOptsSlot; closePadOpts();
+    _bdScene.pads = _bdScene.pads.filter(p => p.slot !== slot);
+    await scenePut(_bdScene); renderPadGrid();
+  } else if (_bdSetOptsSlot !== null && _bdSet) {
+    const slot = _bdSetOptsSlot; closePadOpts();
+    _bdSet.pads = _bdSet.pads.filter(p => p.slot !== slot);
+    await setPut(_bdSet); renderSetStrip();
+  }
 }
 
 function handlePadOptsChange() {
-  const slot = _bdOptsSlot;
-  closePadOpts();
-  openPadPicker(slot);
+  if (_bdOptsSlot !== null) {
+    const slot = _bdOptsSlot; closePadOpts(); openPadPicker(slot);
+  } else if (_bdSetOptsSlot !== null) {
+    const slot = _bdSetOptsSlot; closePadOpts(); openSetPadPicker(slot);
+  }
 }
 
 /* scene management */
@@ -1231,7 +1370,7 @@ async function handleBdSceneSwitch(sceneId) {
   closeSceneOpts();
   closeSceneAdd();
   audioStopAll(0);
-  document.querySelectorAll('.pad.is-playing').forEach(e => e.classList.remove('is-playing'));
+  document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
   _bdBoard.activeSceneId = sceneId;
   _bdBoard.updated = Date.now();
   await boardPut(_bdBoard);
@@ -1274,6 +1413,221 @@ async function handleBdSceneDelete(sceneId) {
   const newId = _bdBoard.activeSceneId;
   _bdScene = newId ? await sceneGet(newId) : null;
   renderBoardUI();
+}
+
+/* ── SET PAD PICKER + OPTS (context-aware shared picker) ──── */
+
+function openSetPadPicker(slot) {
+  closePadOpts();
+  closePadPicker();
+  _bdSetPickerSlot = slot;
+  const content = document.getElementById('bd-content');
+  if (!content) return;
+
+  const sorted = _libEntries.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  content.insertAdjacentHTML('beforeend', `<div class="pad-picker" id="pad-picker">
+    <div class="pad-picker-header">
+      <span>Assign audio → Set pad ${slot + 1}</span>
+      <button class="act-btn" data-action="bd-picker-close">×</button>
+    </div>
+    <div class="pad-picker-search">
+      <div class="search-bar" style="margin:0;border-radius:0;clip-path:none;border-left:none;border-right:none;border-top:none">
+        ${pi('search', 13, 'var(--text-mute)')}
+        <input class="search-input" type="text" placeholder="Search…" id="pad-picker-q">
+      </div>
+    </div>
+    <div class="pad-picker-list" id="pad-picker-list">
+      ${sorted.map(e => `<div class="pad-picker-item" data-action="bd-picker-pick" data-hash="${e.hash}" data-name="${escAttr(e.name)}">
+        <div class="pad-picker-wave">${_waveMini(e.peaks)}</div>
+        <span class="pad-picker-item-name">${escHtml(e.name)}</span>
+        <span class="pad-picker-item-dur">${fmtDur(e.duration)}</span>
+      </div>`).join('')}
+      ${!sorted.length ? '<p class="lib-empty">No audio in library yet.</p>' : ''}
+    </div>
+  </div>`);
+
+  const q = document.getElementById('pad-picker-q');
+  if (q) {
+    q.focus();
+    q.oninput = () => {
+      const term = q.value.toLowerCase().trim();
+      document.querySelectorAll('.pad-picker-item').forEach(item => {
+        const name = item.querySelector('.pad-picker-item-name')?.textContent || '';
+        item.style.display = name.toLowerCase().includes(term) ? '' : 'none';
+      });
+    };
+  }
+}
+
+function openSetPadOpts(slot) {
+  closePadPicker();
+  closePadOpts();
+  const pad = _bdSet?.pads.find(p => p.slot === slot);
+  if (!pad) { openSetPadPicker(slot); return; }
+  _bdSetOptsSlot = slot;
+  document.getElementById('bd-content')?.insertAdjacentHTML('beforeend', `<div class="pad-opts" id="pad-opts">
+    <div class="pad-opts-title">${escHtml(pad.name || '—')}</div>
+    <div class="pad-opts-row">
+      <span class="pad-opts-label">Name</span>
+      <input class="audio-name-input" id="pad-opts-name" type="text" value="${escAttr(pad.name || '')}" style="flex:1;min-width:0">
+    </div>
+    <div class="pad-opts-row">
+      <span class="pad-opts-label">Hotkey</span>
+      <input class="audio-name-input" id="pad-opts-hotkey" type="text" value="${escAttr(pad.hotkey || '')}" maxlength="4" style="width:60px">
+    </div>
+    <div class="pad-opts-actions">
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="bd-opts-change">Change Audio</button>
+      <button class="sb-btn sb-btn-sm sb-btn-danger" data-action="bd-opts-clear">Clear</button>
+      <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="bd-opts-save">Save</button>
+    </div>
+  </div>`);
+  document.getElementById('pad-opts-name')?.focus();
+}
+
+async function handleQaPadTap(slot) {
+  const pad = _bdSet?.pads.find(p => p.slot === slot);
+  if (S.boardMode === 'setup') {
+    if (pad) openSetPadOpts(slot);
+    else openSetPadPicker(slot);
+    return;
+  }
+  if (!pad?.hash) return;
+  const el = document.querySelector(`[data-pad-id="${CSS.escape(pad.id)}"]`);
+  if (audioIsPlaying(pad.id)) {
+    audioStop(pad.id, { fade: pad.fadeOut || 0 });
+    el?.classList.remove('is-playing');
+  } else {
+    audioPlay(pad.id, pad.hash, {
+      type: pad.type || 'single', volume: pad.volume ?? 80,
+      fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
+    });
+    el?.classList.add('is-playing');
+  }
+}
+
+/* ── SET MANAGEMENT ───────────────────────────────────────── */
+
+async function handleSetSwitch(setId) {
+  if (!_bdBoard || setId === _bdSet?.id) return;
+  closePadPicker();
+  closePadOpts();
+  closeSetOpts();
+  closeSetAdd();
+  _bdBoard.activeSetId = setId;
+  _bdBoard.updated = Date.now();
+  await boardPut(_bdBoard);
+  _bdSet = await setGet(setId);
+  renderSetBar();
+  renderSetStrip();
+}
+
+function openSetAdd() {
+  if (!_bdBoard) return;
+  closePadPicker(); closePadOpts(); closeSetOpts(); closeSetAdd();
+  _bdSetAddOpen = true;
+  const qa = document.getElementById('bd-qa-wrap');
+  if (!qa) return;
+  qa.insertAdjacentHTML('beforeend', `
+    <div class="set-opts" id="set-add-sheet">
+      <div class="scene-opts-header">
+        <span class="scene-opts-title">${pi('cog', 12, 'var(--mode-setup)')} NEW SET</span>
+        <button class="act-btn" data-action="bd-set-add-close">×</button>
+      </div>
+      <div class="scene-opts-body">
+        <div class="scene-opts-row">
+          <label class="scene-opts-label">NAME</label>
+          <input class="scene-opts-input" id="set-add-name" type="text"
+                 placeholder="Set name" maxlength="40" autocomplete="off">
+        </div>
+        <div class="scene-opts-actions">
+          <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="bd-set-add-confirm">CREATE</button>
+        </div>
+      </div>
+    </div>`);
+  document.getElementById('set-add-name')?.focus();
+}
+
+function closeSetAdd() {
+  _bdSetAddOpen = false;
+  document.getElementById('set-add-sheet')?.remove();
+}
+
+async function handleSetAddConfirm() {
+  const name = (document.getElementById('set-add-name')?.value || '').trim();
+  if (!name) return;
+  closeSetAdd();
+  _bdSet = await setCreate(_bdBoard, name);
+  renderQA();
+}
+
+function openSetOpts(setId) {
+  closePadPicker(); closePadOpts(); closeSetAdd(); closeSetOpts();
+  _bdSetOptsId  = setId;
+  _bdSetOptsCfm = false;
+  const s = _bdBoard?.sets?.find(x => x.id === setId);
+  if (!s) return;
+  const canDel = (_bdBoard?.sets || []).length > 0; // sets are optional, always deleteable
+  const qa = document.getElementById('bd-qa-wrap');
+  if (!qa) return;
+  qa.insertAdjacentHTML('beforeend', `
+    <div class="set-opts" id="set-opts-sheet">
+      <div class="scene-opts-header">
+        <span class="scene-opts-title">${pi('cog', 12, 'var(--mode-setup)')} SET</span>
+        <button class="act-btn" data-action="bd-set-opts-close">×</button>
+      </div>
+      <div class="scene-opts-body">
+        <div class="scene-opts-row">
+          <label class="scene-opts-label">NAME</label>
+          <input class="scene-opts-input" id="set-opts-name" type="text"
+                 value="${escAttr(s.name)}" maxlength="40" autocomplete="off">
+        </div>
+        <div class="scene-opts-actions">
+          <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="bd-set-opts-save">SAVE</button>
+          <button class="sb-btn sb-btn-sm sb-btn-danger" id="set-opts-del"
+                  data-action="bd-set-opts-delete">DELETE</button>
+        </div>
+      </div>
+    </div>`);
+  document.getElementById('set-opts-name')?.focus();
+}
+
+function closeSetOpts() {
+  _bdSetOptsId  = null;
+  _bdSetOptsCfm = false;
+  document.getElementById('set-opts-sheet')?.remove();
+}
+
+async function handleSetOptsSave() {
+  if (!_bdSetOptsId || !_bdBoard) return;
+  const name = (document.getElementById('set-opts-name')?.value || '').trim();
+  if (!name) return;
+  _bdBoard.sets = _bdBoard.sets.map(x => x.id === _bdSetOptsId ? { ...x, name } : x);
+  _bdBoard.updated = Date.now();
+  await boardPut(_bdBoard);
+  const sc = _bdSet?.id === _bdSetOptsId ? _bdSet : await setGet(_bdSetOptsId);
+  if (sc) { sc.name = name; await setPut(sc); if (_bdSet?.id === _bdSetOptsId) _bdSet = sc; }
+  closeSetOpts();
+  renderSetBar();
+}
+
+async function handleSetOptsDelete() {
+  if (!_bdSetOptsId || !_bdBoard) return;
+  const delBtn = document.getElementById('set-opts-del');
+  if (!_bdSetOptsCfm) {
+    _bdSetOptsCfm = true;
+    if (delBtn) { delBtn.textContent = 'CONFIRM?'; delBtn.classList.add('is-confirming'); }
+    return;
+  }
+  const id = _bdSetOptsId;
+  closeSetOpts();
+  _bdBoard.sets = _bdBoard.sets.filter(x => x.id !== id);
+  if (_bdBoard.activeSetId === id) _bdBoard.activeSetId = _bdBoard.sets[0]?.id || null;
+  _bdBoard.updated = Date.now();
+  await boardPut(_bdBoard);
+  await setDelete(id);
+  const newSetId = _bdBoard.activeSetId;
+  _bdSet = newSetId ? await setGet(newSetId) : null;
+  renderQA();
 }
 
 /* ── SCENE OPTS BOTTOM SHEET ──────────────────────────────── */
@@ -1443,9 +1797,12 @@ async function handleBdMode(mode) {
   closePadOpts();
   closeSceneOpts();
   closeSceneAdd();
+  closeSetOpts();
+  closeSetAdd();
   renderTopBar();
   renderSceneBar();
   renderPadGrid();
+  renderQA();
 }
 
 async function handleBdPadTap(slot) {
@@ -1611,6 +1968,8 @@ document.addEventListener('keydown', e => {
     if (_bdOptsSlot   !== null) { closePadOpts();   return; }
     if (_bdSceneOptsId !== null){ closeSceneOpts(); return; }
     if (_bdSceneAddOpen)        { closeSceneAdd();  return; }
+    if (_bdSetOptsId !== null)  { closeSetOpts();   return; }
+    if (_bdSetAddOpen)          { closeSetAdd();    return; }
   }
 });
 
@@ -1636,8 +1995,8 @@ document.addEventListener('click', e => {
     }
   }
 
-  // close pad picker when clicking outside it
-  if (_bdPickerSlot !== null && !e.target.closest('#pad-picker')) {
+  // close pad picker when clicking outside it (scene or set context)
+  if ((_bdPickerSlot !== null || _bdSetPickerSlot !== null) && !e.target.closest('#pad-picker')) {
     closePadPicker();
     return;
   }
@@ -1658,6 +2017,14 @@ document.addEventListener('click', e => {
   if (_bdSceneAddOpen && !e.target.closest('#scene-add-sheet') && !e.target.closest('.bd-scene-add')) {
     closeSceneAdd();
     return;
+  }
+
+  // close set opts/add sheets when clicking outside them
+  if (_bdSetOptsId !== null && !e.target.closest('#set-opts-sheet') && !e.target.closest('.bd-set-opts-btn')) {
+    closeSetOpts(); return;
+  }
+  if (_bdSetAddOpen && !e.target.closest('#set-add-sheet') && !e.target.closest('.bd-set-add') && !e.target.closest('.bd-qa-add-set')) {
+    closeSetAdd(); return;
   }
 
   const navEl = e.target.closest('[data-target]');
@@ -1713,8 +2080,19 @@ function handleAction(action, el) {
     case 'bd-scene-cols':        handleSceneCols(+el.dataset.cols); break;
     case 'bd-scene-add-close':   closeSceneAdd(); break;
     case 'bd-scene-add-confirm': handleSceneAddConfirm(); break;
+
+    // sets
+    case 'bd-set-switch':        handleSetSwitch(el.dataset.setId); break;
+    case 'bd-set-add':           openSetAdd(); break;
+    case 'bd-set-opts':          openSetOpts(el.dataset.setId); break;
+    case 'bd-set-opts-close':    closeSetOpts(); break;
+    case 'bd-set-opts-save':     handleSetOptsSave(); break;
+    case 'bd-set-opts-delete':   handleSetOptsDelete(); break;
+    case 'bd-set-add-close':     closeSetAdd(); break;
+    case 'bd-set-add-confirm':   handleSetAddConfirm(); break;
+    case 'bd-set-pad-tap':       handleQaPadTap(+el.dataset.setPadSlot); break;
     case 'bd-pad-tap':        handleBdPadTap(+el.dataset.padSlot); break;
-    case 'bd-stop-all':       audioStopAll(0); document.querySelectorAll('.pad.is-playing').forEach(e => e.classList.remove('is-playing')); break;
+    case 'bd-stop-all':       audioStopAll(0); document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing')); break;
     case 'bd-rename-board':   handleBdRenameBoard(); break;
 
     // pad picker
