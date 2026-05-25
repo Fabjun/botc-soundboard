@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.3';
+const APP_VERSION = '1.5.4';
 
 const CHANGELOG = [
+  { v: '1.5.4', date: '2026-05-25', items: [
+    'Changelog modal: clicking version label in menu opens full changelog overlay',
+    'Modal closes on backdrop click or × button; Escape key supported',
+    'Check for updates button moved inside changelog modal footer',
+  ]},
   { v: '1.5.3', date: '2026-05-25', items: [
     'SW auto-update: controllerchange → window.location.reload() (only when a previous SW was controlling)',
     'SW proactive check: reg.update() on every init so new versions are detected immediately',
@@ -504,7 +509,7 @@ function menuHTML() {
       </div>
       <p class="su-sub" style="margin-top:4px">A tool for Game-Masters and other creative Creatures</p>
       <div class="pix-div" style="margin-top:10px">◆</div>
-      <div class="ver-label" data-action="check-update" title="Check for updates">
+      <div class="ver-label" data-action="show-changelog" title="Show changelog">
         <span>v ${APP_VERSION}</span>
         ${pi('info', 11)}
       </div>
@@ -1287,6 +1292,45 @@ async function handleBdRenameBoard() {
   if (sName) sName.textContent = name;
 }
 
+/* ── CHANGELOG MODAL ────────────────────────────────────────── */
+
+let _clOpen = false;
+
+function showChangelog() {
+  if (_clOpen) return;
+  _clOpen = true;
+  const html = `<div class="cl-overlay" id="cl-overlay">
+    <div class="cl-modal" id="cl-modal">
+      <div class="cl-header">
+        <span class="cl-title">${pi('info', 13, 'var(--gold)')} CHANGELOG</span>
+        <button class="act-btn" data-action="cl-close">×</button>
+      </div>
+      <div class="cl-body">
+        ${CHANGELOG.map(entry => `<div class="cl-entry">
+          <div class="cl-entry-header">
+            <span class="cl-version">v ${escHtml(entry.v)}</span>
+            <span class="cl-date">${escHtml(entry.date)}</span>
+          </div>
+          <div class="cl-items">
+            ${entry.items.map(item => `<div class="cl-item"><span class="cl-bullet">·</span>${escHtml(item)}</div>`).join('')}
+          </div>
+        </div>`).join('')}
+      </div>
+      <div class="cl-footer">
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="check-update">
+          ${pi('download', 12, 'currentColor')} CHECK FOR UPDATES
+        </button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeChangelog() {
+  _clOpen = false;
+  document.getElementById('cl-overlay')?.remove();
+}
+
 /* ── STUB SCREEN ────────────────────────────────────────────── */
 
 /** @param {string} label @returns {string} */
@@ -1338,7 +1382,18 @@ bus.on('screen', renderScreen);
 
 /* ── EVENT DELEGATION ───────────────────────────────────────── */
 
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (_clOpen)          { closeChangelog(); return; }
+    if (_bdPickerSlot !== null) { closePadPicker(); return; }
+    if (_bdOptsSlot   !== null) { closePadOpts();   return; }
+  }
+});
+
 document.addEventListener('click', e => {
+  // close changelog on backdrop click
+  if (_clOpen && !e.target.closest('#cl-modal')) { closeChangelog(); return; }
+
   // clear lib delete confirm
   if (_libDeleteCfm) {
     if (!e.target.closest(`[data-action="lib-delete"][data-hash="${_libDeleteCfm}"]`)) {
@@ -1381,7 +1436,9 @@ document.addEventListener('click', e => {
 /** @param {string} action @param {HTMLElement} el */
 function handleAction(action, el) {
   switch (action) {
-    // menu
+    // menu / changelog
+    case 'show-changelog':    showChangelog(); break;
+    case 'cl-close':          closeChangelog(); break;
     case 'backup':            alert('Backup — coming in Slice 7'); break;
     case 'import':            alert('Import — coming in Slice 7'); break;
     case 'check-update':
