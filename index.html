@@ -136,9 +136,9 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
 #crop-img-el{position:absolute;display:block;pointer-events:none;user-select:none}
 .badge{font-size:calc(13px * var(--font-scale));padding:1px 5px;border-radius:2px;
   font-family:var(--ff-label);margin-top:4px;display:inline-block}
-.bl{background:#1a2a3a;color:var(--active);border:1px solid #1a3a5a}
-.bp{background:#1a2a1a;color:#81c784;border:1px solid #1a4a1a}
-.bo{background:#2a1a1a;color:#ef9a9a;border:1px solid #4a1a1a}
+.bl{background:rgba(79,195,247,.10);color:var(--active);border:1px solid rgba(79,195,247,.28)}
+.bp{background:rgba(201,168,76,.12);color:var(--gold);border:1px solid var(--gold-dim)}
+.bo{background:rgba(139,26,26,.18);color:var(--blood-bright);border:1px solid var(--blood)}
 
 /* EDIT PANEL */
 .pad-edit-banner{position:absolute;bottom:0;left:0;right:0;height:33%;
@@ -201,7 +201,7 @@ html,body{width:100%;height:100%;background:var(--night);color:var(--text);touch
   cursor:pointer;border:1px solid rgba(62,62,96,.9);color:rgba(210,200,222,.8)}
 .topt.ao{background:rgba(201,168,76,.15);border-color:var(--gold-dim);color:var(--gold)}
 .topt.al{background:var(--mode-accent-glow);border-color:var(--mode-accent-dim);color:var(--mode-accent)}
-.topt.ap{background:#1a2a1a;border-color:#1a5a1a;color:#81c784}
+.topt.ap{background:rgba(74,74,122,.25);border-color:var(--mist);color:#c0c0e8}
 /* Dialog action buttons — shared by all modal dialogs */
 .dlg-cancel,.dlg-destruct,.dlg-positive,.dlg-reload{flex:1;font-family:var(--ff-label);font-size:calc(14px*var(--font-scale));padding:10px;border-radius:2px;cursor:pointer;letter-spacing:0;min-height:44px}
 .dlg-cancel{background:none;border:1px solid var(--border);color:var(--text-dim)}
@@ -1780,7 +1780,7 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
     <canvas id="eq-cv" height="25"></canvas>
     <span id="nptxt" style="color:var(--text-dim);font-style:italic;position:relative;z-index:1">No sound active</span>
   </div>
-  <div id="dbg" style="display:none;padding:4px 13px;background:#0a0a14;border-top:1px solid #1e1e35;font-family:monospace;font-size:calc(10px * var(--font-scale));color:#4a4a7a;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+  <div id="dbg" style="display:none;padding:4px 13px;background:var(--night);border-top:1px solid var(--raised);font-family:monospace;font-size:calc(10px * var(--font-scale));color:var(--mist);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
 </div>
 
 <!-- PAD TYPE PICKER -->
@@ -1961,8 +1961,11 @@ body.mode-edit .pbtn::before{background:linear-gradient(to top,rgba(79,195,247,.
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 153;
+const APP_VERSION = 154;
 const CHANGELOG=[
+  {v:154,date:'2026-05-25',items:[
+    "Palette consistency pass: .bp (positive badge) green #81c784 -> var(--gold); .bo (negative badge) pink #ef9a9a -> var(--blood-bright); .bl (active badge) hardcoded bg/border -> rgba(--active) equivalents; .topt.ap (playlist mode active) green -> mist-purple rgba(74,74,122,.25)/var(--mist)/#c0c0e8; #dbg inline style #0a0a14/#1e1e35/#4a4a7a -> var(--night)/var(--raised)/var(--mist)"
+  ]},
   {v:153,date:'2026-05-25',items:[
     "Drag ripple fix: spawnRipple() returns the ripple element; onPadPointerDown stores it in _pendingRipple; when drag threshold (8px) is crossed _pendingRipple is removed before cloneNode so the ghost never inherits a mid-flight ripple; tap path unaffected"
   ]},
