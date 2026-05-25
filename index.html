@@ -17,8 +17,8 @@
 @font-face{font-family:'Uncial Antiqua';font-style:normal;font-weight:400;font-display:swap;src:url('./fonts/uncial-antiqua.woff2') format('woff2')}
 :root {
   --night:#0a0a14; --deep:#0f0f1e; --surface:#16162a; --raised:#1e1e35;
-  --border:#2a2a4a; --gold:#c9a84c; --gold-dim:#7a5f28; --blood:#8b1a1a;
-  --blood-bright:#c0392b; --mist:#4a4a7a; --text:#d4ccbc; --text-dim:#8a8098;
+  --border:#2a2a4a; --gold:#D4B25C; --gold-dim:#7a5f28; --blood:#A02828;
+  --blood-bright:#c0392b; --mist:#4a4a7a; --text:#d4ccbc; --text-dim:#B8B0C8;
   --cx-max:900px; --active:#4fc3f7; --emerald:#3ca870; --emerald-dim:#1c6040;
   --pad-sz:90px; --pad-gap:8px; --pad-radius:8px;
   --ff-title:'Press Start 2P',monospace;
@@ -33,6 +33,18 @@
   --screen-accent:var(--gold); --screen-accent-dim:var(--gold-dim);
   /* Fixed header height — used by #ep, #combo-ov, #ebk, #sp */
   --p-hdr-h:49px;
+  /* Extended tokens v164 */
+  --top:#2D2D60; --sunk:#060614;
+  --border-soft:#232348; --border-strong:#5252A0;
+  --border-gold:#C9A84C; --border-blood:#A02828;
+  --text-strong:#FFFFFF; --text-mute:#7E7494; --text-on-gold:#14100A;
+  --gold-bright:#F5D57A; --gold-soft:rgba(212,178,92,0.18);
+  --flame:#E8821E; --blood-soft:rgba(160,40,40,0.18);
+  /* PAD type colors */
+  --pad-single:#D4B25C; --pad-single-soft:rgba(212,178,92,.16); --pad-single-glow:rgba(245,213,122,.55);
+  --pad-loop:#6DB5B8; --pad-loop-soft:rgba(109,181,184,.16); --pad-loop-glow:rgba(141,213,216,.55);
+  --pad-playlist:#9D7FC7; --pad-playlist-soft:rgba(157,127,199,.16); --pad-playlist-glow:rgba(189,159,231,.55);
+  --pad-combo:#D18B4A; --pad-combo-soft:rgba(209,139,74,.16); --pad-combo-glow:rgba(241,171,90,.55);
 }
 body.theme-modern {
   --ff-title:system-ui,-apple-system,'Inter',sans-serif;
@@ -2140,8 +2152,11 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 163;
+const APP_VERSION = 164;
 const CHANGELOG=[
+  {v:164,date:'2026-05-25',items:[
+    "Token update: added extended CSS variable set — --top, --sunk, --border-soft/strong/gold/blood, --text-strong/mute/on-gold, --gold-bright, --gold-soft, --flame, --blood-soft; added PAD type color families --pad-single/loop/playlist/combo each with -soft and -glow variants; improved WCAG contrast: --text-dim #8a8098→#B8B0C8 (3.7:1→6.9:1), --gold #c9a84c→#D4B25C, --blood #8b1a1a→#A02828; all new tokens are foundations for Phase 2 (PAD type spines) and Phase 3 (new themes)"
+  ]},
   {v:163,date:'2026-05-25',items:[
     "Fix combo FADE OUT ALL step: replaced stopAll(id,true)+fadeOutAll() pair with _fadeOutAllExcept(exceptComboId,fadeTime); the old approach was doubly broken — stopAll with isFade=true was a no-op (entire body gated on !isFade), and fadeOutAll only ramped gains[] which never contains sub-pad GainNodes created by createPadInstance; _fadeOutAllExcept: (1) immediately stops other running combos via stopCombo, (2) ramps down gains[] of regular pads, (3) cleans up after fade delay without touching srcs[exceptComboId] so the current combo's sentinel and button state are preserved; also fixed stopAll to skip srcs[exceptComboId] so STOP ALL steps no longer briefly grey-out the current combo's button; fade duration is controlled by the step's duration input (default 2.5s for fadeOutAll steps)"
   ]},
