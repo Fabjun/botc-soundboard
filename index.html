@@ -1044,6 +1044,27 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 }
 .ico-names-on .ico-cell{flex-direction:column;aspect-ratio:unset;padding:6px 4px 4px;min-height:58px}
 .ico-names-on .ico-cell-name{display:block}
+
+/* ── Decoration System (from JSX design reference) ─────────────── */
+/* SectionLabel — icon ✦ LABEL ──────────────── ✦ */
+.sec-lbl{display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--text-dim)}
+.sec-lbl__text{font-family:var(--ff-label);font-size:calc(11px * var(--font-scale));letter-spacing:.18em;text-transform:uppercase;white-space:nowrap;color:inherit}
+.sec-lbl__line{flex:1;height:2px;background-image:repeating-linear-gradient(90deg,currentColor 0 2px,transparent 2px 5px);opacity:.55;min-width:12px}
+
+/* PixelDivider — ── ◆ ── */
+.pix-div{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--border)}
+.pix-div::before,.pix-div::after{content:'';flex:1;height:2px;background-image:repeating-linear-gradient(90deg,var(--border) 0 2px,transparent 2px 5px)}
+
+/* CornerBrackets — L-shaped armatures at 4 corners */
+.cb-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}
+.cb-tl,.cb-tr,.cb-bl,.cb-br{position:absolute;width:12px;height:12px;border-color:var(--gold);border-style:solid;pointer-events:none;z-index:1}
+.cb-tl{top:-4px;left:-4px;border-width:2px 0 0 2px}
+.cb-tr{top:-4px;right:-4px;border-width:2px 2px 0 0}
+.cb-bl{bottom:-4px;left:-4px;border-width:0 0 2px 2px}
+.cb-br{bottom:-4px;right:-4px;border-width:0 2px 2px 0}
+
+/* Flanking sparkle ✦ glyphs on title headings */
+.su-spark{color:var(--gold);font-size:calc(16px * var(--sym-scale));opacity:.85;flex-shrink:0;line-height:1}
 </style>
 </head>
 <body>
@@ -1078,8 +1099,15 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 <!-- UNLOCK -->
 <div id="su" class="screen active">
   <div class="sc-wrap" style="text-align:center;gap:12px;padding:32px">
-    <div id="flame-intro" style="margin-bottom:28px;display:flex;justify-content:center"></div>
-    <h1>Soundboard of Storytelling</h1>
+    <div class="cb-wrap" style="margin-bottom:28px">
+      <div id="flame-intro" style="display:flex;justify-content:center;padding:8px 12px"></div>
+      <span class="cb-tl"></span><span class="cb-tr"></span><span class="cb-bl"></span><span class="cb-br"></span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+      <span class="su-spark">✦</span>
+      <h1>Soundboard of Storytelling</h1>
+      <span class="su-spark">✦</span>
+    </div>
     <p class="sub">A tool for Game-Masters<br>and other creative Creatures</p>
     <button class="unlock-btn" onclick="unlock()">TAP TO START</button>
   </div>
@@ -1089,8 +1117,15 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 <div id="smm" class="screen">
   <div class="sc-wrap" style="padding:32px 24px 20px;gap:0">
   <div class="m-title">
-    <div id="flame-menu" style="margin-bottom:24px;display:flex;justify-content:center"></div>
-    <h1 style="font-family:var(--ff-hero);font-size:calc(22px * var(--font-scale));letter-spacing:.04em;color:var(--gold);line-height:1.3;margin:0 0 6px">Soundboard of Storytelling</h1>
+    <div class="cb-wrap" style="margin-bottom:24px">
+      <div id="flame-menu" style="display:flex;justify-content:center;padding:8px 12px"></div>
+      <span class="cb-tl"></span><span class="cb-tr"></span><span class="cb-bl"></span><span class="cb-br"></span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 6px">
+      <span class="su-spark">✦</span>
+      <h1 style="font-family:var(--ff-hero);font-size:calc(22px * var(--font-scale));letter-spacing:.04em;color:var(--gold);line-height:1.3;margin:0">Soundboard of Storytelling</h1>
+      <span class="su-spark">✦</span>
+    </div>
     <p style="font-family:var(--ff-subtitle);font-size:calc(14px * var(--font-scale));color:var(--text-dim);margin-top:4px;line-height:1.5">A tool for Game-Masters<br>and other creative Creatures</p>
     <p id="ver-label" onclick="openChangelog()" style="font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));color:var(--text-dim);margin-top:10px;letter-spacing:.04em;cursor:pointer;display:inline-flex;align-items:center;gap:5px">v<span id="ver-num"></span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:calc(11px * var(--font-scale));height:calc(11px * var(--font-scale));opacity:.6"><path d="M5 3h10v2H5zm14 4h-2V5h-2V3h2v2h2v2zm0 14H5V5h8v2H7v12h10V9h2v12zM9 9h6v2H9zm0 4h6v2H9zm0 4h4v2H9z"/></svg></p>
   </div>
@@ -2374,8 +2409,11 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 174;
+const APP_VERSION = 175;
 const CHANGELOG=[
+  {v:175,date:'2026-05-25',items:[
+    "Decoration system (JSX foundations.jsx + decorations.jsx): _PIXEL_ICONS data (24 icons — full UI set + mystic/alchemy: moon star sparkle eye potion key rune skull hourglass diamond scroll); pixelIcon(name,size,color) vanilla JS helper returns SVG HTML string, assigned to window.pixelIcon for command-palette compatibility; sectionLabel(text,glyph,opts) returns decorated header HTML ([icon] LABEL ──── [icon]); pixelDivider(glyph) returns dashed ornament divider HTML; CSS: .sec-lbl/.sec-lbl__text/.sec-lbl__line, .pix-div, .cb-wrap corner bracket spans (.cb-tl/.cb-tr/.cb-bl/.cb-br), .su-spark flanking sparkle glyphs; Home screen (unlock + main menu): flame container wrapped in .cb-wrap with 4 corner bracket spans; title wrapped with ✦ sparkle glyphs on both sides per screens.jsx HomeScreen spec"
+  ]},
   {v:174,date:'2026-05-25',items:[
     "Flame bug fixes: thaw rate 0.45→0.9 s⁻¹ + grace 1.6→0.8 s (thaw no longer perceived as broken); glitter threshold raised 0.7→0.9 (no premature crystal sparkle during warm→freeze transition); _drawFlame: H=18*cell matches _makeFlame canvas height; halo alpha formula 0.55−c*0.55 zeroes at cold=1 (eliminates bright halo square when frozen); gradient radius W*0.45 stays within canvas (was W*0.7 — leaked past edges); sway Math.round (eliminates sub-pixel grid lines); ctx.translate(sway,cell) offsets body down 1 cell freeing row 0 for tip extension; bY transform uses 17*cell not H so breathe stays relative to body; particles wrapped in ctx.save/translate(0,cell)/restore to share body coordinate space; frost vignette radius W*0.5 (was W*0.7)"
   ]},
@@ -4662,6 +4700,63 @@ function _initFlames(){
   const ic=document.getElementById('flame-intro'),mc=document.getElementById('flame-menu');
   if(ic) _flameIntroState=_makeFlame(ic,7,true);
   if(mc){_flameMenuState=_makeFlame(mc,5,false);_flameMenuState.targetCold=locked?0:1;}
+}
+
+// ── Pixel Icon System ─────────────────────────────────────────────
+// 16×16 coordinate grid icons. Each entry: array of "x y" strings.
+// Used by sectionLabel(), pixelDivider(), and decoration helpers.
+const _PIXEL_ICONS={
+  flame:['7 1','8 1','6 2','7 2','8 2','9 2','5 3','6 3','8 3','9 3','10 3','5 4','6 4','7 4','8 4','9 4','10 4','11 4','4 5','5 5','7 5','9 5','10 5','11 5','4 6','5 6','6 6','9 6','10 6','11 6','12 6','3 7','4 7','5 7','6 7','7 7','9 7','10 7','11 7','12 7','3 8','4 8','5 8','6 8','7 8','8 8','10 8','11 8','12 8','3 9','4 9','5 9','6 9','7 9','8 9','9 9','10 9','11 9','12 9','3 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','12 10','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','5 12','6 12','7 12','8 12','9 12','10 12','6 13','7 13','8 13','9 13'],
+  play:['5 3','5 4','5 5','5 6','5 7','5 8','5 9','5 10','5 11','5 12','6 4','6 5','6 6','6 7','6 8','6 9','6 10','6 11','7 5','7 6','7 7','7 8','7 9','7 10','8 6','8 7','8 8','8 9','9 7','9 8'],
+  stop:['4 4','5 4','6 4','7 4','8 4','9 4','10 4','11 4','4 5','5 5','6 5','7 5','8 5','9 5','10 5','11 5','4 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6','4 7','5 7','6 7','7 7','8 7','9 7','10 7','11 7','4 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','4 9','5 9','6 9','7 9','8 9','9 9','10 9','11 9','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11'],
+  loop:['5 4','6 4','7 4','8 4','9 4','10 4','4 5','11 5','3 6','12 6','3 7','12 7','11 7','3 8','12 8','10 8','3 9','12 9','9 9','10 9','11 9','4 10','11 10','5 11','6 11','7 11','8 11','9 11','10 11'],
+  tag:['3 6','4 6','5 6','6 6','7 6','8 6','9 6','10 6','3 7','10 7','11 7','3 8','11 8','12 8','3 9','12 9','3 10','11 10','12 10','3 11','10 11','11 11','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','5 9','6 9'],
+  book:['3 3','4 3','5 3','6 3','7 3','9 3','10 3','11 3','12 3','3 4','7 4','9 4','12 4','3 5','7 5','9 5','12 5','3 6','7 6','9 6','12 6','3 7','7 7','9 7','12 7','3 8','7 8','9 8','12 8','3 9','7 9','9 9','12 9','3 10','7 10','9 10','12 10','3 11','7 11','9 11','12 11','3 12','4 12','5 12','6 12','7 12','9 12','10 12','11 12','12 12'],
+  cog:['7 2','8 2','5 3','7 3','8 3','10 3','5 4','7 4','8 4','10 4','4 5','5 5','11 5','2 6','3 6','5 6','6 6','7 6','8 6','9 6','10 6','12 6','13 6','2 7','3 7','5 7','6 7','9 7','10 7','12 7','13 7','2 8','3 8','5 8','6 8','9 8','10 8','12 8','13 8','2 9','3 9','5 9','6 9','7 9','8 9','9 9','10 9','12 9','13 9','4 10','5 10','11 10','5 11','7 11','8 11','10 11','5 12','7 12','8 12','10 12','7 13','8 13'],
+  bulb:['6 2','7 2','8 2','9 2','5 3','10 3','4 4','11 4','4 5','11 5','4 6','11 6','4 7','11 7','5 8','6 8','9 8','10 8','6 9','7 9','8 9','9 9','7 10','8 10','6 11','7 11','8 11','9 11','7 12','8 12','7 13','8 13'],
+  info:['6 2','7 2','8 2','9 2','5 3','10 3','4 4','7 4','8 4','11 4','4 5','11 5','4 6','7 6','8 6','11 6','4 7','6 7','7 7','8 7','11 7','4 8','7 8','8 8','11 8','4 9','7 9','8 9','11 9','4 10','7 10','8 10','11 10','5 11','7 11','8 11','10 11','6 12','7 12','8 12','9 12'],
+  download:['7 2','8 2','7 3','8 3','7 4','8 4','7 5','8 5','5 6','7 6','8 6','10 6','5 7','6 7','7 7','8 7','9 7','10 7','6 8','7 8','8 8','9 8','7 9','8 9','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12'],
+  save:['3 3','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','3 4','11 4','12 4','3 5','5 5','6 5','7 5','8 5','12 5','3 6','5 6','7 6','12 6','3 7','12 7','3 8','12 8','3 9','5 9','6 9','7 9','8 9','9 9','12 9','3 10','5 10','9 10','12 10','3 11','5 11','9 11','12 11','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12'],
+  search:['5 3','6 3','7 3','8 3','4 4','9 4','3 5','10 5','3 6','10 6','3 7','10 7','3 8','10 8','4 9','9 9','5 10','6 10','7 10','8 10','10 10','11 11','12 11','12 12','13 12'],
+  edit:['10 2','11 2','9 3','10 3','11 3','12 3','8 4','9 4','10 4','11 4','7 5','8 5','9 5','10 5','6 6','7 6','8 6','9 6','5 7','6 7','7 7','8 7','4 8','5 8','6 8','7 8','3 9','4 9','5 9','6 9','3 10','4 10','5 10','3 11','4 11','5 11','3 12','4 12'],
+  moon:['6 2','7 2','8 2','4 3','5 3','6 3','7 3','8 3','9 3','3 4','4 4','5 4','6 4','7 4','2 5','3 5','4 5','5 5','2 6','3 6','4 6','2 7','3 7','4 7','2 8','3 8','4 8','2 9','3 9','4 9','2 10','3 10','4 10','5 10','3 11','4 11','5 11','6 11','7 11','4 12','5 12','6 12','7 12','8 12','9 12','6 13','7 13','8 13'],
+  star:['7 2','8 2','7 3','8 3','6 4','7 4','8 4','9 4','6 5','7 5','8 5','9 5','5 6','6 6','7 6','8 6','9 6','10 6','2 7','3 7','4 7','5 7','6 7','7 7','8 7','9 7','10 7','11 7','12 7','13 7','2 8','3 8','4 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','12 8','13 8','5 9','6 9','7 9','8 9','9 9','10 9','6 10','7 10','8 10','9 10','6 11','7 11','8 11','9 11','7 12','8 12','7 13','8 13'],
+  sparkle:['7 3','8 3','6 4','7 4','8 4','9 4','7 5','8 5','2 7','3 7','7 7','8 7','12 7','13 7','2 8','3 8','7 8','8 8','12 8','13 8','7 9','8 9','6 11','7 11','8 11','9 11','7 12','8 12'],
+  eye:['6 4','7 4','8 4','9 4','4 5','5 5','10 5','11 5','2 6','3 6','12 6','13 6','1 7','14 7','1 8','6 8','7 8','8 8','9 8','14 8','1 9','6 9','7 9','8 9','9 9','14 9','2 10','3 10','12 10','13 10','4 11','5 11','10 11','11 11','6 12','7 12','8 12','9 12'],
+  potion:['6 2','7 2','8 2','9 2','6 3','9 3','6 4','7 4','8 4','9 4','6 5','7 5','8 5','9 5','4 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6','3 7','11 7','2 8','7 8','8 8','12 8','2 9','5 9','6 9','7 9','8 9','9 9','10 9','12 9','2 10','5 10','6 10','7 10','8 10','9 10','10 10','12 10','2 11','5 11','6 11','7 11','8 11','9 11','10 11','12 11','3 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','3 13','4 13','5 13','6 13','7 13','8 13','9 13','10 13','11 13','12 13'],
+  key:['6 3','7 3','8 3','5 4','9 4','4 5','10 5','4 6','7 6','10 6','4 7','10 7','5 8','9 8','6 9','7 9','8 9','7 10','8 10','7 11','8 11','9 11','10 11','7 12','8 12','7 13','8 13','9 13'],
+  rune:['7 2','8 2','6 3','7 3','8 3','9 3','6 4','9 4','5 5','10 5','5 6','10 6','4 7','11 7','4 8','7 8','8 8','11 8','3 9','12 9','2 10','3 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','12 10','13 10','7 11','8 11','7 12','8 12','6 13','7 13','8 13','9 13'],
+  skull:['5 3','6 3','7 3','8 3','9 3','10 3','4 4','11 4','3 5','12 5','3 6','5 6','6 6','9 6','10 6','12 6','3 7','5 7','6 7','9 7','10 7','12 7','3 8','12 8','3 9','7 9','8 9','12 9','4 10','11 10','5 11','6 11','7 11','8 11','9 11','10 11','5 12','7 12','9 12','5 13','7 13','9 13'],
+  hourglass:['3 2','4 2','5 2','6 2','7 2','8 2','9 2','10 2','11 2','12 2','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','5 4','6 4','7 4','8 4','9 4','10 4','6 5','7 5','8 5','9 5','7 6','8 6','6 7','7 7','8 7','9 7','5 8','6 8','9 8','10 8','4 9','5 9','10 9','11 9','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','12 11','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12'],
+  diamond:['7 4','8 4','6 5','7 5','8 5','9 5','5 6','6 6','7 6','8 6','9 6','10 6','4 7','5 7','6 7','7 7','8 7','9 7','10 7','11 7','4 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','5 9','6 9','7 9','8 9','9 9','10 9','6 10','7 10','8 10','9 10','7 11','8 11'],
+  scroll:['3 3','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','2 4','12 4','3 5','4 5','5 5','6 5','7 5','8 5','9 5','10 5','11 5','3 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6','3 7','5 7','7 7','8 7','9 7','11 7','3 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','3 9','5 9','6 9','7 9','8 9','9 9','11 9','3 10','11 10','3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','2 12','12 12','3 13','4 13','5 13','6 13','7 13','8 13','9 13','10 13','11 13'],
+};
+
+function pixelIcon(name,size,color){
+  size=size||16;color=color||'currentColor';
+  const cells=_PIXEL_ICONS[name];
+  if(!cells||!cells.length) return '';
+  const rects=cells.map(c=>{const[x,y]=c.split(' ');return`<rect x="${x}" y="${y}" width="1" height="1" fill="${color}" shape-rendering="crispEdges"/>`;}).join('');
+  return`<svg width="${size}" height="${size}" viewBox="0 0 16 16" style="display:block;flex-shrink:0">${rects}</svg>`;
+}
+window.pixelIcon=pixelIcon;
+
+// sectionLabel(text, glyph?, opts?) → HTML string
+// Renders: [icon] LABEL ──────── [icon]
+// opts: { size:12, color:'var(--text-dim)', noLine:false }
+function sectionLabel(text,glyph,opts){
+  glyph=glyph||'sparkle';opts=opts||{};
+  const size=opts.size||12;
+  const color=opts.color||(opts.bright?'var(--gold)':'var(--text-dim)');
+  const ico=pixelIcon(glyph,size,'var(--gold)');
+  const line=opts.noLine?'':'<span class="sec-lbl__line"></span>';
+  return`<div class="sec-lbl" style="color:${color}">${ico}<span class="sec-lbl__text">${escHtml(text)}</span>${line}${ico}</div>`;
+}
+
+// pixelDivider(glyph?) → HTML string
+// Renders: ──── [icon] ────
+function pixelDivider(glyph){
+  return`<div class="pix-div">${pixelIcon(glyph||'diamond',12,'var(--gold)')}</div>`;
 }
 
 function _getComboDefaultDelay(){ return +(localStorage.getItem('combo-delay')??1); }
