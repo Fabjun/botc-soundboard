@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SoS — Main Menu Prototype</title>
+<style>
+/* ── FONTS ── */
+@font-face{font-family:'Press Start 2P';font-display:swap;src:url('../fonts/press-start-2p.woff2') format('woff2')}
+@font-face{font-family:'Share Tech Mono';font-display:swap;src:url('../fonts/share-tech-mono.woff2') format('woff2')}
+@font-face{font-family:'VT323';font-display:swap;src:url('../fonts/vt323.woff2') format('woff2')}
+@font-face{font-family:'DotGothic16';font-display:swap;src:url('../fonts/dotgothic16.woff2') format('woff2')}
+
+/* ── TOKENS (v178 WCAG values) ── */
+:root {
+  --night:#08081A; --deep:#0E0E22; --surface:#16162E; --raised:#22224A;
+  --border:#383868; --gold:#D4B25C; --gold-dim:#8A6E34; --blood:#A02828;
+  --blood-bright:#D04545; --text:#F0E8D0; --text-dim:#B8B0C8;
+  --active:#4fc3f7; --emerald:#3ca870; --emerald-dim:#1c6040;
+  --top:#2D2D60; --sunk:#060614;
+  --border-soft:#232348; --border-strong:#5252A0;
+  --border-gold:#C9A84C; --border-blood:#A02828;
+  --text-strong:#FFFFFF; --text-mute:#7E7494; --text-on-gold:#14100A;
+  --gold-bright:#F5D57A; --gold-soft:rgba(212,178,92,0.18);
+  --flame:#E8821E; --blood-soft:rgba(160,40,40,0.18);
+  --ff-title:'Press Start 2P',monospace;
+  --ff-label:'VT323',monospace;
+  --ff-body:'Share Tech Mono',monospace;
+  --ff-hero:'DotGothic16',sans-serif;
+  --cc:polygon(5px 0%,calc(100% - 5px) 0%,100% 5px,100% calc(100% - 5px),calc(100% - 5px) 100%,5px 100%,0% calc(100% - 5px),0% 5px);
+}
+
+/* ── THEMES ── */
+body.theme-modern {
+  --ff-title:system-ui,sans-serif; --ff-label:system-ui,sans-serif; --ff-body:system-ui,sans-serif;
+  --surface:#18182e; --raised:#22223c; --border:#2e2e4a;
+}
+body.theme-verdant {
+  --night:#07120D; --deep:#0B1E16; --surface:#102A20; --raised:#18402F;
+  --border:#2A5640; --border-strong:#3A7A5C; --border-gold:#C9A04F;
+  --text:#EFE6C8; --text-dim:#ACB5A6; --text-mute:#6F7E73;
+  --gold:#C9A04F; --gold-bright:#F2CC5C; --gold-soft:rgba(201,160,79,.18);
+  --flame:#D8893A;
+}
+body.theme-neon {
+  --night:#050816; --deep:#0A1228; --surface:#111E40; --raised:#1A2C5E;
+  --border:#2B4382; --border-strong:#4564B5; --border-gold:#3DD4F0;
+  --text:#E2F0FF; --text-dim:#9DB5D6; --text-mute:#5F7AA2;
+  --gold:#3DD4F0; --gold-bright:#6EF0FF; --gold-soft:rgba(61,212,240,.18);
+  --flame:#FF3D8B;
+}
+body.theme-crimson {
+  --night:#0A0606; --deep:#16090A; --surface:#20121A; --raised:#2E1A22;
+  --border:#523040; --border-strong:#804052; --border-gold:#D63A3A;
+  --text:#F2DDD2; --text-dim:#C09A95; --text-mute:#835A55;
+  --gold:#D63A3A; --gold-bright:#F26666; --gold-soft:rgba(214,58,58,.18);
+  --flame:#B5302E;
+}
+
+/* ── RESET ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:var(--night);color:var(--text);font-family:var(--ff-body);
+  transition:background .3s,color .3s;user-select:none}
+
+/* ── THEME BAR (floating, non-intrusive) ── */
+.theme-bar{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  display:flex;gap:4px;padding:6px 10px;
+  background:rgba(8,8,26,.85);border-bottom:1px solid var(--border-soft);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.tb-btn{background:transparent;border:1px solid var(--border-soft);color:var(--text-mute);
+  font-family:var(--ff-label);font-size:13px;letter-spacing:0;padding:2px 9px;
+  cursor:pointer;border-radius:2px;transition:all .15s;line-height:1.4}
+.tb-btn:hover{border-color:var(--gold);color:var(--gold)}
+.tb-btn.active{border-color:var(--gold);color:var(--gold);
+  background:var(--gold-soft)}
+.tb-sep{flex:1}
+.tb-link{color:var(--text-mute);font-family:var(--ff-body);font-size:10px;
+  letter-spacing:1px;text-decoration:none;padding:4px 6px;cursor:pointer}
+.tb-link:hover{color:var(--text-dim)}
+
+/* ── SCREENS ── */
+.screen{display:none;position:fixed;inset:36px 0 0;overflow-y:auto;
+  flex-direction:column;align-items:center;justify-content:center}
+.screen.active{display:flex}
+
+/* ── SCREEN: UNLOCK ── */
+#su{background:
+  radial-gradient(60% 70% at 50% 40%, rgba(60,30,90,.5) 0%, transparent 70%),
+  radial-gradient(120% 80% at 50% 110%, rgba(15,8,30,.9) 0%, transparent 70%),
+  var(--night)}
+.su-wrap{display:flex;flex-direction:column;align-items:center;
+  gap:10px;padding:32px 20px;text-align:center}
+
+/* ── PIXEL FLAME containers (SVG flame injected by flame.js) ── */
+.flame-box{display:flex;align-items:center;justify-content:center;padding:8px 0}
+
+/* ── CORNER BRACKETS ── */
+.cb-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}
+.cb-tl,.cb-tr,.cb-bl,.cb-br{position:absolute;width:12px;height:12px;
+  border-color:var(--gold);border-style:solid;opacity:.7}
+.cb-tl{top:0;left:0;border-width:2px 0 0 2px}
+.cb-tr{top:0;right:0;border-width:2px 2px 0 0}
+.cb-bl{bottom:0;left:0;border-width:0 0 2px 2px}
+.cb-br{bottom:0;right:0;border-width:0 2px 2px 0}
+
+/* ── TITLE ROW ── */
+.title-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px}
+.su-spark{color:var(--gold);font-size:18px;opacity:.8;line-height:1;flex-shrink:0}
+.su-h1{font-family:var(--ff-hero);font-size:clamp(18px,4vw,28px);
+  color:var(--gold);letter-spacing:.04em;line-height:1.25}
+.su-sub{font-family:var(--ff-body);font-size:14px;color:var(--text-dim);
+  line-height:1.6;font-style:italic;margin-bottom:4px}
+
+/* ── UNLOCK BUTTON ── */
+.unlock-btn{
+  background:transparent;
+  border:1px solid #2A8A4F;color:#3FD083;
+  font-family:var(--ff-label);font-size:18px;letter-spacing:2px;
+  padding:14px 40px;cursor:pointer;margin-top:24px;min-width:220px;
+  clip-path:var(--cc);transition:border-color .15s,color .15s}
+body.theme-modern .unlock-btn{clip-path:none;border-radius:8px}
+.unlock-btn:hover{filter:brightness(1.15)}
+.unlock-btn:active{transform:scale(.97)}
+
+/* ── PIXEL DIVIDER ── */
+.pix-div{
+  width:100%;max-width:360px;
+  display:flex;align-items:center;gap:8px;
+  color:var(--gold-dim);font-family:var(--ff-label);font-size:13px;
+  margin:6px auto}
+.pix-div::before,.pix-div::after{
+  content:'';flex:1;height:1px;
+  background:repeating-linear-gradient(90deg,var(--border) 0,var(--border) 4px,transparent 4px,transparent 8px)}
+
+/* ── SCREEN: MAIN MENU ── */
+#smm{justify-content:flex-start;padding-top:0}
+.smm-wrap{
+  width:100%;max-width:720px;
+  display:flex;flex-direction:column;align-items:center;
+  padding:24px 20px 32px;gap:0}
+.smm-title{text-align:center;margin-bottom:20px;width:100%}
+
+
+/* ── MENU ROWS ── */
+.mopts{
+  width:100%;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:10px;
+  margin-bottom:12px}
+.mopt{
+  background:var(--surface);border:1px solid var(--border);
+  padding:16px 18px;cursor:pointer;display:flex;align-items:center;gap:14px;
+  transition:border-color .15s,background .15s;position:relative;overflow:hidden}
+body:not(.theme-modern) .mopt{clip-path:var(--cc)}
+body.theme-modern .mopt{border-radius:8px}
+.mopt:hover{background:var(--raised)}
+.mopt:active{background:var(--top)}
+.mopt.mp{border-color:var(--gold-dim)}
+.mico{width:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  color:var(--gold)}
+.mico svg{display:block;width:22px;height:22px;
+  mask-image:linear-gradient(to bottom,white 0%,rgba(255,255,255,.6) 100%);
+  -webkit-mask-image:linear-gradient(to bottom,white 0%,rgba(255,255,255,.6) 100%)}
+/* Staggered gold tint on menu icons — matches app */
+.mopts .mopt:nth-child(1) .mico{color:#c9a84c}
+.mopts .mopt:nth-child(2) .mico{color:#c1a149}
+.mopts .mopt:nth-child(3) .mico{color:#b99b46}
+.mopts .mopt:nth-child(4) .mico{color:#b29543}
+.mopts .mopt:nth-child(5) .mico{color:#ab8f40}
+.mopt-text{flex:1;min-width:0}
+.mlbl{font-family:var(--ff-label);font-size:18px;letter-spacing:0;color:var(--text)}
+.mopt.mp .mlbl{color:var(--gold)}
+.msub{font-family:var(--ff-body);font-size:11px;color:var(--text-dim);
+  font-style:italic;margin-top:2px}
+/* Active indicator on BOARD row */
+.mopt.mp::after{
+  content:'';position:absolute;right:0;top:0;bottom:0;width:3px;
+  background:var(--gold);opacity:.7}
+
+/* ── BACKUP ROW ── */
+.m-bkp-row{display:flex;gap:8px;width:100%;margin-top:4px}
+.m-bkp-btn{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 14px;cursor:pointer;font-family:var(--ff-label);
+  font-size:14px;letter-spacing:1px;background:var(--surface);
+  border:1px solid var(--blood);color:var(--blood-bright);
+  transition:border-color .2s,color .2s,background .15s}
+body:not(.theme-modern) .m-bkp-btn{clip-path:var(--cc)}
+body.theme-modern .m-bkp-btn{border-radius:6px}
+.m-bkp-btn:hover{background:var(--raised)}
+.m-bkp-btn.import{border-color:var(--border);color:var(--text-dim);flex:0 0 auto;padding:10px 20px}
+.m-bkp-btn.import:hover{border-color:var(--active);color:var(--active)}
+.m-bkp-age{font-family:var(--ff-body);font-size:10px;opacity:.75}
+
+/* ── VER LABEL ── */
+.ver-label{
+  font-family:var(--ff-label);font-size:11px;color:var(--text-mute);
+  display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+  margin-top:8px;margin-bottom:4px;transition:color .15s}
+.ver-label:hover{color:var(--text-dim)}
+
+/* ── ANNOTATIONS (prototype-only) ── */
+.ann{
+  position:fixed;bottom:12px;right:14px;
+  font-family:var(--ff-body);font-size:10px;color:var(--text-mute);
+  letter-spacing:.5px;text-align:right;pointer-events:none;line-height:1.7}
+.ann b{color:var(--gold-dim)}
+</style>
+</head>
+
+<body class="mode-play">
+
+<!-- ── THEME BAR ── -->
+<div class="theme-bar">
+  <span style="font-family:var(--ff-label);font-size:12px;color:var(--text-mute);padding:4px 6px;letter-spacing:1px">THEME</span>
+  <button class="tb-btn active" id="th-default"  onclick="setTheme('')">Default</button>
+  <button class="tb-btn"        id="th-modern"   onclick="setTheme('modern')">Modern</button>
+  <button class="tb-btn"        id="th-verdant"  onclick="setTheme('verdant')">Verdant</button>
+  <button class="tb-btn"        id="th-neon"     onclick="setTheme('neon')">Neon</button>
+  <button class="tb-btn"        id="th-crimson"  onclick="setTheme('crimson')">Crimson</button>
+  <span class="tb-sep"></span>
+  <a class="tb-link" href="index.html">Component view</a>
+</div>
+
+<!-- ══════════════ SCREEN 1: UNLOCK ══════════════ -->
+<div id="su" class="screen active">
+  <div class="su-wrap">
+
+    <!-- Pixel flame with corner brackets -->
+    <div class="cb-wrap" style="margin-bottom:16px">
+      <div class="flame-box">
+        <div id="flame-su"></div>
+      </div>
+      <span class="cb-tl"></span><span class="cb-tr"></span>
+      <span class="cb-bl"></span><span class="cb-br"></span>
+    </div>
+
+    <!-- Title (id for cold-reactive color) -->
+    <div class="title-row" style="margin-top:18px">
+      <span class="su-spark">✦</span>
+      <h1 id="su-title" style="font-family:var(--ff-hero);font-size:clamp(18px,4vw,26px);color:#F5C242;letter-spacing:.04em;line-height:1.3;text-align:center;text-shadow:0 0 6px rgba(245,194,66,.55),0 0 18px rgba(245,194,66,.32),0 0 36px rgba(245,194,66,.18)">Soundboard of Storytelling</h1>
+      <span class="su-spark">✦</span>
+    </div>
+
+    <p class="su-sub" style="margin-top:4px">A tool for Game-Masters<br>and other creative Creatures</p>
+
+    <button id="unlock-btn" class="unlock-btn" onclick="goToMenu()">TAP TO START</button>
+
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN 2: MAIN MENU ══════════════ -->
+<div id="smm" class="screen">
+  <div class="smm-wrap">
+
+    <!-- Flame + title -->
+    <div class="smm-title">
+      <div class="cb-wrap" style="margin-bottom:16px">
+        <div class="flame-box">
+          <div id="flame-smm"></div>
+        </div>
+        <span class="cb-tl"></span><span class="cb-tr"></span>
+        <span class="cb-bl"></span><span class="cb-br"></span>
+      </div>
+
+      <div class="title-row">
+        <span class="su-spark" style="font-size:14px">✦</span>
+        <h1 style="font-family:var(--ff-hero);font-size:clamp(17px,3.5vw,24px);color:var(--gold);letter-spacing:.04em;line-height:1.3">Soundboard of Storytelling</h1>
+        <span class="su-spark" style="font-size:14px">✦</span>
+      </div>
+
+      <p style="font-family:var(--ff-body);font-size:13px;color:var(--text-dim);font-style:italic;margin-top:4px;line-height:1.5">
+        A tool for Game-Masters and other creative Creatures
+      </p>
+
+      <div class="pix-div" style="margin-top:10px">◆</div>
+
+      <div class="ver-label">
+        <span>v 177</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="opacity:.6"><path d="M5 3h10v2H5zm14 4h-2V5h-2V3h2v2h2v2zm0 14H5V5h8v2H7v12h10V9h2v12zM9 9h6v2H9zm0 4h6v2H9zm0 4h4v2H9z"/></svg>
+      </div>
+    </div>
+
+    <!-- Menu rows -->
+    <div class="mopts">
+
+      <div class="mopt mp" onclick="flash(this)">
+        <div class="mico">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M9 2h2v4H9zM7 6h2v2H7zM5 8h2v2H5zm8 2h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2zm2 2h2v6h-2zM3 10h2v8H3zm8-4h2v4h-2zm6 12h2v2h-2zM7 20h10v2H7zm-2-2h2v2H5zm4-2h6v4H9z"/><path d="M11 14h2v3h-2z"/></svg>
+        </div>
+        <div class="mopt-text">
+          <div class="mlbl">BOARD</div>
+          <div class="msub">Board 1 · 12 pads</div>
+        </div>
+      </div>
+
+      <div class="mopt" onclick="flash(this)">
+        <div class="mico">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4h2v17H3zm4 4h2v13H7zm4-2h2v15h-2zm4 0h2v5h-2zm2 5h2v5h-2zm2 5h2v5h-2z"/></svg>
+        </div>
+        <div class="mopt-text">
+          <div class="mlbl">LIBRARY</div>
+          <div class="msub">Audio, icons &amp; boards</div>
+        </div>
+      </div>
+
+      <div class="mopt" onclick="flash(this)">
+        <div class="mico">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M4 14h2v6H4zm6 0h2v6h-2zm-4-2h4v2H6zm0 8h4v2H6zm-4-4h2v2H2zm20-8h-4V6h4z"/><path d="M10 16h12v2H10zm4-8H2V6h12zm6-4v2h-2V4zm0 6V8h-2v2zm-6-8h4v2h-4zm0 10h4v-2h-4zm-2-8h2v2h-2zm0 6h2V8h-2z"/></svg>
+        </div>
+        <div class="mopt-text">
+          <div class="mlbl">SETTINGS</div>
+          <div class="msub">Theme, font size &amp; start mode</div>
+        </div>
+      </div>
+
+      <div class="mopt" onclick="flash(this)">
+        <div class="mico">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M9 4h6v2H9zM7 6h2v2H7zm8 0h2v2h-2zm4-2h2v2h-2zm2-2h2v2h-2zM0 10h3v2H0zm21 0h3v2h-3zM3 4h2v2H3zM1 2h2v2H1zm6 12h2v2H7zm8 0h2v2h-2zM5 8h2v6H5zm12 0h2v6h-2zm-8 8h6v2H9zm0 4h6v2H9zm0-2h2v2H9zm4 0h2v2h-2zM11 0h2v3h-2z"/></svg>
+        </div>
+        <div class="mopt-text">
+          <div class="mlbl">TIPS &amp; TRICKS</div>
+          <div class="msub">Controls and key bindings</div>
+        </div>
+      </div>
+
+      <div class="mopt" onclick="flash(this)">
+        <div class="mico">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M4 2h16v2H4zm0 18h16v2H4zM2 4h2v16H2zm18 0h2v16h-2zm-9 5h2V7h-2zm0 8h2v-6h-2z"/></svg>
+        </div>
+        <div class="mopt-text">
+          <div class="mlbl">ABOUT</div>
+          <div class="msub">What this is and how it works</div>
+        </div>
+      </div>
+
+    </div><!-- /.mopts -->
+
+    <!-- Backup / Import row -->
+    <div class="m-bkp-row">
+      <button class="m-bkp-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style="flex-shrink:0"><path d="M5 3h10v2H5zm14 4h-2V5h-2V3h2v2h2v2zm0 14H5V5h8v2H7v12h10V9h2v12zM9 9h6v2H9zm0 4h6v2H9zm0 4h4v2H9z"/></svg>
+        BACKUP
+        <span class="m-bkp-age">· never</span>
+      </button>
+      <button class="m-bkp-btn import">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style="flex-shrink:0"><path d="M11 3h2v10h-2zm-2 6h6v2H9zm-4 8h14v2H5zm2 2h2v2H7zm8 0h2v2h-2z"/></svg>
+        IMPORT
+      </button>
+    </div>
+
+  </div><!-- /.smm-wrap -->
+</div>
+
+<!-- ── PROTOTYPE ANNOTATION ── -->
+<div class="ann">
+  <b>PROTOTYPE</b> · Main Menu · v178 tokens<br>
+  Theme bar above · Click menu rows to flash
+</div>
+
+<script src="flame.js"></script>
+<script>
+// ── THEME ─────────────────────────────────────────────────
+function setTheme(name) {
+  document.body.className = document.body.className.replace(/\btheme-\w+\b/g,'').trim();
+  if (name) document.body.classList.add('theme-' + name);
+  document.querySelectorAll('.tb-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('th-' + (name || 'default')).classList.add('active');
+}
+
+// ── SCREEN TRANSITION ─────────────────────────────────────
+function goToMenu() {
+  document.getElementById('su').classList.remove('active');
+  document.getElementById('smm').classList.add('active');
+}
+
+// ── MENU ROW FLASH ────────────────────────────────────────
+function flash(el) {
+  el.style.background = 'var(--raised)';
+  setTimeout(() => el.style.background = '', 200);
+}
+
+// ── INIT ──────────────────────────────────────────────────
+document.body.classList.add('mode-play');
+
+// Main menu flame — interactive, size 84
+new AnimatedFlame(document.getElementById('flame-smm'), {
+  size: 84, interactive: true,
+});
+
+// Unlock screen flame — interactive, drives title color + button text
+const _suTitle  = document.getElementById('su-title');
+const _unlockBtn = document.getElementById('unlock-btn');
+new AnimatedFlame(document.getElementById('flame-su'), {
+  size: 140, interactive: true,
+  onColdChange(cold) {
+    if (_suTitle) {
+      _suTitle.style.color = lerpColor('#F5C242', '#9FD8EE', cold);
+      const wg = `0 0 6px rgba(245,194,66,.55),0 0 18px rgba(245,194,66,.32),0 0 36px rgba(245,194,66,.18)`;
+      const cg = `0 0 6px rgba(159,216,238,${(.55-cold*.2).toFixed(3)}),0 0 18px rgba(159,216,238,${(.32-cold*.12).toFixed(3)})`;
+      _suTitle.style.textShadow = cold < 0.5 ? wg : cg;
+    }
+    if (_unlockBtn) {
+      _unlockBtn.textContent  = cold > 0.85 ? 'TAP TO THAW' : 'TAP TO START';
+      _unlockBtn.style.borderColor = lerpColor('#2A8A4F', '#5BAFD8', cold);
+      _unlockBtn.style.color       = lerpColor('#3FD083', '#9FD8EE', cold);
+    }
+  },
+});
+</script>
+</body>
+</html>

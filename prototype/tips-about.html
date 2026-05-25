@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SoS — Tips &amp; About Prototype</title>
+<style>
+/* ── FONTS ── */
+@font-face{font-family:'Press Start 2P';font-display:swap;src:url('../fonts/press-start-2p.woff2') format('woff2')}
+@font-face{font-family:'Share Tech Mono';font-display:swap;src:url('../fonts/share-tech-mono.woff2') format('woff2')}
+@font-face{font-family:'VT323';font-display:swap;src:url('../fonts/vt323.woff2') format('woff2')}
+
+/* ── TOKENS ── */
+:root {
+  --night:#08081A; --deep:#0E0E22; --surface:#16162E; --raised:#22224A; --top:#2D2D60; --sunk:#060614;
+  --border:#383868; --border-soft:#232348; --border-strong:#5252A0; --border-gold:#C9A84C; --border-blood:#A02828;
+  --text:#F0E8D0; --text-strong:#FFFFFF; --text-dim:#B8B0C8; --text-mute:#7E7494; --text-on-gold:#14100A;
+  --gold:#D4B25C; --gold-bright:#F5D57A; --gold-dim:#8A6E34; --gold-soft:rgba(212,178,92,.18);
+  --flame:#E8821E; --blood:#A02828; --blood-bright:#D04545; --blood-soft:rgba(160,40,40,.18);
+  --pad-single:#D4B25C; --pad-loop:#6DB5B8; --pad-playlist:#9D7FC7; --pad-combo:#D18B4A;
+  --mode-setup:#6DB5B8; --mode-game:#D4B25C;
+  --font-display:"Press Start 2P","VT323",monospace;
+  --font-ui:"VT323","Share Tech Mono",monospace;
+  --font-mono:"Share Tech Mono","VT323",monospace;
+  --fs-xs:12px; --fs-sm:14px; --fs-md:16px;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px;
+}
+
+/* ── RESET ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:var(--night);color:var(--text);font-family:var(--font-mono);user-select:none;padding-top:36px}
+
+/* ── SB BASE CLASSES ── */
+.sb{font-family:var(--font-mono);color:var(--text);height:100%;width:100%;box-sizing:border-box;overflow:hidden;position:relative;letter-spacing:.01em;-webkit-font-smoothing:antialiased}
+.sb *,.sb *::before,.sb *::after{box-sizing:border-box}
+.sb ::-webkit-scrollbar{width:8px;height:8px}
+.sb ::-webkit-scrollbar-thumb{background:var(--border)}
+.sb ::-webkit-scrollbar-track{background:var(--sunk)}
+.sb-pix,.sb-btn,.sb-pill{
+  --pix-step:5px;--pix-thick:2px;--pix-bg:var(--surface);--pix-border:var(--border);
+  background:linear-gradient(var(--pix-bg),var(--pix-bg)) padding-box,linear-gradient(var(--pix-border),var(--pix-border)) border-box;
+  border:var(--pix-thick) solid transparent;border-radius:0;
+  clip-path:polygon(0 var(--pix-step),var(--pix-step) var(--pix-step),var(--pix-step) 0,calc(100% - var(--pix-step)) 0,calc(100% - var(--pix-step)) var(--pix-step),100% var(--pix-step),100% calc(100% - var(--pix-step)),calc(100% - var(--pix-step)) calc(100% - var(--pix-step)),calc(100% - var(--pix-step)) 100%,var(--pix-step) 100%,var(--pix-step) calc(100% - var(--pix-step)),0 calc(100% - var(--pix-step)))
+}
+.sb-btn{--pix-step:4px;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);font-family:var(--font-ui);font-size:var(--fs-md);text-transform:uppercase;letter-spacing:.10em;padding:6px var(--space-5);color:var(--text);cursor:pointer}
+.sb-btn:hover{--pix-border:var(--border-gold)}
+.sb-btn-primary{--pix-border:var(--border-gold);color:var(--gold)}
+.sb-btn-filled{--pix-bg:var(--gold);--pix-border:var(--gold);color:var(--text-on-gold)}
+.sb-btn-ghost{--pix-bg:transparent;--pix-border:var(--border-soft);color:var(--text-dim)}
+.sb-panel-header{display:flex;align-items:center;gap:var(--space-2);height:28px;padding:0 var(--space-3);background:var(--deep);border-bottom:1px solid var(--border-soft);font-family:var(--font-ui);font-size:var(--fs-sm);letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);flex-shrink:0}
+.sb-panel-header.is-active{color:var(--gold)}
+.sb-status-bar{display:flex;align-items:center;gap:var(--space-4);height:24px;padding:0 var(--space-3);background:var(--deep);border-top:1px solid var(--border-soft);font-family:var(--font-mono);font-size:11px;color:var(--text-mute);letter-spacing:.04em;flex-shrink:0}
+.sb-status-section{display:flex;align-items:center;gap:6px;padding-right:var(--space-4);border-right:1px solid var(--border-soft)}
+
+/* ── PAGE LAYOUT ── */
+#app{display:flex;flex-direction:column;height:calc(100% - 36px);background:var(--night)}
+#ta-top-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:10px 16px;background:var(--night);border-bottom:1px solid var(--gold-dim);flex-shrink:0}
+#ta-content{flex:1;min-height:0;overflow:auto;background:var(--night)}
+.tab-panel{display:none}
+.tab-panel.is-active{display:block}
+
+/* ── FILTER PILLS ── */
+.filter-pill{padding:5px 14px;font-family:var(--font-ui);font-size:14px;letter-spacing:.1em;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;background:transparent;flex-shrink:0}
+.filter-pill.is-on{background:var(--gold-soft);border-color:var(--gold);color:var(--gold)}
+
+/* ── PROTOTYPE BAR ── */
+#proto-bar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;gap:4px;padding:6px 10px;background:rgba(8,8,26,.9);border-bottom:1px solid var(--border-soft);backdrop-filter:blur(8px)}
+.pb-btn{background:transparent;border:1px solid var(--border-soft);color:var(--text-mute);font-family:var(--font-ui);font-size:13px;padding:2px 9px;cursor:pointer;border-radius:2px;transition:all .15s;line-height:1.4}
+.pb-btn:hover{border-color:var(--gold);color:var(--gold)}
+.pb-btn.active{border-color:var(--gold);color:var(--gold);background:var(--gold-soft)}
+.pb-sep{flex:1}
+.pb-link{color:var(--text-mute);font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-decoration:none;padding:4px 6px}
+.pb-link:hover{color:var(--text-dim)}
+</style>
+</head>
+<body>
+
+<!-- ── PROTOTYPE CONTROLS ── -->
+<div id="proto-bar">
+  <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-mute);padding:4px 6px;letter-spacing:1px">PAGE</span>
+  <button class="pb-btn active" id="pb-tips"  onclick="setTab('tips')">TIPS &amp; TRICKS</button>
+  <button class="pb-btn"        id="pb-about" onclick="setTab('about')">ABOUT</button>
+  <span class="pb-sep"></span>
+  <a class="pb-link" href="menu.html">Menu</a>
+  <a class="pb-link" href="board.html">Board</a>
+  <a class="pb-link" href="library.html">Library</a>
+  <a class="pb-link" href="settings.html">Settings</a>
+  <a class="pb-link" href="pad-editor.html">PAD Editor</a>
+</div>
+
+<!-- ══════════════ TIPS &amp; ABOUT APP ══════════════ -->
+<div id="app" class="sb">
+
+  <!-- ── TOP BAR (PageChrome) ── -->
+  <div id="ta-top-bar">
+    <div>
+      <div style="padding:5px 14px;border:1px solid var(--gold);color:var(--gold);font-family:var(--font-ui);font-size:14px;letter-spacing:.1em;width:fit-content;cursor:pointer">MENU</div>
+    </div>
+    <div id="ta-title" style="font-family:var(--font-ui);font-size:20px;color:var(--gold);letter-spacing:.14em;text-align:center">TIPS &amp; TRICKS</div>
+    <div style="display:flex;gap:10px;color:var(--gold);justify-content:flex-end">
+      <div style="border:1px solid var(--gold-dim);width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:var(--font-ui);font-size:14px;cursor:pointer">?</div>
+      <div style="border:1px solid var(--gold-dim);width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4V1h3M11 4V1H8M1 8v3h3M11 8v3H8"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONTENT AREA ── -->
+  <div id="ta-content">
+    <div id="panel-tips"  class="tab-panel is-active"></div>
+    <div id="panel-about" class="tab-panel"></div>
+  </div>
+
+  <!-- ── STATUS BAR ── -->
+  <div class="sb-status-bar">
+    <div class="sb-status-section" id="ta-status-page">TIPS &amp; TRICKS</div>
+    <div class="sb-status-section" id="ta-status-info">5 sections · 16 shortcuts</div>
+    <div style="flex:1"></div>
+    <div style="color:var(--blood-bright)">⚠ No recent export</div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   PIXEL ICONS
+═══════════════════════════════════════════════════════════════ */
+(function(root){'use strict';
+const ICONS=[
+  {id:'flame',d:['7 1','8 1','6 2','7 2','8 2','9 2','5 3','6 3','8 3','9 3','10 3','5 4','6 4','7 4','8 4','9 4','10 4','11 4','4 5','5 5','7 5','9 5','10 5','11 5','4 6','5 6','6 6','9 6','10 6','11 6','12 6','3 7','4 7','5 7','6 7','7 7','9 7','10 7','11 7','12 7','3 8','4 8','5 8','6 8','7 8','8 8','10 8','11 8','12 8','3 9','4 9','5 9','6 9','7 9','8 9','9 9','10 9','11 9','12 9','3 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','12 10','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','5 12','6 12','7 12','8 12','9 12','10 12','6 13','7 13','8 13','9 13']},
+  {id:'play',d:['5 3','5 4','5 5','5 6','5 7','5 8','5 9','5 10','5 11','5 12','6 4','6 5','6 6','6 7','6 8','6 9','6 10','6 11','7 5','7 6','7 7','7 8','7 9','7 10','8 6','8 7','8 8','8 9','9 7','9 8']},
+  {id:'loop',d:['5 4','6 4','7 4','8 4','9 4','10 4','4 5','11 5','3 6','12 6','3 7','12 7','11 7','3 8','12 8','10 8','3 9','12 9','9 9','10 9','11 9','4 10','11 10','5 11','6 11','7 11','8 11','9 11','10 11']},
+  {id:'cog',d:['7 2','8 2','5 3','7 3','8 3','10 3','5 4','7 4','8 4','10 4','4 5','5 5','11 5','2 6','3 6','5 6','6 6','7 6','8 6','9 6','10 6','12 6','13 6','2 7','3 7','5 7','6 7','9 7','10 7','12 7','13 7','2 8','3 8','5 8','6 8','9 8','10 8','12 8','13 8','2 9','3 9','5 9','6 9','7 9','8 9','9 9','10 9','12 9','13 9','4 10','5 10','11 10','5 11','7 11','8 11','10 11','5 12','7 12','8 12','10 12','7 13','8 13']},
+  {id:'search',d:['5 3','6 3','7 3','8 3','4 4','9 4','3 5','10 5','3 6','10 6','3 7','10 7','3 8','10 8','4 9','9 9','5 10','6 10','7 10','8 10','10 10','11 11','12 11','12 12','13 12']},
+  {id:'edit',d:['10 2','11 2','9 3','10 3','11 3','12 3','8 4','9 4','10 4','11 4','7 5','8 5','9 5','10 5','6 6','7 6','8 6','9 6','5 7','6 7','7 7','8 7','4 8','5 8','6 8','7 8','3 9','4 9','5 9','6 9','3 10','4 10','5 10','3 11','4 11','5 11','3 12','4 12']},
+  {id:'sparkle',d:['7 3','8 3','6 4','7 4','8 4','9 4','7 5','8 5','2 7','3 7','7 7','8 7','12 7','13 7','2 8','3 8','7 8','8 8','12 8','13 8','7 9','8 9','6 11','7 11','8 11','9 11','7 12','8 12']},
+  {id:'diamond',d:['7 4','8 4','6 5','7 5','8 5','9 5','5 6','6 6','7 6','8 6','9 6','10 6','4 7','5 7','6 7','7 7','8 7','9 7','10 7','11 7','4 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','5 9','6 9','7 9','8 9','9 9','10 9','6 10','7 10','8 10','9 10','7 11','8 11']},
+  {id:'scroll',d:['3 3','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','2 4','12 4','3 5','4 5','5 5','6 5','7 5','8 5','9 5','10 5','11 5','3 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6','3 7','5 7','7 7','8 7','9 7','11 7','3 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','3 9','5 9','6 9','7 9','8 9','9 9','11 9','3 10','11 10','3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','2 12','12 12','3 13','4 13','5 13','6 13','7 13','8 13','9 13','10 13','11 13']},
+  {id:'potion',d:['6 2','7 2','8 2','9 2','6 3','9 3','6 4','7 4','8 4','9 4','6 5','7 5','8 5','9 5','4 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6','3 7','11 7','2 8','7 8','8 8','12 8','2 9','5 9','6 9','7 9','8 9','9 9','10 9','12 9','2 10','5 10','6 10','7 10','8 10','9 10','10 10','12 10','2 11','5 11','6 11','7 11','8 11','9 11','10 11','12 11','3 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','3 13','4 13','5 13','6 13','7 13','8 13','9 13','10 13','11 13','12 13']},
+  {id:'key',d:['6 3','7 3','8 3','5 4','9 4','4 5','10 5','4 6','7 6','10 6','4 7','10 7','5 8','9 8','6 9','7 9','8 9','7 10','8 10','7 11','8 11','9 11','10 11','7 12','8 12','7 13','8 13','9 13']},
+  {id:'rune',d:['7 2','8 2','6 3','7 3','8 3','9 3','6 4','9 4','5 5','10 5','5 6','10 6','4 7','11 7','4 8','7 8','8 8','11 8','3 9','12 9','2 10','3 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','12 10','13 10','7 11','8 11','7 12','8 12','6 13','7 13','8 13','9 13']},
+];
+const BY_ID={};for(let i=0;i<ICONS.length;i++)BY_ID[ICONS[i].id]=ICONS[i];
+function pixelIcon(id,size,color){size=size||16;color=color||'currentColor';const def=BY_ID[id];if(!def)return`<svg width="${size}" height="${size}" viewBox="0 0 16 16"></svg>`;let r='';for(let i=0;i<def.d.length;i++){const p=def.d[i].split(' ');r+=`<rect x="${p[0]}" y="${p[1]}" width="1" height="1" fill="${color}"/>`}return`<svg width="${size}" height="${size}" viewBox="0 0 16 16" shape-rendering="crispEdges" style="display:block">${r}</svg>`}
+root.pixelIcon=pixelIcon;
+})(window);
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════ */
+function pi(id,size,color){return pixelIcon(id,size,color)}
+
+function sectionLabel(glyph,text){
+  return`<div style="display:flex;align-items:center;gap:8px;margin:4px 0 10px">
+    ${pi(glyph,13,'var(--gold)')}
+    <span style="font-family:var(--font-ui);font-size:11px;color:var(--gold);letter-spacing:.18em;text-transform:uppercase;font-weight:bold">${text}</span>
+    <div style="flex:1;height:1px;background-image:repeating-linear-gradient(90deg,var(--gold-dim) 0,var(--gold-dim) 2px,transparent 2px,transparent 6px);margin-left:4px"></div>
+    ${pi(glyph,13,'var(--gold)')}
+  </div>`;
+}
+
+/* KeyCap — pixel-art 3D key cap */
+function keyCap(text,kind){
+  const W=text.length>4;
+  const C={
+    default:{stroke:'var(--text-dim)',   text:'var(--text)',        face:'var(--raised)'},
+    game:   {stroke:'var(--gold)',       text:'var(--gold-bright)', face:'var(--surface)'},
+    setup:  {stroke:'var(--mode-setup)', text:'var(--mode-setup)',  face:'var(--surface)'},
+    always: {stroke:'var(--gold-bright)',text:'var(--gold-bright)', face:'var(--surface)'},
+  }[kind]||{stroke:'var(--text-dim)',text:'var(--text)',face:'var(--raised)'};
+  return`<div style="display:inline-block;position:relative;min-width:${W?96:36}px">
+    <div style="position:absolute;top:3px;left:3px;right:-3px;bottom:-3px;background:var(--sunk);border:1px solid ${C.stroke};opacity:.6;z-index:0"></div>
+    <div style="position:relative;z-index:1;padding:${W?'8px 14px':'6px 8px'};min-height:32px;background:${C.face};border:2px solid ${C.stroke};color:${C.text};font-family:var(--font-ui);font-size:14px;letter-spacing:.06em;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1">${text}</div>
+  </div>`;
+}
+
+/* KeyCombo — one or more KeyCaps with + between */
+function keyCombo(keys,kind){
+  return`<div style="display:inline-flex;align-items:center;gap:6px">${
+    keys.map((k,i)=>`${i>0?'<span style="color:var(--text-mute);font-family:var(--font-mono);font-size:13px">+</span>':''}${keyCap(k,kind)}`).join('')
+  }</div>`;
+}
+
+/* TipCard */
+function tipCard(title,desc,keys,kind,modeChip){
+  const borderColor=kind==='game'?'var(--gold)':kind==='setup'?'var(--mode-setup)':kind==='always'?'var(--gold-bright)':'var(--border-strong)';
+  const flatKeys=Array.isArray(keys[0])?keys.flat():keys;
+  const chipBg=kind==='game'?'rgba(212,178,92,.12)':kind==='setup'?'rgba(109,181,184,.12)':'rgba(245,213,122,.12)';
+  const chipBorder=kind==='game'?'var(--gold)':kind==='setup'?'var(--mode-setup)':'var(--gold-bright)';
+  const chipColor=kind==='game'?'var(--gold)':kind==='setup'?'var(--mode-setup)':'var(--gold-bright)';
+  const chip=modeChip?`<div style="display:inline-block;padding:1px 8px;background:${chipBg};border:1px solid ${chipBorder};color:${chipColor};font-family:var(--font-ui);font-size:10px;letter-spacing:.14em;margin-top:3px">${modeChip}</div>`:'';
+  return`<div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-left:3px solid ${borderColor};display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:flex-start;gap:14px">
+      <div style="flex:1">
+        <div style="font-family:var(--font-ui);font-size:16px;color:var(--text);letter-spacing:.06em;margin-bottom:4px">${title}</div>
+        ${chip}
+      </div>
+      <div style="flex:0 0 auto">${keyCombo(flatKeys,kind)}</div>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:13px;color:var(--text-dim);line-height:1.5">${desc}</div>
+  </div>`;
+}
+
+/* MiniPad — small pad illustration */
+function miniPad(type,name,hk,big){
+  const sz=big?100:70;const isz=big?36:24;const fsz=big?10:9;
+  const c=`var(--pad-${type})`;
+  const iconName=type==='single'?'flame':type==='loop'?'loop':type==='playlist'?'scroll':'rune';
+  const hkEl=hk?`<div style="font-family:var(--font-ui);font-size:11px;color:var(--gold)">${hk}</div>`:'<div></div>';
+  return`<div style="width:${sz}px;height:${sz}px;background:var(--surface);border:1px solid var(--border);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:5px 4px 4px;flex-shrink:0">
+    <div style="position:absolute;top:0;bottom:0;left:0;width:3px;background:${c}"></div>
+    ${hkEl}
+    <div style="color:${c}">${pi(iconName,isz,c)}</div>
+    <div style="font-family:var(--font-ui);font-size:${fsz}px;color:var(--gold);letter-spacing:.04em">${name}</div>
+  </div>`;
+}
+
+/* PadTypeCard */
+function padTypeCard(type,name,tag,desc,example){
+  const c=`var(--pad-${type})`;
+  return`<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${c};padding:16px;display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;gap:12px">
+      ${miniPad(type,name)}
+      <div>
+        <div style="font-family:var(--font-ui);font-size:16px;color:${c};letter-spacing:.1em">${name}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">${tag}</div>
+      </div>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:13px;color:var(--text-dim);line-height:1.5">${desc}</div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-mute);line-height:1.4">// ${example}</div>
+  </div>`;
+}
+
+/* CreditItem */
+function creditItem(icon,label,sub){
+  const subEl=sub?`<div style="font-family:var(--font-mono);font-size:11px;color:var(--text-mute)">${sub}</div>`:'';
+  return`<li style="display:flex;align-items:center;gap:10px">
+    ${pi(icon,14,'var(--gold)')}
+    <div>
+      <div style="font-family:var(--font-ui);font-size:13px;color:var(--text);letter-spacing:.04em">${label}</div>
+      ${subEl}
+    </div>
+  </li>`;
+}
+
+/* RailLink */
+function railLink(text){
+  return`<div style="padding:5px 0;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);cursor:pointer;border-bottom:1px dashed var(--border-soft);display:flex;align-items:center;gap:6px"><span style="color:var(--gold)">→</span> ${text}</div>`;
+}
+
+/* FlameLogo with corner brackets */
+function flameLogo(size){
+  return`<div style="display:inline-block;position:relative;padding:10px 14px;margin-bottom:16px">
+    ${pi('flame',size,'var(--flame)')}
+    <span style="position:absolute;top:0;left:0;width:12px;height:12px;border-top:2px solid var(--gold);border-left:2px solid var(--gold)"></span>
+    <span style="position:absolute;top:0;right:0;width:12px;height:12px;border-top:2px solid var(--gold);border-right:2px solid var(--gold)"></span>
+    <span style="position:absolute;bottom:0;left:0;width:12px;height:12px;border-bottom:2px solid var(--gold);border-left:2px solid var(--gold)"></span>
+    <span style="position:absolute;bottom:0;right:0;width:12px;height:12px;border-bottom:2px solid var(--gold);border-right:2px solid var(--gold)"></span>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TIPS DATA
+═══════════════════════════════════════════════════════════════ */
+const SECTIONS=[
+  {glyph:'rune',label:'MODES & NAVIGATION',items:[
+    {title:'Toggle SETUP / GAME',kind:'always',modeChip:'BOTH',    keys:['TAB'],
+     desc:'Switch between editing and playing. Or click the SETUP|GAME pill at the top of the board.'},
+    {title:'Back / cancel',      kind:'setup', modeChip:'SETUP',   keys:['ESC'],
+     desc:'Closes the edit panel if it is open. Otherwise returns to the main menu. Has no effect in GAME mode.'},
+    {title:'Find a pad by name', kind:'always',modeChip:'BOTH',    keys:['/'],
+     desc:'Jumps focus into the search field above the pad grid.'},
+  ]},
+  {glyph:'play',label:'PLAYBACK',items:[
+    {title:'Pause / resume',         kind:'always',modeChip:'BOTH', keys:['SPACE'],
+     desc:'Pauses all running sounds and resumes them on the next press. Does not work while a text input is focused.'},
+    {title:'Stop all sounds',        kind:'always',modeChip:'BOTH', keys:['ENTER'],
+     desc:'Immediately stops every running sound and rewinds them to the beginning. See SERIAL vs TOTAL in Settings → Controls.'},
+    {title:'Trigger a pad',          kind:'game',  modeChip:'GAME', keys:['F1','…','F12'],
+     desc:"In GAME mode, pressing a pad's assigned key plays its sound. Multi-key combos are allowed for combo pads."},
+    {title:'Crossfade to next scene',kind:'game',  modeChip:'GAME', keys:[['⇧','SPACE']],
+     desc:"Stops the current loops while starting the next scene's loops at the same time — duration set in Settings → Audio."},
+  ]},
+  {glyph:'edit',label:'EDITING (SETUP MODE)',items:[
+    {title:'Open pad editor', kind:'setup',modeChip:'SETUP',keys:['TAP'],
+     desc:'Tap any pad in SETUP mode to open its editor. Click the key field and press the desired key — the code is captured automatically.'},
+    {title:'Move a pad',      kind:'setup',modeChip:'SETUP',keys:['HOLD','+','DRAG'],
+     desc:'Hold a pad and drag it to a new position. A line indicator shows where it will land; pads in between shift by one slot.'},
+    {title:'Duplicate a pad', kind:'setup',modeChip:'SETUP',keys:[['⌘','D']],
+     desc:'Creates a copy in the next empty slot with the same name and audio file.'},
+    {title:'Delete selected', kind:'setup',modeChip:'SETUP',keys:['DEL'],
+     desc:'Removes the selected pad after confirmation. The audio file is kept in the Library unless you also remove it there.'},
+  ]},
+  {glyph:'potion',label:'PER-PAD AUDIO',items:[
+    {title:'Fade-in / fade-out', kind:'setup',modeChip:'EDITOR',keys:['SLIDER'],
+     desc:'Per pad in the editor (0–10 s). Fade-In raises volume on start; Fade-Out lowers it on stop. ENTER stops without a fade.'},
+    {title:'Trim start / end',   kind:'setup',modeChip:'EDITOR',keys:['DRAG'],
+     desc:'Drag the teal markers on the waveform to set in/out points. The orange playhead shows the current preview position.'},
+    {title:'Long-press in GAME', kind:'game', modeChip:'GAME',  keys:['LONG-TAP'],
+     desc:'Configurable in Settings → Controls. Defaults to per-pad volume slider; can be set to PREVIEW or EDIT.'},
+  ]},
+  {glyph:'key',label:'CONFLICTS & DIAGNOSTICS',items:[
+    {title:'Key conflict warning', kind:'always',modeChip:'BOTH',    keys:['⚠'],
+     desc:'When saving a pad, the app checks whether the chosen key is already assigned to another pad. If so, you can reassign or override.'},
+    {title:'Find numpad codes',    kind:'always',modeChip:'SETTINGS',keys:['KEY TEST'],
+     desc:'Settings → Controls → KEY TEST. Press any key on your input device and the app shows you the captured code.'},
+  ]},
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDER TIPS
+═══════════════════════════════════════════════════════════════ */
+function renderTips(){
+  const filterBar=`<div style="display:flex;gap:10px;margin-bottom:22px;align-items:center">
+    <div style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--sunk);border:1px solid var(--border);color:var(--text-mute)">
+      ${pi('search',13,'var(--text-mute)')}
+      <span style="font-family:var(--font-mono);font-size:13px">Search shortcuts…</span>
+    </div>
+    <div style="display:flex;gap:4px">
+      <span class="filter-pill is-on">ALL</span>
+      <span class="filter-pill" style="color:var(--mode-setup);border-color:var(--mode-setup)">SETUP</span>
+      <span class="filter-pill" style="color:var(--gold);border-color:var(--gold)">GAME</span>
+    </div>
+  </div>`;
+
+  const sectionsHtml=SECTIONS.map(sec=>`
+    <div style="margin-bottom:26px">
+      ${sectionLabel(sec.glyph,sec.label)}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${sec.items.map(t=>tipCard(t.title,t.desc,t.keys,t.kind,t.modeChip)).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  const legend=`<div style="padding:14px;background:var(--surface);border:1px solid var(--border-soft);display:flex;gap:22px;align-items:center;margin-top:8px;flex-wrap:wrap">
+    <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-mute)">// Key cap colour =</span>
+    <div style="display:flex;align-items:center;gap:8px">${keyCap('F1','game')}<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">GAME mode only</span></div>
+    <div style="display:flex;align-items:center;gap:8px">${keyCap('ESC','setup')}<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">SETUP mode only</span></div>
+    <div style="display:flex;align-items:center;gap:8px">${keyCap('SPACE','always')}<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">Always available</span></div>
+  </div>`;
+
+  document.getElementById('panel-tips').innerHTML=`
+    <div style="max-width:1200px;margin:0 auto;padding:24px 32px">
+      ${filterBar}
+      ${sectionsHtml}
+      ${legend}
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDER ABOUT
+═══════════════════════════════════════════════════════════════ */
+function renderAbout(){
+  const hero=`<div style="text-align:center;margin-bottom:36px">
+    ${flameLogo(72)}
+    <div style="font-family:var(--font-display);font-size:18px;color:var(--gold-bright);letter-spacing:.04em;line-height:1.4;margin-bottom:12px">SOUNDBOARD<br>OF STORYTELLING</div>
+    <div style="font-family:var(--font-mono);font-size:14px;color:var(--text-dim);font-style:italic">// a tool for game-masters and other creative creatures</div>
+  </div>`;
+
+  const manifesto=`<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--gold);padding:24px 28px;margin-bottom:32px;position:relative">
+    <div style="position:absolute;top:-8px;left:18px;padding:0 10px;background:var(--night);font-family:var(--font-ui);font-size:11px;color:var(--gold);letter-spacing:.18em">// MANIFESTO</div>
+    <p style="font-family:var(--font-mono);font-size:14px;color:var(--text);line-height:1.7;margin-top:4px;margin-bottom:12px">
+      This tool was made by me, for the purpose of supporting my adventures as a game-master — and maybe it will help you too.
+    </p>
+    <p style="font-family:var(--font-mono);font-size:14px;color:var(--text-dim);line-height:1.7">
+      The app is designed to work in the simplest way possible without limiting your creative freedom. Its one and only purpose is interactive sound design managed live by a game-master. This is <span style="color:var(--gold-bright);font-style:italic">not</span> a professional sound editing tool.
+    </p>
+    <div style="margin-top:16px;display:flex;align-items:center;gap:10px;color:var(--text-mute)">
+      ${pi('flame',14,'var(--flame)')}
+      <span style="font-family:var(--font-mono);font-size:12px;font-style:italic">— the maker</span>
+    </div>
+  </div>`;
+
+  const whatIsPad=`
+    ${sectionLabel('diamond','WHAT IS A PAD?')}
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;padding:6px 0 24px">
+      ${miniPad('single','WIND','F2',true)}
+      <div>
+        <p style="font-family:var(--font-mono);font-size:14px;color:var(--text-dim);line-height:1.6;margin-bottom:10px">
+          A PAD is a programmable button you can use to play any sound you like. Trigger them from any device with any interface — phone, computer, keyboard, numpad, touchscreen, or mouse.
+        </p>
+        <div style="display:inline-block;padding:4px 10px;background:rgba(157,127,199,.10);border:1px solid var(--pad-playlist);font-family:var(--font-mono);font-style:italic;font-size:12px;color:var(--pad-playlist);letter-spacing:.04em">
+          PAD · Professional Atmospheric Delusion
+        </div>
+      </div>
+    </div>`;
+
+  const behaviours=`
+    ${sectionLabel('sparkle','THE THREE BEHAVIOURS OF A SINGLE-PAD')}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:26px">
+      ${padTypeCard('single','SOLO','ONE-SHOT','A single sound file. Press the pad and the sound plays once.','bell deep · sword clash · door slam')}
+      ${padTypeCard('loop','LOOP','SUSTAINED','A single sound file with a configurable repeat count — or set to ∞ for an endless background loop.','rain · fire · crowd murmur')}
+      ${padTypeCard('playlist','LIST','SEQUENCE','A playlist of multiple sound files played in sequence or shuffled. The whole list can be looped.','combat mix · tavern playlist')}
+    </div>`;
+
+  const combo=`
+    ${sectionLabel('rune','COMBO-PADS — CHOREOGRAPHY')}
+    <div style="background:var(--surface);border:1px solid var(--border);padding:18px;margin-bottom:24px;display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center">
+      <div style="display:flex;align-items:center;gap:4px">
+        ${miniPad('loop','HEART')}
+        <div style="color:var(--pad-combo);font-family:var(--font-mono);font-size:11px">→</div>
+        ${miniPad('single','THUNDER')}
+        <div style="color:var(--pad-combo);font-family:var(--font-mono);font-size:11px">→</div>
+        ${miniPad('playlist','BOSS')}
+      </div>
+      <div>
+        <p style="font-family:var(--font-mono);font-size:14px;color:var(--text-dim);line-height:1.6;margin-bottom:6px">
+          A <span style="color:var(--pad-combo)">COMBO-PAD</span> chains together other pads into one timed sequence. Set per-step wait times, fades and volume offsets. One key triggers the whole reveal.
+        </p>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-mute)">// example: a boss-encounter combo above plays heartbeat, then thunders, then drops the boss theme.</div>
+      </div>
+    </div>`;
+
+  const rail=`<aside style="background:var(--deep);border-left:1px solid var(--border);padding:36px 24px;display:flex;flex-direction:column;gap:26px">
+    <div>
+      <div style="font-family:var(--font-ui);font-size:11px;color:var(--text-mute);letter-spacing:.16em;margin-bottom:6px">VERSION</div>
+      <div style="font-family:var(--font-display);font-size:14px;color:var(--gold-bright);letter-spacing:.04em">v 150</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-mute);margin-top:4px">build 26 · 23/05/26</div>
+    </div>
+    <div>
+      <div style="font-family:var(--font-ui);font-size:11px;color:var(--text-mute);letter-spacing:.16em;margin-bottom:8px">BUILT WITH</div>
+      <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px">
+        ${creditItem('potion','Web Audio API','')}
+        ${creditItem('diamond','Pixel-art icons','2 289 built-in')}
+        ${creditItem('cog','Design system v2','25/05/26')}
+      </ul>
+    </div>
+    <div>
+      <div style="font-family:var(--font-ui);font-size:11px;color:var(--text-mute);letter-spacing:.16em;margin-bottom:8px">LINKS</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${railLink('Source · GitHub')}
+        ${railLink('Report an issue')}
+        ${railLink('Changelog')}
+        ${railLink('License · MIT')}
+      </div>
+    </div>
+    <div style="flex:1"></div>
+    <div style="padding:14px;background:var(--surface);border:1px solid var(--gold-dim);border-left:3px solid var(--gold)">
+      <div style="font-family:var(--font-ui);font-size:11px;color:var(--gold);letter-spacing:.14em;margin-bottom:6px">SUPPORT THE PROJECT</div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);line-height:1.5">
+        If this tool saved you a session — buy me a coffee or share it with another GM.
+      </div>
+    </div>
+  </aside>`;
+
+  document.getElementById('panel-about').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 300px;min-height:100%">
+      <div style="padding:36px 40px">
+        ${hero}
+        ${manifesto}
+        ${whatIsPad}
+        ${behaviours}
+        ${combo}
+      </div>
+      ${rail}
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TAB SWITCHING
+═══════════════════════════════════════════════════════════════ */
+function setTab(name){
+  document.getElementById('pb-tips').classList.toggle('active',name==='tips');
+  document.getElementById('pb-about').classList.toggle('active',name==='about');
+  document.getElementById('panel-tips').classList.toggle('is-active',name==='tips');
+  document.getElementById('panel-about').classList.toggle('is-active',name==='about');
+  document.getElementById('ta-title').textContent=name==='tips'?'TIPS & TRICKS':'ABOUT';
+  document.getElementById('ta-status-page').textContent=name==='tips'?'TIPS & TRICKS':'ABOUT';
+  document.getElementById('ta-status-info').textContent=name==='tips'?'5 sections · 16 shortcuts':'version 1.5.0 · build 26';
+}
+
+/* ── INIT ── */
+renderTips();
+renderAbout();
+</script>
+</body>
+</html>

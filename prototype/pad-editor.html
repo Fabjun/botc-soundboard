@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SoS — PAD Editor Prototype</title>
+<style>
+/* ── FONTS ── */
+@font-face{font-family:'Press Start 2P';font-display:swap;src:url('../fonts/press-start-2p.woff2') format('woff2')}
+@font-face{font-family:'Share Tech Mono';font-display:swap;src:url('../fonts/share-tech-mono.woff2') format('woff2')}
+@font-face{font-family:'VT323';font-display:swap;src:url('../fonts/vt323.woff2') format('woff2')}
+
+/* ── RESET ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#08081A}
+button{font:inherit;border:none;background:none;cursor:pointer;color:inherit;padding:0}
+
+/* ── DESIGN TOKENS ── */
+:root{
+  --night:#08081A; --deep:#0E0E22; --surface:#16162E; --raised:#22224A;
+  --top:#2D2D60; --sunk:#060614;
+  --border:#383868; --border-soft:#232348; --border-strong:#5252A0;
+  --border-gold:#C9A84C; --border-blood:#A02828;
+  --text:#F0E8D0; --text-strong:#FFFFFF; --text-dim:#B8B0C8;
+  --text-mute:#7E7494; --text-on-gold:#14100A;
+  --gold:#D4B25C; --gold-bright:#F5D57A; --gold-dim:#8A6E34;
+  --gold-soft:rgba(212,178,92,0.18);
+  --flame:#E8821E;
+  --blood:#A02828; --blood-bright:#D04545;
+  --pad-single:#D4B25C; --pad-single-soft:rgba(212,178,92,0.16);
+  --pad-loop:#6DB5B8;   --pad-loop-soft:rgba(109,181,184,0.16);
+  --pad-playlist:#9D7FC7; --pad-playlist-soft:rgba(157,127,199,0.16);
+  --pad-combo:#D18B4A;  --pad-combo-soft:rgba(209,139,74,0.16);
+  --success:#6DB5B8; --warning:#D4B25C; --danger:var(--blood); --info:#9D7FC7;
+  --mode-setup:#6DB5B8; --mode-setup-soft:rgba(109,181,184,0.06);
+  --mode-game:#D4B25C;
+  --glow-radial:#2C1F4A;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px;
+  --font-display:"Press Start 2P","VT323",monospace;
+  --font-ui:"VT323","Share Tech Mono",monospace;
+  --font-mono:"Share Tech Mono","VT323",monospace;
+  --fs-xs:12px; --fs-sm:14px; --fs-md:16px; --fs-lg:18px;
+  --shadow-card:drop-shadow(0 4px 8px rgba(0,0,0,.28));
+}
+
+/* ── BASE ── */
+.sb{
+  font-family:var(--font-mono); color:var(--text);
+  background:
+    radial-gradient(120% 70% at 50% -10%, var(--glow-radial) 0%, transparent 65%),
+    var(--night);
+  height:100%; width:100%; overflow:hidden; position:relative;
+  letter-spacing:.01em; -webkit-font-smoothing:antialiased;
+}
+.sb *,.sb *::before,.sb *::after{ box-sizing:border-box }
+.sb ::-webkit-scrollbar{ width:8px; height:8px }
+.sb ::-webkit-scrollbar-thumb{ background:var(--border) }
+.sb ::-webkit-scrollbar-track{ background:var(--sunk) }
+
+/* ── TYPE PRIMITIVES ── */
+.sb-mono{ font-family:var(--font-mono); font-weight:400; color:var(--text-dim) }
+
+/* ── PIXEL FRAMES — buttons and pills ── */
+.sb-btn,
+.sb-pill{
+  --pix-step:5px; --pix-thick:2px; --pix-bg:var(--surface); --pix-border:var(--border);
+  background:
+    linear-gradient(var(--pix-bg),var(--pix-bg)) padding-box,
+    linear-gradient(var(--pix-border),var(--pix-border)) border-box;
+  border:var(--pix-thick) solid transparent;
+  border-radius:0;
+  clip-path:polygon(
+    0 var(--pix-step), var(--pix-step) var(--pix-step), var(--pix-step) 0,
+    calc(100% - var(--pix-step)) 0,
+    calc(100% - var(--pix-step)) var(--pix-step), 100% var(--pix-step),
+    100% calc(100% - var(--pix-step)),
+    calc(100% - var(--pix-step)) calc(100% - var(--pix-step)),
+    calc(100% - var(--pix-step)) 100%,
+    var(--pix-step) 100%,
+    var(--pix-step) calc(100% - var(--pix-step)), 0 calc(100% - var(--pix-step))
+  );
+}
+
+/* ── BUTTON ── */
+.sb-btn{
+  --pix-step:4px;
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:var(--space-2); font-family:var(--font-ui); font-size:var(--fs-md);
+  text-transform:uppercase; letter-spacing:.10em;
+  padding:6px var(--space-5); color:var(--text); cursor:pointer;
+}
+.sb-btn:hover    { --pix-border:var(--border-gold) }
+.sb-btn-primary  { --pix-border:var(--border-gold); color:var(--gold) }
+.sb-btn-filled   { --pix-bg:var(--gold); --pix-border:var(--gold); color:var(--text-on-gold) }
+.sb-btn-ghost    { --pix-bg:transparent; --pix-border:var(--border-soft); color:var(--text-dim) }
+.sb-btn-danger   { --pix-bg:transparent; --pix-border:var(--border-blood); color:var(--danger) }
+.sb-btn-sm       { --pix-step:3px; font-size:var(--fs-sm); padding:3px var(--space-3) }
+
+/* ── PILL ── */
+.sb-pill{
+  --pix-step:3px;
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--font-mono); font-size:var(--fs-xs);
+  letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text-dim); --pix-bg:var(--sunk); --pix-border:var(--border-soft);
+  padding:2px 10px;
+}
+.sb-pill .sb-dot{ width:6px; height:6px; background:var(--text-mute); display:inline-block }
+.sb-pill.is-on   { --pix-border:var(--gold); color:var(--gold-bright) }
+.sb-pill.is-on .sb-dot{ background:var(--gold); box-shadow:0 0 6px var(--gold) }
+.sb-pill.is-loop { --pix-border:var(--pad-loop); color:var(--pad-loop) }
+.sb-pill.is-loop .sb-dot{ background:var(--pad-loop) }
+
+/* ── SLIDER ── */
+.sb-slider{
+  position:relative; height:6px;
+  background:var(--sunk); border:1px solid var(--border-soft); overflow:hidden;
+}
+.sb-slider-fill{
+  position:absolute; inset:0 auto 0 0; background:var(--gold);
+}
+.sb-slider-thumb{
+  position:absolute; top:50%; width:12px; height:12px;
+  background:var(--gold); transform:translate(-50%,-50%);
+  box-shadow:0 0 6px var(--gold-bright);
+}
+
+/* ── PANEL HEADER ── */
+.sb-panel-header{
+  display:flex; align-items:center; gap:var(--space-2);
+  height:28px; padding:0 var(--space-3);
+  background:var(--deep); border-bottom:1px solid var(--border-soft);
+  font-family:var(--font-ui); font-size:var(--fs-sm);
+  letter-spacing:.12em; text-transform:uppercase; color:var(--text-dim);
+  flex-shrink:0;
+}
+.sb-panel-header.is-active{ color:var(--gold) }
+
+/* ── STATUS BAR ── */
+.sb-status-bar{
+  display:flex; align-items:center; gap:var(--space-4);
+  height:24px; padding:0 var(--space-3);
+  background:var(--deep); border-top:1px solid var(--border-soft);
+  font-family:var(--font-mono); font-size:11px; color:var(--text-mute);
+  letter-spacing:.04em; flex-shrink:0;
+}
+.sb-status-section{
+  display:flex; align-items:center; gap:6px;
+  padding-right:var(--space-4); border-right:1px solid var(--border-soft);
+}
+
+/* ── MODE BADGE ── */
+.sb-mode-badge{
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--font-ui); font-size:var(--fs-md);
+  text-transform:uppercase; letter-spacing:.14em; padding:3px 10px;
+}
+.sb-mode-badge.is-setup{
+  background:
+    repeating-linear-gradient(45deg, var(--mode-setup) 0 4px, transparent 4px 8px),
+    var(--sunk);
+  color:var(--mode-setup); border:1px solid var(--mode-setup);
+}
+
+/* ── INSPECTOR ── */
+.sb-inspector{
+  background:var(--surface); border-left:1px solid var(--border);
+  display:flex; flex-direction:column;
+}
+.sb-inspector-section{
+  padding:var(--space-3); border-bottom:1px solid var(--border-soft);
+}
+
+/* ── NUMERIC CHIP ── */
+.sb-num{
+  display:inline-flex; align-items:center; justify-content:space-between;
+  min-width:56px; padding:2px 6px;
+  background:var(--sunk); border:1px solid var(--border-soft);
+  font-family:var(--font-mono); font-size:var(--fs-sm);
+  color:var(--text); cursor:ew-resize;
+}
+.sb-num.is-active{ border-color:var(--gold); color:var(--gold-bright) }
+</style>
+</head>
+<body>
+
+<div class="sb" id="app" style="height:100vh;display:flex;flex-direction:column;overflow:hidden">
+
+  <!-- ══ APP TOP BAR ══════════════════════════════════════════════════ -->
+  <div style="display:grid;grid-template-columns:180px 1fr 180px;align-items:center;gap:12px;padding:8px 16px;background:var(--deep);border-bottom:1px solid var(--border);flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="color:var(--text-dim);cursor:pointer">
+        <svg width="18" height="13" viewBox="0 0 18 13" fill="currentColor">
+          <rect x="0" y="0" width="18" height="2"/>
+          <rect x="0" y="5" width="18" height="2"/>
+          <rect x="0" y="11" width="18" height="2"/>
+        </svg>
+      </div>
+      <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);letter-spacing:.12em">MENU</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+      <span style="font-family:var(--font-ui);font-size:16px;color:var(--gold);letter-spacing:.14em">PAD EDITOR</span>
+      <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-mute)">· Board 1</span>
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <span class="sb-mode-badge is-setup" style="font-size:11px">SETUP</span>
+    </div>
+  </div>
+
+  <!-- ══ STICKY EDITOR TOOLBAR ════════════════════════════════════════ -->
+  <div style="display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 2px 0 rgba(0,0,0,.3);flex-shrink:0">
+
+    <!-- ← BACK -->
+    <div style="color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:6px">
+      <span style="font-size:18px">←</span>
+      <span style="font-family:var(--font-ui);font-size:12px;letter-spacing:.1em">BACK</span>
+    </div>
+
+    <div style="width:1px;height:32px;background:var(--border-soft)"></div>
+
+    <!-- MiniPad live preview -->
+    <div style="position:relative;width:70px;height:70px;background:var(--surface);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:5px 4px 4px;flex-shrink:0">
+      <div style="position:absolute;top:0;bottom:0;left:0;width:3px;background:var(--pad-loop)"></div>
+      <div style="font-family:var(--font-ui);font-size:11px;color:var(--gold)">%</div>
+      <div data-icon="loop" data-size="24" data-color="var(--pad-loop)"></div>
+      <div style="font-family:var(--font-ui);font-size:9px;color:var(--gold);letter-spacing:.04em">WIND</div>
+    </div>
+
+    <!-- Name + meta strip -->
+    <div style="flex:1;min-width:0">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);letter-spacing:.14em;text-transform:uppercase;margin-bottom:2px">EDITING S-PAD · POSITION 03</div>
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span style="font-family:var(--font-ui);font-size:18px;color:var(--text);letter-spacing:.04em">Wind</span>
+        <span style="font-family:var(--font-mono);font-size:11px;padding:1px 5px;background:var(--sunk);border:1px solid var(--border-soft);color:var(--text-dim)">%</span>
+        <span class="sb-pill is-loop" style="font-size:9px"><span class="sb-dot"></span>LOOP</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-mute)">· 0:12 · 395 KB</span>
+      </div>
+    </div>
+
+    <!-- PREVIEW · CANCEL · SAVE -->
+    <div style="display:flex;gap:6px">
+      <button class="sb-btn sb-btn-sm sb-btn-ghost"><span data-icon="play" data-size="10"></span> PREVIEW</button>
+      <button class="sb-btn sb-btn-sm sb-btn-ghost">CANCEL</button>
+      <button class="sb-btn sb-btn-sm sb-btn-filled"><span data-icon="save" data-size="10"></span> SAVE</button>
+    </div>
+
+    <div style="width:1px;height:32px;background:var(--border-soft)"></div>
+
+    <!-- DELETE (isolated) -->
+    <button class="sb-btn sb-btn-sm sb-btn-danger"><span data-icon="skull" data-size="10"></span> DELETE</button>
+  </div>
+
+  <!-- ══ 3-COLUMN BODY ════════════════════════════════════════════════ -->
+  <div style="display:grid;grid-template-columns:300px 1fr 320px;flex:1;min-height:0;overflow:hidden">
+
+    <!-- ── LEFT · IDENTITY + BEHAVIOR + VISUAL ──────────────────────── -->
+    <aside style="background:var(--deep);border-right:1px solid var(--border);overflow:auto;display:flex;flex-direction:column">
+
+      <!-- IDENTITY -->
+      <div class="sb-panel-header is-active">
+        <span data-icon="tag" data-size="12"></span>
+        IDENTITY
+      </div>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
+
+        <!-- NAME -->
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-dim);letter-spacing:.1em">NAME</span>
+            <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute)">shown on the pad and in search</span>
+          </div>
+          <div style="padding:7px 11px;background:var(--sunk);border:1px solid var(--border);font-family:var(--font-mono);font-size:14px;color:var(--text)">Wind</div>
+        </div>
+
+        <!-- KEY -->
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-dim);letter-spacing:.1em">KEY</span>
+            <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute)">click to capture · supports modifiers</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <!-- KeyCap kind="game" -->
+            <div style="display:inline-block;position:relative;min-width:36px">
+              <div style="position:absolute;top:3px;left:3px;right:-3px;bottom:-3px;background:var(--sunk);border:1px solid var(--gold);opacity:.6;z-index:0"></div>
+              <div style="position:relative;z-index:1;padding:6px 8px;min-height:32px;min-width:32px;background:var(--surface);border:2px solid var(--gold);color:var(--gold-bright);font-family:var(--font-ui);font-size:14px;letter-spacing:.06em;display:flex;align-items:center;justify-content:center;line-height:1">%</div>
+            </div>
+            <button class="sb-btn sb-btn-sm sb-btn-ghost" style="padding:3px 8px">CAPTURE</button>
+            <button class="sb-btn sb-btn-sm sb-btn-ghost" style="padding:3px 8px">CLEAR</button>
+          </div>
+          <div class="sb-mono" style="font-size:11px;color:var(--success)">✓ no conflicts on this board</div>
+        </div>
+      </div>
+
+      <!-- BEHAVIOR -->
+      <div class="sb-panel-header">
+        <span data-icon="diamond" data-size="12"></span>
+        BEHAVIOR
+      </div>
+      <div style="padding:14px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-dim);letter-spacing:.1em">MODE</span>
+          <!-- BigMode: SOLO (active, single) / LOOP / LIST -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">
+            <!-- SOLO active -->
+            <div style="padding:10px 6px;text-align:center;background:var(--pad-single-soft);border:1px solid var(--pad-single);border-left:3px solid var(--pad-single);cursor:pointer">
+              <div style="color:var(--pad-single);margin-bottom:4px"><span data-icon="play" data-size="16" data-color="var(--pad-single)"></span></div>
+              <div style="font-family:var(--font-ui);font-size:12px;color:var(--pad-single);letter-spacing:.12em">SOLO</div>
+              <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);margin-top:1px">once</div>
+            </div>
+            <!-- LOOP inactive -->
+            <div style="padding:10px 6px;text-align:center;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--border);cursor:pointer">
+              <div style="color:var(--pad-loop);margin-bottom:4px"><span data-icon="loop" data-size="16" data-color="var(--pad-loop)"></span></div>
+              <div style="font-family:var(--font-ui);font-size:12px;color:var(--text-dim);letter-spacing:.12em">LOOP</div>
+              <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);margin-top:1px">∞</div>
+            </div>
+            <!-- LIST inactive -->
+            <div style="padding:10px 6px;text-align:center;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--border);cursor:pointer">
+              <div style="color:var(--pad-playlist);margin-bottom:4px"><span data-icon="scroll" data-size="16" data-color="var(--pad-playlist)"></span></div>
+              <div style="font-family:var(--font-ui);font-size:12px;color:var(--text-dim);letter-spacing:.12em">LIST</div>
+              <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);margin-top:1px">N tracks</div>
+            </div>
+          </div>
+          <div class="sb-mono" style="font-size:11px;margin-top:8px;color:var(--text-dim)">// SOLO plays the file once and stops on its own.</div>
+        </div>
+      </div>
+
+      <!-- VISUAL -->
+      <div class="sb-panel-header">
+        <span data-icon="eye" data-size="12"></span>
+        VISUAL
+        <span style="margin-left:auto;font-family:var(--font-mono);font-size:12px;color:var(--text-mute)">1 / 4</span>
+      </div>
+      <div style="padding:14px">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
+          <!-- Slot 1 active (loop icon) -->
+          <div style="aspect-ratio:1;background:var(--pad-loop-soft);border:1px solid var(--pad-loop);display:flex;align-items:center;justify-content:center;cursor:pointer">
+            <span data-icon="loop" data-size="18" data-color="var(--pad-loop)"></span>
+          </div>
+          <!-- Slot 2 empty -->
+          <div style="aspect-ratio:1;background:var(--sunk);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-mute);cursor:pointer;font-size:14px">+</div>
+          <!-- Slot 3 empty -->
+          <div style="aspect-ratio:1;background:var(--sunk);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-mute);cursor:pointer;font-size:14px">+</div>
+          <!-- Slot 4 empty -->
+          <div style="aspect-ratio:1;background:var(--sunk);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-mute);cursor:pointer;font-size:14px">+</div>
+        </div>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" style="width:100%">
+          <span data-icon="search" data-size="10"></span> BROWSE ICON LIBRARY
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── CENTER · SOUND ─────────────────────────────────────────── -->
+    <main style="background:var(--surface);padding:16px 20px;overflow:auto">
+
+      <!-- SectionLabel: SOUND · waveform -->
+      <div style="display:flex;align-items:center;gap:8px;color:var(--text-dim);margin-bottom:12px">
+        <div style="color:var(--gold)"><span data-icon="potion" data-size="12" data-color="var(--gold)"></span></div>
+        <span style="font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.18em;text-transform:uppercase;white-space:nowrap">SOUND · waveform</span>
+        <div style="flex:1;height:2px;background-image:repeating-linear-gradient(90deg,currentColor 0 2px,transparent 2px 5px);opacity:.55"></div>
+        <div style="color:var(--gold)"><span data-icon="potion" data-size="12" data-color="var(--gold)"></span></div>
+      </div>
+
+      <!-- File chip -->
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--raised);border-left:3px solid var(--pad-loop);margin-bottom:12px">
+        <div><span data-icon="potion" data-size="18" data-color="var(--pad-loop)"></span></div>
+        <div style="flex:1">
+          <div style="font-family:var(--font-ui);font-size:14px;color:var(--text);letter-spacing:.04em">wind.ogg</div>
+          <div class="sb-mono" style="font-size:11px;color:var(--text-mute)">0:12 · 395 KB · 48 kHz · 16 bit</div>
+        </div>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost"><span data-icon="book" data-size="10"></span> FROM LIB</button>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost"><span data-icon="download" data-size="10"></span> CHANGE</button>
+        <button class="sb-btn sb-btn-sm sb-btn-danger" style="padding:3px 10px">UNLINK</button>
+      </div>
+
+      <!-- Big waveform with trim + fade + playhead -->
+      <div style="background:var(--sunk);border:1px solid var(--border);padding:14px;margin-bottom:12px">
+        <div id="big-waveform" style="position:relative;height:140px"></div>
+      </div>
+
+      <!-- Transport bar -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+        <button class="sb-btn sb-btn-sm sb-btn-primary"><span data-icon="play" data-size="10"></span> PREVIEW</button>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost"><span data-icon="stop" data-size="10"></span></button>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost"><span data-icon="loop" data-size="10"></span></button>
+        <span style="font-family:var(--font-mono);font-size:13px;color:var(--text-dim);font-variant-numeric:tabular-nums">0:05.2 / 0:12.0</span>
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="sb-num">0:00.2</span>
+          <span class="sb-mono" style="font-size:11px;color:var(--text-mute)">start</span>
+          <span class="sb-num">0:11.8</span>
+          <span class="sb-mono" style="font-size:11px;color:var(--text-mute)">end</span>
+        </div>
+      </div>
+
+      <!-- Stats strip -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px;background:var(--raised);border:1px solid var(--border-soft)">
+        <div>
+          <div style="font-family:var(--font-ui);font-size:10px;color:var(--text-mute);letter-spacing:.12em;margin-bottom:2px">DURATION</div>
+          <div style="font-family:var(--font-mono);font-size:13px;color:var(--text);font-variant-numeric:tabular-nums">0:12</div>
+        </div>
+        <div>
+          <div style="font-family:var(--font-ui);font-size:10px;color:var(--text-mute);letter-spacing:.12em;margin-bottom:2px">USED BY</div>
+          <div style="font-family:var(--font-mono);font-size:13px;color:var(--text);font-variant-numeric:tabular-nums">2 pads</div>
+        </div>
+        <div>
+          <div style="font-family:var(--font-ui);font-size:10px;color:var(--text-mute);letter-spacing:.12em;margin-bottom:2px">PEAK</div>
+          <div style="font-family:var(--font-mono);font-size:13px;color:var(--text);font-variant-numeric:tabular-nums">-3.2 dB</div>
+        </div>
+        <div>
+          <div style="font-family:var(--font-ui);font-size:10px;color:var(--text-mute);letter-spacing:.12em;margin-bottom:2px">RMS</div>
+          <div style="font-family:var(--font-mono);font-size:13px;color:var(--text);font-variant-numeric:tabular-nums">-14 dB</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ── RIGHT · AUDIO PARAMETERS INSPECTOR ───────────────────────── -->
+    <aside class="sb-inspector" style="background:var(--deep);overflow:auto">
+
+      <!-- AUDIO -->
+      <div class="sb-panel-header is-active">
+        <span data-icon="cog" data-size="12"></span>
+        AUDIO
+      </div>
+      <div class="sb-inspector-section" style="display:flex;flex-direction:column;gap:12px">
+        <!-- VOLUME slider -->
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-dim);letter-spacing:.08em">VOLUME</span>
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text);font-variant-numeric:tabular-nums">80</span>
+          </div>
+          <div class="sb-slider">
+            <div class="sb-slider-fill" style="width:80%;background:var(--pad-loop)"></div>
+            <div class="sb-slider-thumb" style="left:80%;background:var(--pad-loop)"></div>
+          </div>
+        </div>
+        <!-- OUTPUT BUS -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;gap:8px">
+          <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);letter-spacing:.06em">OUTPUT BUS</span>
+          <div style="display:flex;gap:4px">
+            <span class="sb-pill" style="font-size:9px">STG</span>
+            <span class="sb-pill is-loop" style="font-size:9px">AMB</span>
+            <span class="sb-pill" style="font-size:9px">MUS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FADE -->
+      <div class="sb-panel-header">
+        <span data-icon="loop" data-size="12"></span>
+        FADE
+      </div>
+      <div class="sb-inspector-section" style="display:flex;flex-direction:column;gap:12px">
+        <!-- FADE IN slider -->
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-dim);letter-spacing:.08em">FADE IN</span>
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text);font-variant-numeric:tabular-nums">8</span>
+          </div>
+          <div class="sb-slider">
+            <div class="sb-slider-fill" style="width:8%;background:var(--pad-loop)"></div>
+            <div class="sb-slider-thumb" style="left:8%;background:var(--pad-loop)"></div>
+          </div>
+        </div>
+        <!-- FADE OUT slider -->
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-dim);letter-spacing:.08em">FADE OUT</span>
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text);font-variant-numeric:tabular-nums">32</span>
+          </div>
+          <div class="sb-slider">
+            <div class="sb-slider-fill" style="width:32%;background:var(--pad-loop)"></div>
+            <div class="sb-slider-thumb" style="left:32%;background:var(--pad-loop)"></div>
+          </div>
+        </div>
+        <!-- STOP MODE -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;gap:8px">
+          <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);letter-spacing:.06em">STOP MODE</span>
+          <div style="display:flex;gap:4px">
+            <span class="sb-pill is-on" style="font-size:9px">FADED</span>
+            <span class="sb-pill" style="font-size:9px">HARD</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRIM -->
+      <div class="sb-panel-header">
+        <span data-icon="hourglass" data-size="12"></span>
+        TRIM
+      </div>
+      <div class="sb-inspector-section" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;gap:8px">
+          <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);letter-spacing:.06em">START</span>
+          <span class="sb-num">0:00.2</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;gap:8px">
+          <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);letter-spacing:.06em">END</span>
+          <span class="sb-num">0:11.8</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;gap:8px">
+          <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);letter-spacing:.06em">LOOP POINT</span>
+          <span class="sb-num">0:00.4</span>
+        </div>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-top:4px">↻ RESET TO FILE</button>
+      </div>
+
+      <!-- META -->
+      <div class="sb-panel-header">
+        <span data-icon="tag" data-size="12"></span>
+        META
+      </div>
+      <div class="sb-inspector-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;gap:8px">
+          <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);letter-spacing:.06em">TAGS</span>
+          <div style="display:flex;gap:4px">
+            <span class="sb-pill is-loop" style="font-size:9px">wind</span>
+            <span class="sb-pill" style="font-size:9px">ambient</span>
+            <span class="sb-pill" style="font-size:9px;color:var(--text-mute)">+</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;gap:8px;margin-top:4px">
+          <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);letter-spacing:.06em">FOLDER</span>
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">Ambient ▾</span>
+        </div>
+      </div>
+    </aside>
+
+  </div><!-- end 3-column body -->
+
+  <!-- ══ STATUS FOOTER ════════════════════════════════════════════════ -->
+  <div class="sb-status-bar">
+    <span class="sb-status-section" style="color:var(--mode-setup)">EDIT · S-PAD</span>
+    <span class="sb-status-section">Board 1 · position 03</span>
+    <span class="sb-status-section" style="color:var(--gold)">● unsaved changes</span>
+    <span style="margin-left:auto;display:flex;gap:14px">
+      <span>ESC cancel</span>
+      <span>⌘S save</span>
+      <span>⇧⌫ delete</span>
+    </span>
+  </div>
+
+</div><!-- end .sb -->
+
+<script>
+// ── PIXEL ICON DATA ──────────────────────────────────────────────────
+const PIXEL_ICONS = {
+  play:     ['5 3','5 4','5 5','5 6','5 7','5 8','5 9','5 10','5 11','5 12',
+             '6 4','6 5','6 6','6 7','6 8','6 9','6 10','6 11',
+             '7 5','7 6','7 7','7 8','7 9','7 10',
+             '8 6','8 7','8 8','8 9','9 7','9 8'],
+  stop:     (()=>{ const a=[]; for(let y=4;y<12;y++) for(let x=4;x<12;x++) a.push(`${x} ${y}`); return a; })(),
+  loop:     ['5 4','6 4','7 4','8 4','9 4','10 4',
+             '4 5','11 5','3 6','12 6','3 7','12 7','11 7',
+             '3 8','12 8','10 8','3 9','12 9','9 9','10 9','11 9',
+             '4 10','11 10','5 11','6 11','7 11','8 11','9 11','10 11'],
+  tag:      ['3 6','4 6','5 6','6 6','7 6','8 6','9 6','10 6',
+             '3 7','10 7','11 7','3 8','11 8','12 8','3 9','12 9',
+             '3 10','11 10','12 10','3 11','10 11','11 11',
+             '3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','5 9','6 9'],
+  book:     ['3 3','4 3','5 3','6 3','7 3','9 3','10 3','11 3','12 3',
+             '3 4','7 4','9 4','12 4','3 5','7 5','9 5','12 5',
+             '3 6','7 6','9 6','12 6','3 7','7 7','9 7','12 7',
+             '3 8','7 8','9 8','12 8','3 9','7 9','9 9','12 9',
+             '3 10','7 10','9 10','12 10','3 11','7 11','9 11','12 11',
+             '3 12','4 12','5 12','6 12','7 12','9 12','10 12','11 12','12 12'],
+  cog:      ['7 2','8 2','5 3','7 3','8 3','10 3','5 4','7 4','8 4','10 4',
+             '4 5','5 5','11 5',
+             '2 6','3 6','5 6','6 6','7 6','8 6','9 6','10 6','12 6','13 6',
+             '2 7','3 7','5 7','6 7','9 7','10 7','12 7','13 7',
+             '2 8','3 8','5 8','6 8','9 8','10 8','12 8','13 8',
+             '2 9','3 9','5 9','6 9','7 9','8 9','9 9','10 9','12 9','13 9',
+             '4 10','5 10','11 10','5 11','7 11','8 11','10 11',
+             '5 12','7 12','8 12','10 12','7 13','8 13'],
+  download: ['7 2','8 2','7 3','8 3','7 4','8 4','7 5','8 5',
+             '5 6','7 6','8 6','10 6','5 7','6 7','7 7','8 7','9 7','10 7',
+             '6 8','7 8','8 8','9 8','7 9','8 9',
+             '3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12'],
+  save:     ['3 3','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3',
+             '3 4','11 4','12 4','3 5','5 5','6 5','7 5','8 5','12 5',
+             '3 6','5 6','7 6','12 6','3 7','12 7','3 8','12 8',
+             '3 9','5 9','6 9','7 9','8 9','9 9','12 9',
+             '3 10','5 10','9 10','12 10','3 11','5 11','9 11','12 11',
+             '3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12'],
+  search:   ['5 3','6 3','7 3','8 3','4 4','9 4','3 5','10 5',
+             '3 6','10 6','3 7','10 7','3 8','10 8','4 9','9 9',
+             '5 10','6 10','7 10','8 10','10 10','11 11','12 11','12 12','13 12'],
+  eye:      ['6 4','7 4','8 4','9 4','4 5','5 5','10 5','11 5',
+             '2 6','3 6','12 6','13 6','1 7','14 7',
+             '1 8','6 8','7 8','8 8','9 8','14 8',
+             '1 9','6 9','7 9','8 9','9 9','14 9',
+             '2 10','3 10','12 10','13 10','4 11','5 11','10 11','11 11',
+             '6 12','7 12','8 12','9 12'],
+  potion:   ['6 2','7 2','8 2','9 2','6 3','9 3','6 4','7 4','8 4','9 4',
+             '6 5','7 5','8 5','9 5',
+             '4 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6','3 7','11 7',
+             '2 8','7 8','8 8','12 8',
+             '2 9','5 9','6 9','7 9','8 9','9 9','10 9','12 9',
+             '2 10','5 10','6 10','7 10','8 10','9 10','10 10','12 10',
+             '2 11','5 11','6 11','7 11','8 11','9 11','10 11','12 11',
+             '3 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12',
+             '3 13','4 13','5 13','6 13','7 13','8 13','9 13','10 13','11 13','12 13'],
+  skull:    ['5 3','6 3','7 3','8 3','9 3','10 3','4 4','11 4','3 5','12 5',
+             '3 6','5 6','6 6','9 6','10 6','12 6',
+             '3 7','5 7','6 7','9 7','10 7','12 7',
+             '3 8','12 8','3 9','7 9','8 9','12 9','4 10','11 10',
+             '5 11','6 11','7 11','8 11','9 11','10 11',
+             '5 12','7 12','9 12','5 13','7 13','9 13'],
+  hourglass:['3 2','4 2','5 2','6 2','7 2','8 2','9 2','10 2','11 2','12 2',
+             '4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3',
+             '5 4','6 4','7 4','8 4','9 4','10 4',
+             '6 5','7 5','8 5','9 5','7 6','8 6','6 7','7 7','8 7','9 7',
+             '5 8','6 8','9 8','10 8','4 9','5 9','10 9','11 9',
+             '4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10',
+             '3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','12 11',
+             '3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12'],
+  diamond:  ['7 4','8 4','6 5','7 5','8 5','9 5',
+             '5 6','6 6','7 6','8 6','9 6','10 6',
+             '4 7','5 7','6 7','7 7','8 7','9 7','10 7','11 7',
+             '4 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8',
+             '5 9','6 9','7 9','8 9','9 9','10 9',
+             '6 10','7 10','8 10','9 10','7 11','8 11'],
+  scroll:   ['3 3','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3',
+             '2 4','12 4',
+             '3 5','4 5','5 5','6 5','7 5','8 5','9 5','10 5','11 5',
+             '3 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6',
+             '3 7','5 7','7 7','8 7','9 7','11 7',
+             '3 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8',
+             '3 9','5 9','6 9','7 9','8 9','9 9','11 9',
+             '3 10','11 10',
+             '3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11',
+             '2 12','12 12',
+             '3 13','4 13','5 13','6 13','7 13','8 13','9 13','10 13','11 13'],
+};
+
+// ── ICON RENDERER ────────────────────────────────────────────────────
+function pixelIcon(name, size, color) {
+  const cells = PIXEL_ICONS[name] || [];
+  const rects = cells.map(c => {
+    const [x, y] = c.split(' ');
+    return `<rect x="${x}" y="${y}" width="1" height="1" shape-rendering="crispEdges"/>`;
+  }).join('');
+  const isVar = color && color !== 'currentColor';
+  const styleAttr = isVar
+    ? `style="color:${color};display:inline-block;vertical-align:middle"`
+    : `style="display:inline-block;vertical-align:middle"`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="currentColor" ${styleAttr}>${rects}</svg>`;
+}
+
+// ── INJECT ALL DATA-ICON ELEMENTS ────────────────────────────────────
+document.querySelectorAll('[data-icon]').forEach(el => {
+  const name  = el.getAttribute('data-icon');
+  const size  = parseInt(el.getAttribute('data-size') || '16', 10);
+  const color = el.getAttribute('data-color') || 'currentColor';
+  el.innerHTML = pixelIcon(name, size, color);
+});
+
+// ── BUILD BIG WAVEFORM ───────────────────────────────────────────────
+(function() {
+  const container = document.getElementById('big-waveform');
+  if (!container) return;
+
+  const BARS       = 120;
+  const HEIGHT     = 140;
+  const TRIM_START = 0.05;
+  const TRIM_END   = 0.95;
+  const FADE_IN    = 0.12;
+  const FADE_OUT   = 0.85;
+  const PLAYHEAD   = 0.42;
+
+  // Waveform bars
+  const barWrap = document.createElement('div');
+  barWrap.style.cssText =
+    'display:flex;align-items:center;gap:1px;height:140px;position:relative;z-index:1';
+
+  for (let i = 0; i < BARS; i++) {
+    const p      = i / BARS;
+    const h      = 16 + Math.abs(Math.sin(i * 0.5)) * 80 + Math.abs(Math.sin(i * 0.13)) * 24;
+    const inTrim = p >= TRIM_START && p <= TRIM_END;
+    const played = p <= PLAYHEAD;
+    const color  = inTrim && !played ? 'var(--pad-loop-soft)' : inTrim ? 'var(--pad-loop)' : 'var(--border)';
+    const opacity= inTrim ? (played ? '1' : '.7') : '.35';
+    const bar    = document.createElement('div');
+    bar.style.cssText = `flex:1;height:${Math.min(h, HEIGHT)}px;background:${color};opacity:${opacity}`;
+    barWrap.appendChild(bar);
+  }
+  container.appendChild(barWrap);
+
+  // Trim markers
+  function trimMarker(at, label, right) {
+    const wrap  = document.createElement('div');
+    wrap.style.cssText = `position:absolute;top:0;bottom:0;left:${at * 100}%;z-index:2`;
+    const line  = document.createElement('div');
+    line.style.cssText = 'width:2px;height:100%;background:var(--mode-setup)';
+    const arrow = document.createElement('div');
+    const cp    = right
+      ? 'polygon(0 0, 100% 50%, 0 100%)'
+      : 'polygon(100% 0, 0 50%, 100% 100%)';
+    arrow.style.cssText =
+      `position:absolute;top:-2px;${right ? 'left' : 'right'}:2px;`+
+      `width:8px;height:14px;background:var(--mode-setup);clip-path:${cp}`;
+    const lbl   = document.createElement('div');
+    lbl.style.cssText =
+      `position:absolute;bottom:-22px;${right ? 'right' : 'left'}:-6px;`+
+      `font-family:var(--font-mono);font-size:10px;color:var(--mode-setup);`+
+      `background:var(--sunk);padding:1px 4px;white-space:nowrap`;
+    lbl.textContent = label;
+    wrap.appendChild(line);
+    wrap.appendChild(arrow);
+    wrap.appendChild(lbl);
+    return wrap;
+  }
+  container.appendChild(trimMarker(TRIM_START, '0:00', false));
+  container.appendChild(trimMarker(TRIM_END,   '2:14', true));
+
+  // Fade zones
+  function fadeZone(start, end, label) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText =
+      `position:absolute;top:0;bottom:0;`+
+      `left:${start * 100}%;width:${(end - start) * 100}%;`+
+      `background:linear-gradient(90deg,var(--pad-loop-soft),transparent);`+
+      `border-top:1px dashed var(--pad-loop);border-bottom:1px dashed var(--pad-loop);`+
+      `z-index:1;pointer-events:none`;
+    const lbl = document.createElement('div');
+    lbl.style.cssText =
+      `position:absolute;top:4px;left:4px;`+
+      `font-family:var(--font-mono);font-size:9px;color:var(--pad-loop);letter-spacing:.08em`;
+    lbl.textContent = label;
+    wrap.appendChild(lbl);
+    return wrap;
+  }
+  container.appendChild(fadeZone(TRIM_START, FADE_IN,  'FADE IN  · 0.8s'));
+  container.appendChild(fadeZone(FADE_OUT,   TRIM_END, 'FADE OUT · 1.6s'));
+
+  // Playhead
+  const ph = document.createElement('div');
+  ph.style.cssText =
+    `position:absolute;top:-4px;bottom:-4px;left:${PLAYHEAD * 100}%;`+
+    `width:2px;background:var(--gold-bright);z-index:2;box-shadow:0 0 6px var(--gold-bright)`;
+  const phHead = document.createElement('div');
+  phHead.style.cssText =
+    `position:absolute;top:-8px;left:-6px;`+
+    `width:14px;height:14px;background:var(--gold-bright);`+
+    `clip-path:polygon(50% 100%, 0 0, 100% 0)`;
+  ph.appendChild(phHead);
+  container.appendChild(ph);
+})();
+</script>
+</body>
+</html>

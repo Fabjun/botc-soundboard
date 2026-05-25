@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoS Design Prototype</title>
+<style>
+/* FONTS */
+@font-face{font-family:'Press Start 2P';font-display:swap;src:url('../fonts/press-start-2p.woff2') format('woff2')}
+@font-face{font-family:'Share Tech Mono';font-display:swap;src:url('../fonts/share-tech-mono.woff2') format('woff2')}
+@font-face{font-family:'VT323';font-display:swap;src:url('../fonts/vt323.woff2') format('woff2')}
+@font-face{font-family:'DotGothic16';font-display:swap;src:url('../fonts/dotgothic16.woff2') format('woff2')}
+
+/* ── DESIGN SYSTEM TOKENS (v178 — WCAG-optimized values) ── */
+:root {
+  /* Base palette — 8 WCAG-updated values */
+  --night:#08081A; --deep:#0E0E22; --surface:#16162E; --raised:#22224A;
+  --border:#383868; --gold:#D4B25C; --gold-dim:#8A6E34; --blood:#A02828;
+  --blood-bright:#D04545; --mist:#4a4a7a; --text:#F0E8D0; --text-dim:#B8B0C8;
+  --active:#4fc3f7; --emerald:#3ca870; --emerald-dim:#1c6040;
+  /* Extended tokens */
+  --top:#2D2D60; --sunk:#060614;
+  --border-soft:#232348; --border-strong:#5252A0;
+  --border-gold:#C9A84C; --border-blood:#A02828;
+  --text-strong:#FFFFFF; --text-mute:#7E7494; --text-on-gold:#14100A;
+  --gold-bright:#F5D57A; --gold-soft:rgba(212,178,92,0.18);
+  --flame:#E8821E; --blood-soft:rgba(160,40,40,0.18);
+  /* PAD type colors */
+  --pad-single:#D4B25C; --pad-single-soft:rgba(212,178,92,.16); --pad-single-glow:rgba(245,213,122,.55);
+  --pad-loop:#6DB5B8;   --pad-loop-soft:rgba(109,181,184,.16);  --pad-loop-glow:rgba(141,213,216,.55);
+  --pad-playlist:#9D7FC7; --pad-playlist-soft:rgba(157,127,199,.16); --pad-playlist-glow:rgba(189,159,231,.55);
+  --pad-combo:#D18B4A;  --pad-combo-soft:rgba(209,139,74,.16);  --pad-combo-glow:rgba(241,171,90,.55);
+  /* Fonts */
+  --ff-title:'Press Start 2P',monospace;
+  --ff-label:'VT323',monospace;
+  --ff-body:'Share Tech Mono',monospace;
+  --ff-hero:'DotGothic16',sans-serif;
+  /* PAD sizing */
+  --pad-sz:90px; --pad-gap:8px; --pad-radius:4px;
+  /* Stepped-corner clip-path */
+  --cc:polygon(5px 0%,calc(100% - 5px) 0%,100% 5px,100% calc(100% - 5px),calc(100% - 5px) 100%,5px 100%,0% calc(100% - 5px),0% 5px);
+}
+
+/* ── THEME OVERRIDES ── */
+body.theme-modern {
+  --ff-title:system-ui,sans-serif; --ff-label:system-ui,sans-serif; --ff-body:system-ui,sans-serif;
+  --surface:#18182e; --raised:#22223c; --border:#2e2e4a; --pad-radius:14px;
+}
+body.theme-verdant {
+  --night:#07120D; --deep:#0B1E16; --surface:#102A20; --raised:#18402F;
+  --top:#1F5240; --sunk:#050E0A;
+  --border:#2A5640; --border-soft:#1A382B; --border-strong:#3A7A5C; --border-gold:#C9A04F;
+  --text:#EFE6C8; --text-dim:#ACB5A6; --text-mute:#6F7E73;
+  --flame:#D8893A; --gold:#C9A04F; --gold-bright:#F2CC5C;
+  --gold-soft:rgba(201,160,79,.18);
+  --pad-loop:#4FA67A; --pad-loop-soft:rgba(79,166,122,.16); --pad-loop-glow:rgba(95,200,144,.55);
+}
+body.theme-neon {
+  --night:#050816; --deep:#0A1228; --surface:#111E40; --raised:#1A2C5E;
+  --top:#233A7C; --sunk:#050A18;
+  --border:#2B4382; --border-soft:#1B2A52; --border-strong:#4564B5; --border-gold:#3DD4F0;
+  --text:#E2F0FF; --text-dim:#9DB5D6; --text-mute:#5F7AA2;
+  --flame:#FF3D8B; --gold:#3DD4F0; --gold-bright:#6EF0FF;
+  --gold-soft:rgba(61,212,240,.18);
+  --pad-single:#FF5FA8; --pad-single-soft:rgba(255,95,168,.16); --pad-single-glow:rgba(255,95,168,.55);
+  --pad-loop:#3DD4F0;   --pad-loop-soft:rgba(61,212,240,.16);   --pad-loop-glow:rgba(61,212,240,.55);
+  --pad-playlist:#B988FF; --pad-playlist-soft:rgba(185,136,255,.16); --pad-playlist-glow:rgba(185,136,255,.55);
+  --pad-combo:#FFD256;  --pad-combo-soft:rgba(255,210,86,.16);  --pad-combo-glow:rgba(255,210,86,.55);
+}
+body.theme-crimson {
+  --night:#0A0606; --deep:#16090A; --surface:#20121A; --raised:#2E1A22;
+  --top:#44232E; --sunk:#0A0404;
+  --border:#523040; --border-soft:#2E1820; --border-strong:#804052; --border-gold:#D63A3A;
+  --text:#F2DDD2; --text-dim:#C09A95; --text-mute:#835A55;
+  --flame:#B5302E; --gold:#D63A3A; --gold-bright:#F26666;
+  --gold-soft:rgba(214,58,58,.18);
+  --pad-loop:#C04C75;   --pad-loop-soft:rgba(192,76,117,.16);   --pad-loop-glow:rgba(192,76,117,.55);
+  --pad-playlist:#7A5295; --pad-playlist-soft:rgba(122,82,149,.16); --pad-playlist-glow:rgba(122,82,149,.55);
+}
+
+/* ── RESET ── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--night);color:var(--text);font-family:var(--ff-body);
+  min-height:100vh;transition:background .3s,color .3s}
+
+/* ── LAYOUT ── */
+.proto-wrap{max-width:1060px;margin:0 auto;padding:16px 16px 60px}
+
+/* ── STICKY CONTROL BAR ── */
+.ctrl-bar{background:var(--deep);border:1px solid var(--border);
+  padding:10px 14px;margin-bottom:24px;display:flex;flex-wrap:wrap;gap:12px 20px;
+  align-items:center;position:sticky;top:0;z-index:100;
+  box-shadow:0 4px 20px rgba(0,0,0,.6)}
+.ctrl-group{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.ctrl-lbl{font-family:var(--ff-label);font-size:14px;color:var(--text-mute);
+  letter-spacing:1px;margin-right:2px;white-space:nowrap}
+.ctrl-btn{background:var(--raised);border:1px solid var(--border);color:var(--text-dim);
+  font-family:var(--ff-label);font-size:15px;letter-spacing:0;padding:4px 11px;
+  cursor:pointer;border-radius:2px;transition:all .15s;line-height:1}
+.ctrl-btn:hover{border-color:var(--gold);color:var(--gold)}
+.ctrl-btn.active{background:var(--gold-soft);border-color:var(--gold);color:var(--gold)}
+.ctrl-btn.active-blue{background:rgba(79,195,247,.12);border-color:var(--active);color:var(--active)}
+
+/* ── SECTION ── */
+.section{margin-bottom:36px}
+.section-title{font-family:var(--ff-label);font-size:18px;letter-spacing:2px;
+  color:var(--gold);padding-bottom:8px;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── COLOR SWATCHES ── */
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.swatch{width:76px}
+.sw-color{width:76px;height:44px;border:1px solid var(--border-soft);margin-bottom:4px}
+.sw-name{font-family:var(--ff-label);font-size:13px;color:var(--text-dim);line-height:1.2}
+.sw-tok{font-family:var(--ff-body);font-size:9px;color:var(--text-mute);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.swatch-group{margin-bottom:16px}
+.swatch-group-label{font-family:var(--ff-body);font-size:10px;color:var(--text-mute);
+  letter-spacing:1px;margin-bottom:6px;text-transform:uppercase}
+
+/* ── PAD GRID ── */
+.pad-grid-wrap{background:var(--deep);border:1px solid var(--border);
+  padding:16px;border-radius:4px;margin-bottom:8px;position:relative;overflow:hidden}
+.pad-grid{display:flex;flex-wrap:wrap;gap:var(--pad-gap);position:relative}
+.pad-hint{font-family:var(--ff-body);font-size:11px;color:var(--text-mute);margin-top:10px}
+.pad-section-label{font-family:var(--ff-label);font-size:13px;color:var(--text-mute);
+  letter-spacing:1px;margin-bottom:8px;width:100%}
+
+/* ── PAD COMPONENT (exact from app) ── */
+.pbtn{background:var(--raised);border:1px solid var(--border);border-radius:var(--pad-radius);
+  padding:4px;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;
+  width:var(--pad-sz);height:var(--pad-sz);
+  transition:all .1s;position:relative;overflow:hidden;
+  box-shadow:inset 4px 0 0 var(--pad-color,var(--border)),
+             inset 1px 1px 0 0 rgba(255,255,255,.06),
+             inset -1px -1px 0 0 rgba(0,0,0,.35)}
+.pbtn .pico{font-size:20px;line-height:1;color:var(--active);position:relative;z-index:2}
+.pbtn .plbl{font-family:var(--ff-label);font-size:12px;letter-spacing:0;
+  color:var(--text-dim);text-align:center;line-height:1.2;
+  position:absolute;bottom:0;left:0;right:0;padding:2px 5px 3px;
+  background:linear-gradient(transparent,rgba(0,0,0,.5));
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1}
+.pbtn .pnum{position:absolute;top:4px;left:0;right:0;text-align:center;
+  font-size:13px;color:var(--active);font-family:var(--ff-label);
+  text-shadow:0 0 8px var(--active);opacity:.85;z-index:3}
+.pbtn .type-tag{position:absolute;top:4px;right:4px;font-family:var(--ff-body);font-size:8px;
+  color:var(--pad-color,var(--text-mute));opacity:.7}
+.pbtn.playing{border-color:var(--pad-color,var(--gold));
+  box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),
+             inset 1px 1px 0 0 rgba(255,255,255,.06),
+             inset -1px -1px 0 0 rgba(0,0,0,.35);
+  animation:breathe-gold 1.8s ease-in-out infinite}
+.pbtn.playing .plbl,.pbtn.plooping .plbl{color:var(--text)}
+.pbtn.playing .pnum,.pbtn.plooping .pnum{
+  color:var(--pad-color,var(--gold-dim));
+  text-shadow:0 0 8px var(--pad-glow,var(--gold))}
+.pbtn.plooping{border-color:var(--pad-color,var(--gold));
+  box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),
+             inset 1px 1px 0 0 rgba(255,255,255,.06),
+             inset -1px -1px 0 0 rgba(0,0,0,.35);
+  animation:breathe-gold 2.2s ease-in-out infinite}
+
+/* Edit mode */
+body.mode-edit .pbtn{border-style:dashed;border-color:var(--border-strong)}
+
+/* Modern theme overrides */
+body.theme-modern .pbtn{clip-path:none;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+body.theme-modern .pbtn.playing,body.theme-modern .pbtn.plooping{
+  box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),
+             0 2px 8px rgba(0,0,0,.4)}
+
+/* Stepped corners — all non-modern themes */
+body:not(.theme-modern) .pbtn{border-radius:0;clip-path:var(--cc)}
+
+/* ── KEYFRAMES ── */
+@keyframes breathe-gold{
+  0%,100%{
+    box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35);
+    filter:drop-shadow(0 0 5px var(--pad-glow,rgba(212,178,92,.35)))}
+  50%{
+    box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35);
+    filter:drop-shadow(0 0 14px var(--pad-glow,rgba(212,178,92,.7)))}}
+@keyframes pad-aura{
+  0%,100%{
+    box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35);
+    filter:drop-shadow(0 0 6px var(--pad-glow,rgba(212,178,92,.3)))}
+  50%{
+    box-shadow:inset 4px 0 0 var(--pad-color,var(--gold)),inset 1px 1px 0 0 rgba(255,255,255,.06),inset -1px -1px 0 0 rgba(0,0,0,.35);
+    filter:drop-shadow(0 0 22px var(--pad-glow,rgba(212,178,92,.75))) drop-shadow(0 0 40px var(--pad-glow,rgba(212,178,92,.2)))}}
+@keyframes pad-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.018)}}
+@keyframes ember-float{
+  0%  {transform:translateY(0) translateX(0) scale(1);opacity:.7}
+  70% {opacity:.35}
+  100%{transform:translateY(-120px) translateX(var(--ex,8px)) scale(0.25);opacity:0}}
+
+/* ── ATMOSPHERE ── */
+body.aura-on .pbtn.playing {animation:pad-aura 2s ease-in-out infinite}
+body.aura-on .pbtn.plooping{animation:pad-aura 2.4s ease-in-out infinite}
+body.breathing-on .pbtn.plooping[data-mode="loop"]{animation:pad-breathe 3s ease-in-out infinite}
+body.aura-on.breathing-on .pbtn.plooping[data-mode="loop"]{
+  animation:pad-aura 2.4s ease-in-out infinite,pad-breathe 3s ease-in-out infinite}
+body.hearth-on .pad-grid::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 90% 60% at 50% 100%,var(--gold-soft) 0%,transparent 70%)}
+.ember{position:absolute;width:3px;height:3px;border-radius:50%;
+  background:var(--flame,#E8821E);pointer-events:none;z-index:1;
+  animation:ember-float var(--ed,4s) ease-in var(--eo,0s) infinite}
+
+/* ── TYPOGRAPHY ── */
+.typo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.typo-card{background:var(--surface);border:1px solid var(--border);padding:14px 16px}
+.typo-sample{margin-bottom:8px;line-height:1.4}
+.typo-meta{font-family:var(--ff-body);font-size:10px;color:var(--text-mute);line-height:1.5}
+
+/* ── UI ELEMENTS ── */
+.elem-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.elem-label{font-family:var(--ff-body);font-size:10px;color:var(--text-mute);
+  width:100%;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+/* buttons match app exactly */
+.btn-s{background:var(--surface);border:1px solid var(--border-strong);color:var(--text-dim);
+  font-family:var(--ff-label);font-size:15px;letter-spacing:1px;padding:6px 14px;
+  cursor:pointer;border-radius:2px;transition:all .15s}
+.btn-s:hover{border-color:var(--active);color:var(--active)}
+.btn-p{background:linear-gradient(135deg,var(--gold-dim),var(--gold));color:var(--text-on-gold);
+  font-family:var(--ff-label);font-size:15px;letter-spacing:1px;padding:6px 14px;
+  cursor:pointer;border:none;border-radius:2px}
+.btn-d{background:var(--blood-soft);border:1px solid var(--blood);color:var(--blood-bright);
+  font-family:var(--ff-label);font-size:15px;letter-spacing:1px;padding:6px 14px;
+  cursor:pointer;border-radius:2px}
+.badge{font-family:var(--ff-label);font-size:13px;padding:2px 8px;border-radius:2px;letter-spacing:1px}
+.badge-gold{background:var(--gold-soft);border:1px solid var(--gold-dim);color:var(--gold-bright)}
+.badge-blood{background:var(--blood-soft);border:1px solid var(--blood);color:var(--blood-bright)}
+.badge-blue{background:rgba(79,195,247,.12);border:1px solid var(--active);color:var(--active)}
+.card-demo{background:var(--surface);border:1px solid var(--border);padding:12px 14px;
+  clip-path:polygon(4px 0%,calc(100% - 4px) 0%,100% 4px,100% calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,0% calc(100% - 4px),0% 4px)}
+body.theme-modern .card-demo{clip-path:none;border-radius:8px}
+.card-demo-title{font-family:var(--ff-label);font-size:15px;color:var(--text);margin-bottom:4px}
+.card-demo-body{font-family:var(--ff-body);font-size:11px;color:var(--text-dim);line-height:1.5}
+.input-demo{background:var(--sunk);border:1px solid var(--border);color:var(--text);
+  font-family:var(--ff-body);font-size:13px;padding:7px 10px;border-radius:2px;
+  outline:none;width:200px}
+.input-demo:focus{border-color:var(--border-strong)}
+</style>
+</head>
+
+<body class="mode-play">
+<div class="proto-wrap">
+
+  <!-- ── CONTROL BAR ── -->
+  <div class="ctrl-bar">
+    <div class="ctrl-group">
+      <span class="ctrl-lbl">THEME</span>
+      <button class="ctrl-btn active" id="th-default" onclick="setTheme('')">Default</button>
+      <button class="ctrl-btn" id="th-modern"  onclick="setTheme('modern')">Modern</button>
+      <button class="ctrl-btn" id="th-verdant" onclick="setTheme('verdant')">Verdant</button>
+      <button class="ctrl-btn" id="th-neon"    onclick="setTheme('neon')">Neon</button>
+      <button class="ctrl-btn" id="th-crimson" onclick="setTheme('crimson')">Crimson</button>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-lbl">MODE</span>
+      <button class="ctrl-btn active" id="mode-play-btn" onclick="setMode('play')">PLAY</button>
+      <button class="ctrl-btn" id="mode-edit-btn" onclick="setMode('edit')">EDIT</button>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-lbl">ATMOSPHERE</span>
+      <button class="ctrl-btn" id="atm-aura"    onclick="toggleAtm('aura-on','atm-aura')">Aura</button>
+      <button class="ctrl-btn" id="atm-breathe" onclick="toggleAtm('breathing-on','atm-breathe')">Breathing</button>
+      <button class="ctrl-btn" id="atm-hearth"  onclick="toggleAtm('hearth-on','atm-hearth')">Hearth</button>
+      <button class="ctrl-btn" id="atm-embers"  onclick="toggleAtm('embers-on','atm-embers')">Embers</button>
+    </div>
+  </div>
+
+  <!-- ── TOKEN PALETTE ── -->
+  <div class="section">
+    <div class="section-title">TOKEN PALETTE</div>
+    <div class="swatch-group">
+      <div class="swatch-group-label">Depth layers</div>
+      <div class="swatches" id="sw-depth"></div>
+    </div>
+    <div class="swatch-group">
+      <div class="swatch-group-label">Borders</div>
+      <div class="swatches" id="sw-border"></div>
+    </div>
+    <div class="swatch-group">
+      <div class="swatch-group-label">Text</div>
+      <div class="swatches" id="sw-text"></div>
+    </div>
+    <div class="swatch-group">
+      <div class="swatch-group-label">Accents</div>
+      <div class="swatches" id="sw-accent"></div>
+    </div>
+    <div class="swatch-group">
+      <div class="swatch-group-label">PAD type colors</div>
+      <div class="swatches" id="sw-pad"></div>
+    </div>
+  </div>
+
+  <!-- ── PAD COMPONENTS ── -->
+  <div class="section">
+    <div class="section-title">PAD COMPONENTS</div>
+    <div class="pad-grid-wrap">
+      <div class="pad-section-label">Left-click: play · Right-click: loop · Click again: stop</div>
+      <div class="pad-grid" id="pad-grid"></div>
+    </div>
+    <div class="pad-hint">
+      Spine (inset-left box-shadow) takes pad type color. Glow on playing/plooping state. Stepped corners on non-Modern themes.
+    </div>
+  </div>
+
+  <!-- ── TYPOGRAPHY ── -->
+  <div class="section">
+    <div class="section-title">TYPOGRAPHY</div>
+    <div class="typo-grid">
+      <div class="typo-card">
+        <div class="typo-sample" style="font-family:var(--ff-title);font-size:12px;color:var(--gold);line-height:1.8">Press Start 2P<br><span style="color:var(--text-dim);font-size:10px">TITLE · LOGO</span></div>
+        <div class="typo-meta">Titles only · 13–16 px · letter-spacing: 0</div>
+      </div>
+      <div class="typo-card">
+        <div class="typo-sample" style="font-family:var(--ff-label);font-size:24px;color:var(--text)">VT323 — UI Labels<br><span style="font-size:18px;color:var(--gold)">GAME MODE · Settings · Buttons</span></div>
+        <div class="typo-meta">All UI labels, buttons, headings · 14–24 px</div>
+      </div>
+      <div class="typo-card">
+        <div class="typo-sample" style="font-family:var(--ff-body);font-size:13px;color:var(--text-dim);line-height:1.6">Share Tech Mono<br>Body text, descriptions,<br>inputs, filenames</div>
+        <div class="typo-meta">Body · monospace · 11–14 px</div>
+      </div>
+      <div class="typo-card">
+        <div class="typo-sample" style="font-family:var(--ff-hero);font-size:22px;color:var(--gold);letter-spacing:.04em">DotGothic16<br><span style="font-size:16px;color:var(--text-dim)">Start screens</span></div>
+        <div class="typo-meta">Hero / start screen titles · 20–26 px</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── UI ELEMENTS ── -->
+  <div class="section">
+    <div class="section-title">UI ELEMENTS</div>
+
+    <div class="elem-label">Buttons</div>
+    <div class="elem-row">
+      <button class="btn-s">Secondary</button>
+      <button class="btn-p">Primary Action</button>
+      <button class="btn-d">Destructive</button>
+    </div>
+
+    <div class="elem-label">Badges</div>
+    <div class="elem-row">
+      <span class="badge badge-gold">GAME</span>
+      <span class="badge badge-blood">DANGER</span>
+      <span class="badge badge-blue">LIVE</span>
+      <span class="badge badge-gold">LOOP</span>
+    </div>
+
+    <div class="elem-label">Card (chamfer 4 px)</div>
+    <div class="elem-row">
+      <div class="card-demo">
+        <div class="card-demo-title">PAD Editor Card</div>
+        <div class="card-demo-body">Stepped 4px corner chamfer on all non-Modern themes.<br>background: --surface · border: --border</div>
+      </div>
+    </div>
+
+    <div class="elem-label">Input</div>
+    <div class="elem-row">
+      <input class="input-demo" type="text" placeholder="PAD name…" value="Thunder Strike">
+    </div>
+  </div>
+
+</div><!-- /proto-wrap -->
+
+<script>
+// ── DATA ──────────────────────────────────────────────────
+const PAD_TYPES = {
+  once:     {color:'var(--pad-single)',    glow:'var(--pad-single-glow)',    icon:'⚡', label:'once'},
+  loop:     {color:'var(--pad-loop)',      glow:'var(--pad-loop-glow)',      icon:'∞',  label:'loop'},
+  playlist: {color:'var(--pad-playlist)',  glow:'var(--pad-playlist-glow)',  icon:'≡',  label:'playlist'},
+  combo:    {color:'var(--pad-combo)',     glow:'var(--pad-combo-glow)',     icon:'⧖',  label:'combo'},
+};
+const PADS = [
+  {mode:'once',    name:'Thunder Strike', num:1, state:''},
+  {mode:'once',    name:'Sword Clash',    num:2, state:'playing'},
+  {mode:'loop',    name:'Storm Ambience', num:3, state:''},
+  {mode:'loop',    name:'Tavern Music',   num:4, state:'plooping'},
+  {mode:'playlist',name:'Battle Intro',   num:5, state:''},
+  {mode:'playlist',name:'Epic Sequence',  num:6, state:'playing'},
+  {mode:'combo',   name:'Boss Reveal',    num:7, state:''},
+  {mode:'combo',   name:'Final Battle',   num:8, state:'playing'},
+];
+
+const SWATCHES = {
+  'sw-depth':  [['--night','Night'],['--deep','Deep'],['--surface','Surface'],['--raised','Raised'],['--top','Top'],['--sunk','Sunk']],
+  'sw-border': [['--border','Border'],['--border-soft','Soft'],['--border-strong','Strong'],['--border-gold','Gold'],['--border-blood','Blood']],
+  'sw-text':   [['--text','Text'],['--text-dim','Dim'],['--text-mute','Mute'],['--text-strong','Strong'],['--text-on-gold','On Gold']],
+  'sw-accent': [['--gold','Gold'],['--gold-dim','Gold Dim'],['--gold-bright','Gold Bright'],['--blood','Blood'],['--blood-bright','Blood Bright'],['--active','Active'],['--emerald','Emerald'],['--flame','Flame']],
+  'sw-pad':    [['--pad-single','Single'],['--pad-loop','Loop'],['--pad-playlist','Playlist'],['--pad-combo','Combo']],
+};
+
+// ── THEME ─────────────────────────────────────────────────
+function setTheme(name) {
+  document.body.className = document.body.className.replace(/\btheme-\w+\b/g,'').trim();
+  if (name) document.body.classList.add('theme-' + name);
+  document.querySelectorAll('[id^="th-"]').forEach(b => b.classList.remove('active'));
+  document.getElementById('th-' + (name || 'default')).classList.add('active');
+  // Swatches need a frame to pick up new computed styles
+  requestAnimationFrame(renderSwatches);
+}
+
+// ── MODE ──────────────────────────────────────────────────
+function setMode(m) {
+  document.body.classList.toggle('mode-edit', m === 'edit');
+  document.body.classList.toggle('mode-play', m === 'play');
+  document.getElementById('mode-play-btn').classList.toggle('active', m === 'play');
+  document.getElementById('mode-edit-btn').classList.toggle('active', m === 'edit');
+}
+
+// ── ATMOSPHERE ────────────────────────────────────────────
+function toggleAtm(cls, btnId) {
+  document.body.classList.toggle(cls);
+  const on = document.body.classList.contains(cls);
+  document.getElementById(btnId).classList.toggle('active', on);
+  if (cls === 'embers-on' && on) initEmbers();
+}
+
+// ── EMBERS ────────────────────────────────────────────────
+let embersReady = false;
+function initEmbers() {
+  if (embersReady) return;
+  embersReady = true;
+  const grid = document.getElementById('pad-grid');
+  for (let i = 0; i < 18; i++) {
+    const e = document.createElement('div');
+    e.className = 'ember';
+    const dur  = (2.5 + Math.random() * 3).toFixed(1);
+    const del  = (Math.random() * 4).toFixed(1);
+    const ex   = Math.round((Math.random() - 0.5) * 32);
+    const left = Math.round(Math.random() * 88);
+    const bot  = Math.round(Math.random() * 25);
+    e.style.cssText = `left:${left}%;bottom:${bot}%;--ed:${dur}s;--eo:${del}s;--ex:${ex}px`;
+    grid.appendChild(e);
+  }
+}
+
+// ── PAD CLICK ─────────────────────────────────────────────
+function padClick(el, ev) {
+  ev.preventDefault();
+  if (ev.button === 2 || ev.type === 'contextmenu') {
+    el.classList.remove('playing');
+    el.classList.toggle('plooping');
+  } else {
+    el.classList.remove('plooping');
+    el.classList.toggle('playing');
+  }
+}
+
+// ── RENDER PADS ───────────────────────────────────────────
+function renderPads() {
+  const grid = document.getElementById('pad-grid');
+  const embers = Array.from(grid.querySelectorAll('.ember'));
+  grid.innerHTML = '';
+  embers.forEach(e => grid.appendChild(e));
+
+  PADS.forEach(p => {
+    const t = PAD_TYPES[p.mode];
+    const div = document.createElement('div');
+    div.className = 'pbtn' + (p.state ? ' ' + p.state : '');
+    div.dataset.mode = p.mode;
+    div.style.setProperty('--pad-color', t.color);
+    div.style.setProperty('--pad-glow',  t.glow);
+    div.addEventListener('click',       ev => padClick(div, ev));
+    div.addEventListener('contextmenu', ev => padClick(div, ev));
+    div.innerHTML =
+      `<span class="pnum">${p.num}</span>` +
+      `<span class="pico">${t.icon}</span>` +
+      `<span class="plbl">${p.name}</span>` +
+      `<span class="type-tag">${t.label}</span>`;
+    grid.appendChild(div);
+  });
+}
+
+// ── RENDER SWATCHES ───────────────────────────────────────
+function renderSwatches() {
+  const cs = getComputedStyle(document.documentElement);
+  Object.entries(SWATCHES).forEach(([id, tokens]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = tokens.map(([tok, name]) => {
+      const val = cs.getPropertyValue(tok).trim();
+      return `<div class="swatch">
+        <div class="sw-color" style="background:${val}"></div>
+        <div class="sw-name">${name}</div>
+        <div class="sw-tok">${tok}</div>
+      </div>`;
+    }).join('');
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────
+renderPads();
+renderSwatches();
+</script>
+</body>
+</html>

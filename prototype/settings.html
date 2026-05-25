@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SoS — Settings Prototype</title>
+<style>
+/* ── FONTS ── */
+@font-face{font-family:'Press Start 2P';font-display:swap;src:url('../fonts/press-start-2p.woff2') format('woff2')}
+@font-face{font-family:'Share Tech Mono';font-display:swap;src:url('../fonts/share-tech-mono.woff2') format('woff2')}
+@font-face{font-family:'VT323';font-display:swap;src:url('../fonts/vt323.woff2') format('woff2')}
+
+/* ── TOKENS ── */
+:root {
+  --night:#08081A; --deep:#0E0E22; --surface:#16162E; --raised:#22224A; --top:#2D2D60; --sunk:#060614;
+  --border:#383868; --border-soft:#232348; --border-strong:#5252A0; --border-gold:#C9A84C; --border-blood:#A02828;
+  --text:#F0E8D0; --text-strong:#FFFFFF; --text-dim:#B8B0C8; --text-mute:#7E7494; --text-on-gold:#14100A;
+  --gold:#D4B25C; --gold-bright:#F5D57A; --gold-dim:#8A6E34; --gold-soft:rgba(212,178,92,.18);
+  --flame:#E8821E; --blood:#A02828; --blood-bright:#D04545; --blood-soft:rgba(160,40,40,.18);
+  --pad-single:#D4B25C; --pad-loop:#6DB5B8; --pad-playlist:#9D7FC7;
+  --mode-setup:#6DB5B8; --mode-game:#D4B25C;
+  --font-display:"Press Start 2P","VT323",monospace;
+  --font-ui:"VT323","Share Tech Mono",monospace;
+  --font-mono:"Share Tech Mono","VT323",monospace;
+  --fs-xs:12px; --fs-sm:14px; --fs-md:16px;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px;
+}
+
+/* ── RESET ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:var(--night);color:var(--text);font-family:var(--font-mono);user-select:none;padding-top:36px}
+
+/* ── SB BASE CLASSES ── */
+.sb{font-family:var(--font-mono);color:var(--text);height:100%;width:100%;box-sizing:border-box;overflow:hidden;position:relative;letter-spacing:.01em;-webkit-font-smoothing:antialiased}
+.sb *,.sb *::before,.sb *::after{box-sizing:border-box}
+.sb ::-webkit-scrollbar{width:8px;height:8px}
+.sb ::-webkit-scrollbar-thumb{background:var(--border)}
+.sb ::-webkit-scrollbar-track{background:var(--sunk)}
+.sb-pix,.sb-btn,.sb-pill{
+  --pix-step:5px;--pix-thick:2px;--pix-bg:var(--surface);--pix-border:var(--border);
+  background:linear-gradient(var(--pix-bg),var(--pix-bg)) padding-box,linear-gradient(var(--pix-border),var(--pix-border)) border-box;
+  border:var(--pix-thick) solid transparent;border-radius:0;
+  clip-path:polygon(0 var(--pix-step),var(--pix-step) var(--pix-step),var(--pix-step) 0,calc(100% - var(--pix-step)) 0,calc(100% - var(--pix-step)) var(--pix-step),100% var(--pix-step),100% calc(100% - var(--pix-step)),calc(100% - var(--pix-step)) calc(100% - var(--pix-step)),calc(100% - var(--pix-step)) 100%,var(--pix-step) 100%,var(--pix-step) calc(100% - var(--pix-step)),0 calc(100% - var(--pix-step)))
+}
+.sb-btn{--pix-step:4px;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);font-family:var(--font-ui);font-size:var(--fs-md);text-transform:uppercase;letter-spacing:.10em;padding:6px var(--space-5);color:var(--text);cursor:pointer}
+.sb-btn:hover{--pix-border:var(--border-gold)}
+.sb-btn-primary{--pix-border:var(--border-gold);color:var(--gold)}
+.sb-btn-filled{--pix-bg:var(--gold);--pix-border:var(--gold);color:var(--text-on-gold)}
+.sb-btn-ghost{--pix-bg:transparent;--pix-border:var(--border-soft);color:var(--text-dim)}
+.sb-btn-danger{--pix-bg:transparent;--pix-border:var(--border-blood);color:var(--danger)}
+.sb-btn-sm{--pix-step:3px;font-size:var(--fs-sm);padding:3px var(--space-3)}
+.sb-panel-header{display:flex;align-items:center;gap:var(--space-2);height:28px;padding:0 var(--space-3);background:var(--deep);border-bottom:1px solid var(--border-soft);font-family:var(--font-ui);font-size:var(--fs-sm);letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);flex-shrink:0}
+.sb-panel-header.is-active{color:var(--gold)}
+.sb-status-bar{display:flex;align-items:center;gap:var(--space-4);height:24px;padding:0 var(--space-3);background:var(--deep);border-top:1px solid var(--border-soft);font-family:var(--font-mono);font-size:11px;color:var(--text-mute);letter-spacing:.04em;flex-shrink:0}
+.sb-status-section{display:flex;align-items:center;gap:6px;padding-right:var(--space-4);border-right:1px solid var(--border-soft)}
+.sb-slider{position:relative;height:6px;background:var(--sunk);border:1px solid var(--border-soft);overflow:hidden}
+.sb-slider-fill{position:absolute;inset:0 auto 0 0;background:var(--gold)}
+.sb-slider-thumb{position:absolute;top:50%;width:12px;height:12px;background:var(--gold);transform:translate(-50%,-50%);box-shadow:0 0 6px var(--gold-bright)}
+.sb-num{display:inline-flex;align-items:center;justify-content:space-between;min-width:56px;padding:2px 6px;background:var(--sunk);border:1px solid var(--border-soft);font-family:var(--font-mono);font-size:var(--fs-sm);color:var(--text);cursor:ew-resize}
+.sb-num.is-active{border-color:var(--gold);color:var(--gold-bright)}
+
+/* ── SETTINGS LAYOUT ── */
+#app{display:flex;flex-direction:column;height:calc(100% - 36px);background:var(--night)}
+#settings-top-bar{display:grid;grid-template-columns:180px 1fr 180px;align-items:center;gap:12px;padding:8px 16px;background:var(--deep);border-bottom:1px solid var(--border);flex-shrink:0}
+#settings-body{display:grid;grid-template-columns:240px 1fr;flex:1;min-height:0;overflow:hidden}
+#settings-rail{background:var(--deep);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#settings-pane{background:var(--surface);overflow:auto;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-left:2px solid transparent;color:var(--text-dim);cursor:pointer}
+.nav-item.is-active{background:var(--top);border-left-color:var(--gold)}
+.nav-label{font-family:var(--font-ui);font-size:15px;letter-spacing:.1em}
+.nav-item.is-active .nav-label{color:var(--gold)}
+.nav-item:not(.is-active) .nav-label{color:var(--text)}
+.nav-count{font-family:var(--font-mono);font-size:11px;color:var(--text-mute);margin-top:1px}
+.rail-search{padding:10px;border-top:1px solid var(--border-soft)}
+.settings-search{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--sunk);border:1px solid var(--border);color:var(--text-mute)}
+
+/* ── ACT BUTTON ── */
+.act-btn{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);color:var(--text-dim);background:var(--surface);cursor:pointer;flex-shrink:0}
+
+/* ── PROTOTYPE BAR ── */
+#proto-bar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;gap:4px;padding:6px 10px;background:rgba(8,8,26,.9);border-bottom:1px solid var(--border-soft);backdrop-filter:blur(8px)}
+.pb-btn{background:transparent;border:1px solid var(--border-soft);color:var(--text-mute);font-family:var(--font-ui);font-size:13px;padding:2px 9px;cursor:pointer;border-radius:2px;transition:all .15s;line-height:1.4}
+.pb-btn:hover{border-color:var(--gold);color:var(--gold)}
+.pb-btn.active{border-color:var(--gold);color:var(--gold);background:var(--gold-soft)}
+.pb-sep{flex:1}
+.pb-link{color:var(--text-mute);font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-decoration:none;padding:4px 6px}
+.pb-link:hover{color:var(--text-dim)}
+</style>
+</head>
+<body>
+
+<!-- ── PROTOTYPE CONTROLS ── -->
+<div id="proto-bar">
+  <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-mute);padding:4px 6px;letter-spacing:1px">SECTION</span>
+  <button class="pb-btn active" id="pb-controls"  onclick="setSection('controls')">CONTROLS</button>
+  <button class="pb-btn"        id="pb-audio"      onclick="setSection('audio')">AUDIO</button>
+  <button class="pb-btn"        id="pb-display"    onclick="setSection('display')">DISPLAY</button>
+  <button class="pb-btn"        id="pb-behavior"   onclick="setSection('behavior')">BEHAVIOR</button>
+  <button class="pb-btn"        id="pb-data"       onclick="setSection('data')">DATA</button>
+  <button class="pb-btn"        id="pb-about"      onclick="setSection('about')">ABOUT</button>
+  <span class="pb-sep"></span>
+  <a class="pb-link" href="menu.html">Menu</a>
+  <a class="pb-link" href="board.html">Board</a>
+  <a class="pb-link" href="library.html">Library</a>
+  <a class="pb-link" href="pad-editor.html">PAD Editor</a>
+</div>
+
+<!-- ══════════════ SETTINGS APP ══════════════ -->
+<div id="app" class="sb">
+
+  <!-- ── TOP BAR ── -->
+  <div id="settings-top-bar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="color:var(--text-dim);display:flex;align-items:center;cursor:pointer">
+        <svg width="18" height="13" viewBox="0 0 18 13" fill="currentColor"><rect x="0" y="0" width="18" height="2"/><rect x="0" y="5" width="18" height="2"/><rect x="0" y="11" width="18" height="2"/></svg>
+      </div>
+      <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);letter-spacing:.12em">MENU</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px">
+      <span style="font-family:var(--font-ui);font-size:18px;color:var(--gold);letter-spacing:.14em">SETTINGS</span>
+      <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-mute)">·</span>
+      <span id="top-breadcrumb" style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">controls</span>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:6px">
+      <div class="act-btn" style="font-family:var(--font-ui);font-size:14px;color:var(--text-dim)">?</div>
+      <div class="act-btn">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 4V1h3M10 4V1H7M1 7v3h3M10 7v3H7"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BODY ── -->
+  <div id="settings-body">
+
+    <!-- ── LEFT RAIL ── -->
+    <aside id="settings-rail">
+      <div class="sb-panel-header is-active">
+        <span id="ph-sections"></span>SECTIONS
+      </div>
+      <div style="padding:8px 0;flex:1;overflow:auto" id="nav-list"></div>
+      <div class="rail-search">
+        <div class="settings-search">
+          <span id="icon-search-rail"></span>
+          <span style="font-family:var(--font-mono);font-size:12px">Search settings…</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── RIGHT PANE ── -->
+    <div id="settings-pane"></div>
+
+  </div>
+
+  <!-- ── STATUS BAR ── -->
+  <div class="sb-status-bar">
+    <span class="sb-status-section" style="color:var(--gold)">SETTINGS</span>
+    <span class="sb-status-section" id="status-section">controls</span>
+    <span class="sb-status-section">auto-saved · 2s ago</span>
+    <span style="margin-left:auto;display:flex;align-items:center;gap:12px">
+      <span style="color:var(--blood-bright)">⚠ backup overdue · 3d</span>
+      <button class="sb-btn sb-btn-sm sb-btn-danger" style="padding:2px 10px">EXPORT NOW</button>
+    </span>
+  </div>
+
+</div><!-- /#app -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   PIXEL ICONS (from dist/icons.js)
+═══════════════════════════════════════════════════════════════ */
+(function(root){'use strict';
+const ICONS=[
+  {id:'flame',d:['7 1','8 1','6 2','7 2','8 2','9 2','5 3','6 3','8 3','9 3','10 3','5 4','6 4','7 4','8 4','9 4','10 4','11 4','4 5','5 5','7 5','9 5','10 5','11 5','4 6','5 6','6 6','9 6','10 6','11 6','12 6','3 7','4 7','5 7','6 7','7 7','9 7','10 7','11 7','12 7','3 8','4 8','5 8','6 8','7 8','8 8','10 8','11 8','12 8','3 9','4 9','5 9','6 9','7 9','8 9','9 9','10 9','11 9','12 9','3 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','12 10','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','5 12','6 12','7 12','8 12','9 12','10 12','6 13','7 13','8 13','9 13']},
+  {id:'play',d:['5 3','5 4','5 5','5 6','5 7','5 8','5 9','5 10','5 11','5 12','6 4','6 5','6 6','6 7','6 8','6 9','6 10','6 11','7 5','7 6','7 7','7 8','7 9','7 10','8 6','8 7','8 8','8 9','9 7','9 8']},
+  {id:'loop',d:['5 4','6 4','7 4','8 4','9 4','10 4','4 5','11 5','3 6','12 6','3 7','12 7','11 7','3 8','12 8','10 8','3 9','12 9','9 9','10 9','11 9','4 10','11 10','5 11','6 11','7 11','8 11','9 11','10 11']},
+  {id:'cog',d:['7 2','8 2','5 3','7 3','8 3','10 3','5 4','7 4','8 4','10 4','4 5','5 5','11 5','2 6','3 6','5 6','6 6','7 6','8 6','9 6','10 6','12 6','13 6','2 7','3 7','5 7','6 7','9 7','10 7','12 7','13 7','2 8','3 8','5 8','6 8','9 8','10 8','12 8','13 8','2 9','3 9','5 9','6 9','7 9','8 9','9 9','10 9','12 9','13 9','4 10','5 10','11 10','5 11','7 11','8 11','10 11','5 12','7 12','8 12','10 12','7 13','8 13']},
+  {id:'save',d:['3 3','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','3 4','11 4','12 4','3 5','5 5','6 5','7 5','8 5','12 5','3 6','5 6','7 6','12 6','3 7','12 7','3 8','12 8','3 9','5 9','6 9','7 9','8 9','9 9','12 9','3 10','5 10','9 10','12 10','3 11','5 11','9 11','12 11','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12']},
+  {id:'download',d:['7 2','8 2','7 3','8 3','7 4','8 4','7 5','8 5','5 6','7 6','8 6','10 6','5 7','6 7','7 7','8 7','9 7','10 7','6 8','7 8','8 8','9 8','7 9','8 9','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12']},
+  {id:'search',d:['5 3','6 3','7 3','8 3','4 4','9 4','3 5','10 5','3 6','10 6','3 7','10 7','3 8','10 8','4 9','9 9','5 10','6 10','7 10','8 10','10 10','11 11','12 11','12 12','13 12']},
+  {id:'edit',d:['10 2','11 2','9 3','10 3','11 3','12 3','8 4','9 4','10 4','11 4','7 5','8 5','9 5','10 5','6 6','7 6','8 6','9 6','5 7','6 7','7 7','8 7','4 8','5 8','6 8','7 8','3 9','4 9','5 9','6 9','3 10','4 10','5 10','3 11','4 11','5 11','3 12','4 12']},
+  {id:'keyboard',d:['2 4','3 4','4 4','5 4','6 4','7 4','8 4','9 4','10 4','11 4','12 4','13 4','2 5','13 5','2 6','3 6','5 6','6 6','8 6','9 6','11 6','12 6','13 6','2 7','13 7','2 8','4 8','5 8','7 8','8 8','10 8','11 8','13 8','2 9','13 9','2 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','13 10','2 11','3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','12 11','13 11']},
+  {id:'moon',d:['6 2','7 2','8 2','4 3','5 3','6 3','7 3','8 3','9 3','3 4','4 4','5 4','6 4','7 4','2 5','3 5','4 5','5 5','2 6','3 6','4 6','2 7','3 7','4 7','2 8','3 8','4 8','2 9','3 9','4 9','2 10','3 10','4 10','5 10','3 11','4 11','5 11','6 11','7 11','4 12','5 12','6 12','7 12','8 12','9 12','6 13','7 13','8 13']},
+  {id:'sparkle',d:['7 3','8 3','6 4','7 4','8 4','9 4','7 5','8 5','2 7','3 7','7 7','8 7','12 7','13 7','2 8','3 8','7 8','8 8','12 8','13 8','7 9','8 9','6 11','7 11','8 11','9 11','7 12','8 12']},
+  {id:'diamond',d:['7 4','8 4','6 5','7 5','8 5','9 5','5 6','6 6','7 6','8 6','9 6','10 6','4 7','5 7','6 7','7 7','8 7','9 7','10 7','11 7','4 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','5 9','6 9','7 9','8 9','9 9','10 9','6 10','7 10','8 10','9 10','7 11','8 11']},
+  {id:'scroll',d:['3 3','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','2 4','12 4','3 5','4 5','5 5','6 5','7 5','8 5','9 5','10 5','11 5','3 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6','3 7','5 7','7 7','8 7','9 7','11 7','3 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','3 9','5 9','6 9','7 9','8 9','9 9','11 9','3 10','11 10','3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','2 12','12 12','3 13','4 13','5 13','6 13','7 13','8 13','9 13','10 13','11 13']},
+  {id:'eye',d:['6 4','7 4','8 4','9 4','4 5','5 5','10 5','11 5','2 6','3 6','12 6','13 6','1 7','14 7','1 8','6 8','7 8','8 8','9 8','14 8','1 9','6 9','7 9','8 9','9 9','14 9','2 10','3 10','12 10','13 10','4 11','5 11','10 11','11 11','6 12','7 12','8 12','9 12']},
+  {id:'potion',d:['6 2','7 2','8 2','9 2','6 3','9 3','6 4','7 4','8 4','9 4','6 5','7 5','8 5','9 5','4 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6','3 7','11 7','2 8','7 8','8 8','12 8','2 9','5 9','6 9','7 9','8 9','9 9','10 9','12 9','2 10','5 10','6 10','7 10','8 10','9 10','10 10','12 10','2 11','5 11','6 11','7 11','8 11','9 11','10 11','12 11','3 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','3 13','4 13','5 13','6 13','7 13','8 13','9 13','10 13','11 13','12 13']},
+  {id:'info',d:['6 2','7 2','8 2','9 2','5 3','10 3','4 4','7 4','8 4','11 4','4 5','11 5','4 6','7 6','8 6','11 6','4 7','6 7','7 7','8 7','11 7','4 8','7 8','8 8','11 8','4 9','7 9','8 9','11 9','4 10','7 10','8 10','11 10','5 11','7 11','8 11','10 11','6 12','7 12','8 12','9 12']},
+  {id:'hourglass',d:['3 2','4 2','5 2','6 2','7 2','8 2','9 2','10 2','11 2','12 2','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','5 4','6 4','7 4','8 4','9 4','10 4','6 5','7 5','8 5','9 5','7 6','8 6','6 7','7 7','8 7','9 7','5 8','6 8','9 8','10 8','4 9','5 9','10 9','11 9','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','12 11','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12']},
+  {id:'skull',d:['5 3','6 3','7 3','8 3','9 3','10 3','4 4','11 4','3 5','12 5','3 6','5 6','6 6','9 6','10 6','12 6','3 7','5 7','6 7','9 7','10 7','12 7','3 8','12 8','3 9','7 9','8 9','12 9','4 10','11 10','5 11','6 11','7 11','8 11','9 11','10 11','5 12','7 12','9 12','5 13','7 13','9 13']},
+  {id:'key',d:['6 3','7 3','8 3','5 4','9 4','4 5','10 5','4 6','7 6','10 6','4 7','10 7','5 8','9 8','6 9','7 9','8 9','7 10','8 10','7 11','8 11','9 11','10 11','7 12','8 12','7 13','8 13','9 13']},
+  {id:'rune',d:['7 2','8 2','6 3','7 3','8 3','9 3','6 4','9 4','5 5','10 5','5 6','10 6','4 7','11 7','4 8','7 8','8 8','11 8','3 9','12 9','2 10','3 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','12 10','13 10','7 11','8 11','7 12','8 12','6 13','7 13','8 13','9 13']},
+];
+const BY_ID={};for(let i=0;i<ICONS.length;i++)BY_ID[ICONS[i].id]=ICONS[i];
+function pixelIcon(id,size,color){size=size||16;color=color||'currentColor';const def=BY_ID[id];if(!def)return`<svg width="${size}" height="${size}" viewBox="0 0 16 16"></svg>`;let r='';for(let i=0;i<def.d.length;i++){const p=def.d[i].split(' ');r+=`<rect x="${p[0]}" y="${p[1]}" width="1" height="1" fill="${color}"/>`}return`<svg width="${size}" height="${size}" viewBox="0 0 16 16" shape-rendering="crispEdges" style="display:block">${r}</svg>`}
+root.pixelIcon=pixelIcon;
+})(window);
+
+/* ═══════════════════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════════════════ */
+const SUBMENUS=[
+  {id:'controls', label:'CONTROLS', icon:'keyboard', count:'5 settings'},
+  {id:'audio',    label:'AUDIO',    icon:'potion',   count:'7 settings'},
+  {id:'display',  label:'DISPLAY',  icon:'eye',      count:'4 settings'},
+  {id:'behavior', label:'BEHAVIOR', icon:'cog',      count:'6 settings'},
+  {id:'data',     label:'DATA',     icon:'save',     count:'backup · import · reset'},
+  {id:'about',    label:'ABOUT',    icon:'info',     count:'v 150'},
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════ */
+function pi(id,size,color){return pixelIcon(id,size,color)}
+
+function sectionLabel(glyph,text){
+  const icon=pi(glyph,12,'var(--gold)');
+  return`<div style="display:flex;align-items:center;gap:8px;color:var(--gold);margin-bottom:12px">
+    ${icon}
+    <span style="font-family:var(--font-ui);font-size:11px;letter-spacing:.18em;text-transform:uppercase;white-space:nowrap">${text}</span>
+    <div style="flex:1;height:2px;background-image:repeating-linear-gradient(90deg,currentColor 0 2px,transparent 2px 5px);opacity:.55"></div>
+    ${icon}
+  </div>`;
+}
+
+function submenuHeader(title,sub,action){
+  return`<div style="padding:20px 32px 16px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:14px">
+    <div>
+      <div style="font-family:var(--font-display);font-size:16px;color:var(--gold-bright);letter-spacing:.06em;margin-bottom:6px">${title}</div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">// ${sub}</div>
+    </div>
+    <div style="flex:1"></div>
+    ${action||''}
+  </div>`;
+}
+
+function settingRow(label,desc,control){
+  return`<div style="display:grid;grid-template-columns:220px 1fr 320px;gap:18px;padding:14px 32px;border-bottom:1px solid var(--border-soft);align-items:center">
+    <div style="font-family:var(--font-ui);font-size:14px;color:var(--text);letter-spacing:.08em">${label}</div>
+    <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);line-height:1.5">${desc}</div>
+    <div style="display:flex;justify-content:flex-end">${control}</div>
+  </div>`;
+}
+
+function segCtrl(options,active,color){
+  color=color||'var(--gold)';
+  const opts=options.map(o=>{
+    const a=o===active;
+    return`<div style="padding:6px 16px;font-family:var(--font-ui);font-size:13px;letter-spacing:.12em;color:${a?'var(--text-on-gold)':color};background:${a?color:'transparent'};cursor:pointer">${o}</div>`;
+  }).join('');
+  return`<div style="display:inline-flex;border:1px solid ${color}">${opts}</div>`;
+}
+
+function labelSlider(label,value,color){
+  const pct=Math.round(value*100);
+  const c=color||'var(--gold)';
+  return`<div style="display:flex;flex-direction:column;gap:4px;width:100%">
+    <div style="display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-dim);letter-spacing:.08em">${label}</span>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--text);font-variant-numeric:tabular-nums">${pct}</span>
+    </div>
+    <div class="sb-slider">
+      <div class="sb-slider-fill" style="width:${pct}%;background:${c}"></div>
+      <div class="sb-slider-thumb" style="left:${pct}%;background:${c}"></div>
+    </div>
+  </div>`;
+}
+
+function secPad(glyph,text){
+  return`<div style="padding:24px 32px 8px">${sectionLabel(glyph,text)}</div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SUBMENU RENDERERS
+═══════════════════════════════════════════════════════════════ */
+function renderControls(){
+  const keyTest=`<button class="sb-btn sb-btn-sm">${pi('keyboard',11,'currentColor')} KEY TEST</button>`;
+  const bindings=[
+    ['Stop all','ESC'],['Crossfade to next','SPACE'],['Toggle mode','TAB'],
+    ['Search pads','/'],['Open editor','E'],
+  ];
+  return submenuHeader('Controls','input handling · keyboard · start mode · per-key tools',keyTest)+
+    secPad('keyboard','INPUT BEHAVIOR')+
+    settingRow('Start mode','SETUP — always open in setup. GAME — open live. LAST — remember last used.',segCtrl(['SETUP','GAME','LAST'],'LAST'))+
+    settingRow('Enter key stop','SERIAL — stop only the most recently activated sound (LIFO). TOTAL — stop everything.',segCtrl(['SERIAL','TOTAL'],'SERIAL'))+
+    settingRow('Long-press action','What a long-press on a PAD does in GAME mode.',segCtrl(['VOLUME','EDIT','PREVIEW'],'VOLUME'))+
+    secPad('potion','SWITCH SOUND')+
+    settingRow('Mode toggle SFX','Plays when you switch between SETUP and GAME. Leave empty for silence.',
+      `<div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-mute)">no file</span>
+        <button class="sb-btn sb-btn-sm sb-btn-primary">UPLOAD</button>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost">${pi('play',10,'currentColor')}</button>
+      </div>`)+
+    secPad('key','KEY BINDINGS')+
+    bindings.map(([k,v])=>settingRow(k,'',
+      `<div style="display:flex;align-items:center;gap:8px">
+        <span class="sb-num" style="min-width:80px">${v}</span>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost">${pi('edit',10,'currentColor')}</button>
+      </div>`
+    )).join('');
+}
+
+function renderAudio(){
+  return submenuHeader('Audio','output device · master · busses · ducking · crossfade')+
+    secPad('potion','OUTPUT')+
+    settingRow('Output device','System default unless overridden.',
+      `<span class="sb-num" style="min-width:200px">System Default ▾</span>`)+
+    settingRow('Sample rate','Audio engine target. Files are resampled to match.',segCtrl(['44.1k','48k','96k'],'48k'))+
+    secPad('diamond','MASTER & BUSSES')+
+    settingRow('Master volume','Final output gain. Keep below 100 % for headroom.',
+      `<div style="width:260px">${labelSlider('MASTER',0.72)}</div>`)+
+    settingRow('Ambient bus','Default level for loop-type pads on a fresh board.',
+      `<div style="width:260px">${labelSlider('AMB',0.45,'var(--pad-loop)')}</div>`)+
+    settingRow('Stinger bus','Default level for one-shot pads.',
+      `<div style="width:260px">${labelSlider('STG',0.90,'var(--pad-single)')}</div>`)+
+    settingRow('Music bus','Default level for playlist pads.',
+      `<div style="width:260px">${labelSlider('MUS',0.60,'var(--pad-playlist)')}</div>`)+
+    secPad('loop','CROSSFADE & DUCKING')+
+    settingRow('Crossfade between scenes','Loops fade out as new ones fade in. Off = hard cut.',segCtrl(['ON','OFF'],'ON'))+
+    settingRow('Crossfade duration','Default time when switching scenes or playlists.',
+      `<span class="sb-num is-active" style="min-width:80px">800 ms</span>`)+
+    settingRow('Auto-duck on stinger','Loop busses dip when a stinger plays. Subtle but feels professional.',segCtrl(['OFF','LIGHT','STRONG'],'LIGHT'));
+}
+
+function renderDisplay(){
+  const themes=[
+    {id:'hearth',  name:'HEARTH',  bg:'#16162E', accent:'#D4B25C', current:true},
+    {id:'verdant', name:'VERDANT', bg:'#102A20', accent:'#C9A04F'},
+    {id:'neon',    name:'NEON',    bg:'#111E40', accent:'#3DD4F0'},
+    {id:'crimson', name:'CRIMSON', bg:'#20121A', accent:'#D63A3A'},
+  ];
+  const themeGrid=themes.map(t=>`<div style="background:${t.bg};border:1px solid ${t.current?t.accent:'var(--border)'};padding:14px;box-shadow:${t.current?`0 0 0 1px ${t.accent} inset,0 0 16px ${t.accent}55`:'none'};cursor:pointer">
+    <div style="display:flex;gap:4px;margin-bottom:12px">
+      <div style="width:18px;height:18px;background:${t.accent}"></div>
+      <div style="width:18px;height:18px;background:${t.bg};border:1px solid ${t.accent}"></div>
+      <div style="width:18px;height:18px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15)"></div>
+    </div>
+    <div style="font-family:var(--font-ui);font-size:14px;color:${t.accent};letter-spacing:.1em">${t.name}</div>
+    ${t.current?`<div style="font-family:var(--font-mono);font-size:10px;color:${t.accent};margin-top:4px">CURRENT</div>`:''}
+  </div>`).join('');
+  return submenuHeader('Display','theme · font scale · contrast · scanlines · density')+
+    secPad('potion','THEME')+
+    `<div style="padding:8px 32px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px">${themeGrid}</div>`+
+    settingRow('Font scale','Affects body text only. Pixel titles stay at their native size.',
+      `<div style="width:260px">${labelSlider('SCALE',0.55)}</div>`)+
+    settingRow('Pad density','How tightly pads pack on the board.',segCtrl(['LOOSE','NORMAL','DENSE'],'NORMAL'))+
+    settingRow('Pad shape','The corner treatment for every pad.',segCtrl(['STEP','RECT','CI'],'STEP'))+
+    settingRow('Scanlines in GAME mode','Subtle CRT overlay during play. Adds atmosphere, slightly reduces contrast.',segCtrl(['ON','OFF'],'ON'))+
+    settingRow('High contrast','Force WCAG AAA text contrast everywhere. Useful in bright rooms.',segCtrl(['ON','OFF'],'OFF'));
+}
+
+function renderBehavior(){
+  return submenuHeader('Behavior','auto-stop · autosave · screen lock · undo history')+
+    secPad('hourglass','AUTOMATION')+
+    settingRow('Auto-stop','Stop one-shot sounds after their natural end. Off keeps the level meter visible.',segCtrl(['ON','OFF'],'ON'))+
+    settingRow('Autosave','Write board state to disk every N seconds.',
+      `<span class="sb-num is-active" style="min-width:100px">every 30 s</span>`)+
+    settingRow('Undo history','How many steps the Undo stack remembers per board.',
+      `<span class="sb-num" style="min-width:100px">50</span>`)+
+    secPad('moon','SESSION')+
+    settingRow('Screen wake lock','Prevents auto-locking in GAME mode so a Bluetooth numpad keeps working. Does not override a manual screen-off.',segCtrl(['ON','OFF'],'ON'))+
+    settingRow('Restore last board on launch','Open straight into the board you last had open.',segCtrl(['ON','OFF'],'ON'))+
+    settingRow('Confirm before delete','Show a confirmation dialog for any destructive action.',segCtrl(['ALWAYS','PADS+','NEVER'],'ALWAYS'));
+}
+
+function renderData(){
+  const exportBtn=`<button class="sb-btn sb-btn-sm sb-btn-filled">${pi('save',11,'currentColor')} EXPORT BACKUP</button>`;
+  const overdueBanner=`<div style="margin:4px 32px 24px;padding:16px;background:rgba(160,40,40,.08);border:1px solid var(--blood);display:flex;align-items:center;gap:16px">
+    ${pi('hourglass',28,'var(--blood-bright)')}
+    <div>
+      <div style="font-family:var(--font-ui);font-size:14px;color:var(--blood-bright);letter-spacing:.08em;margin-bottom:4px">BACKUP OVERDUE · 3 DAYS</div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">Last export: 22/05/26 · all data stays in browser storage. Export regularly.</div>
+    </div>
+  </div>`;
+  const storageBar=`<div style="width:260px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">
+      <span>162.8 MB</span><span>· 32% of 500 MB</span>
+    </div>
+    <div style="height:6px;background:var(--sunk);border:1px solid var(--border)">
+      <div style="width:32%;height:100%;background:var(--gold)"></div>
+    </div>
+  </div>`;
+  return submenuHeader('Data','backup · import · export · storage · reset',exportBtn)+
+    secPad('save','BACKUP STATUS')+overdueBanner+
+    settingRow('Import data','Load a previously exported .json backup. Overwrites current data.',
+      `<button class="sb-btn sb-btn-sm sb-btn-ghost">${pi('download',11,'currentColor')} IMPORT</button>`)+
+    settingRow('Storage used','Local IndexedDB · audio + pads + boards + icons.',storageBar)+
+    secPad('skull','DANGER ZONE')+
+    settingRow('Clear unused audio','Removes audio files not referenced by any pad. Frees space, irreversible.',
+      `<button class="sb-btn sb-btn-sm sb-btn-danger">CLEAR · 12 FILES</button>`)+
+    settingRow('Reset all data','Wipes pads, boards, audio and icons. Requires confirmation. Cannot be undone.',
+      `<button class="sb-btn sb-btn-sm sb-btn-danger">RESET EVERYTHING</button>`);
+}
+
+function renderAbout(){
+  const logo=`<div style="padding:40px 32px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px">
+    ${pi('flame',72,'var(--flame)')}
+    <div style="font-family:var(--font-display);font-size:18px;color:var(--gold-bright);letter-spacing:.06em;line-height:1.4">SOUNDBOARD<br>OF STORYTELLING</div>
+    <div style="font-family:var(--font-mono);font-size:13px;color:var(--text-dim)">A tool for Game-Masters and other creative Creatures.</div>
+    <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-mute);margin-top:8px">v 150 · build 26 · 23/05/26</div>
+  </div>`;
+  return submenuHeader('About','version · credits · license · acknowledgements')+logo+
+    `<div style="padding:0 32px">${sectionLabel('scroll','CREDITS')}</div>`+
+    settingRow('Design system','Tokens · components · screens — refined collaboratively.',
+      `<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">v2 · 25/05/26</span>`)+
+    settingRow('Audio engine','Web Audio API.',
+      `<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">WebAudio</span>`)+
+    settingRow('Built-in icons','2 289 pixel-art icons.',
+      `<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">open-source</span>`)+
+    settingRow('Source · license','Open source · MIT.',
+      `<button class="sb-btn sb-btn-sm sb-btn-ghost">${pi('download',10,'currentColor')} VIEW</button>`);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECTION SWITCHING
+═══════════════════════════════════════════════════════════════ */
+const RENDERERS={controls:renderControls,audio:renderAudio,display:renderDisplay,behavior:renderBehavior,data:renderData,about:renderAbout};
+
+function setSection(id){
+  SUBMENUS.forEach(s=>{
+    document.getElementById('pb-'+s.id).classList.toggle('active',s.id===id);
+    const navItem=document.getElementById('nav-'+s.id);
+    if(navItem)navItem.classList.toggle('is-active',s.id===id);
+  });
+  document.getElementById('settings-pane').innerHTML=RENDERERS[id]();
+  const sub=SUBMENUS.find(s=>s.id===id);
+  const lbl=sub.label.toLowerCase();
+  document.getElementById('top-breadcrumb').textContent=lbl;
+  document.getElementById('status-section').textContent=lbl;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════ */
+function init(){
+  document.getElementById('ph-sections').innerHTML = pi('cog',12,'currentColor');
+  document.getElementById('icon-search-rail').innerHTML = pi('search',12,'currentColor');
+
+  const navList=document.getElementById('nav-list');
+  navList.innerHTML=SUBMENUS.map(s=>
+    `<div class="nav-item${s.id==='controls'?' is-active':''}" id="nav-${s.id}" onclick="setSection('${s.id}')">
+      <span style="display:flex;flex-shrink:0">${pi(s.icon,18,'currentColor')}</span>
+      <div style="flex:1">
+        <div class="nav-label">${s.label}</div>
+        <div class="nav-count">${s.count}</div>
+      </div>
+    </div>`
+  ).join('');
+
+  setSection('controls');
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SoS — Combo Editor Prototype</title>
+<style>
+/* ── FONTS ── */
+@font-face{font-family:'Press Start 2P';font-display:swap;src:url('../fonts/press-start-2p.woff2') format('woff2')}
+@font-face{font-family:'Share Tech Mono';font-display:swap;src:url('../fonts/share-tech-mono.woff2') format('woff2')}
+@font-face{font-family:'VT323';font-display:swap;src:url('../fonts/vt323.woff2') format('woff2')}
+
+/* ── TOKENS ── */
+:root {
+  --night:#08081A; --deep:#0E0E22; --surface:#16162E; --raised:#22224A; --top:#2D2D60; --sunk:#060614;
+  --border:#383868; --border-soft:#232348; --border-strong:#5252A0; --border-gold:#C9A84C; --border-blood:#A02828;
+  --text:#F0E8D0; --text-strong:#FFFFFF; --text-dim:#B8B0C8; --text-mute:#7E7494; --text-on-gold:#14100A;
+  --gold:#D4B25C; --gold-bright:#F5D57A; --gold-dim:#8A6E34; --gold-soft:rgba(212,178,92,.18);
+  --flame:#E8821E; --blood:#A02828; --blood-bright:#D04545; --blood-soft:rgba(160,40,40,.18);
+  --pad-single:#D4B25C; --pad-loop:#6DB5B8; --pad-playlist:#9D7FC7; --pad-combo:#D18B4A;
+  --pad-single-soft:rgba(212,178,92,.16); --pad-loop-soft:rgba(109,181,184,.16);
+  --pad-playlist-soft:rgba(157,127,199,.16); --pad-combo-soft:rgba(209,139,74,.16);
+  --mode-setup:#6DB5B8; --mode-game:#D4B25C;
+  --font-display:"Press Start 2P","VT323",monospace;
+  --font-ui:"VT323","Share Tech Mono",monospace;
+  --font-mono:"Share Tech Mono","VT323",monospace;
+  --fs-xs:12px; --fs-sm:14px; --fs-md:16px;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px;
+}
+
+/* ── RESET ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:var(--night);color:var(--text);font-family:var(--font-mono);user-select:none;padding-top:36px}
+
+/* ── SB BASE ── */
+.sb{font-family:var(--font-mono);color:var(--text);height:100%;width:100%;box-sizing:border-box;overflow:hidden;position:relative;letter-spacing:.01em;-webkit-font-smoothing:antialiased}
+.sb *,.sb *::before,.sb *::after{box-sizing:border-box}
+.sb ::-webkit-scrollbar{width:8px;height:8px}
+.sb ::-webkit-scrollbar-thumb{background:var(--border)}
+.sb ::-webkit-scrollbar-track{background:var(--sunk)}
+.sb-pix,.sb-btn,.sb-pill{
+  --pix-step:5px;--pix-thick:2px;--pix-bg:var(--surface);--pix-border:var(--border);
+  background:linear-gradient(var(--pix-bg),var(--pix-bg)) padding-box,linear-gradient(var(--pix-border),var(--pix-border)) border-box;
+  border:var(--pix-thick) solid transparent;border-radius:0;
+  clip-path:polygon(0 var(--pix-step),var(--pix-step) var(--pix-step),var(--pix-step) 0,calc(100% - var(--pix-step)) 0,calc(100% - var(--pix-step)) var(--pix-step),100% var(--pix-step),100% calc(100% - var(--pix-step)),calc(100% - var(--pix-step)) calc(100% - var(--pix-step)),calc(100% - var(--pix-step)) 100%,var(--pix-step) 100%,var(--pix-step) calc(100% - var(--pix-step)),0 calc(100% - var(--pix-step)))
+}
+.sb-btn{--pix-step:4px;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);font-family:var(--font-ui);font-size:var(--fs-md);text-transform:uppercase;letter-spacing:.10em;padding:6px var(--space-5);color:var(--text);cursor:pointer}
+.sb-btn:hover{--pix-border:var(--border-gold)}
+.sb-btn-primary{--pix-border:var(--border-gold);color:var(--gold)}
+.sb-btn-filled{--pix-bg:var(--gold);--pix-border:var(--gold);color:var(--text-on-gold)}
+.sb-btn-ghost{--pix-bg:transparent;--pix-border:var(--border-soft);color:var(--text-dim)}
+.sb-btn-danger{--pix-bg:transparent;--pix-border:var(--border-blood);color:var(--blood-bright)}
+.sb-btn-sm{--pix-step:3px;font-size:var(--fs-sm);padding:3px var(--space-3)}
+.sb-pill{--pix-step:3px;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);--pix-bg:var(--sunk);--pix-border:var(--border-soft);padding:2px 10px}
+.sb-pill .sb-dot{width:6px;height:6px;background:var(--text-mute);display:inline-block;flex-shrink:0}
+.sb-pill.is-on{--pix-border:var(--gold);color:var(--gold-bright)}
+.sb-pill.is-on .sb-dot{background:var(--gold);box-shadow:0 0 6px var(--gold)}
+.sb-pill.is-loop{--pix-border:var(--pad-loop);color:var(--pad-loop)}
+.sb-pill.is-loop .sb-dot{background:var(--pad-loop)}
+.sb-pill.is-combo{--pix-border:var(--pad-combo);color:var(--pad-combo)}
+.sb-pill.is-combo .sb-dot{background:var(--pad-combo)}
+.sb-panel-header{display:flex;align-items:center;gap:var(--space-2);height:28px;padding:0 var(--space-3);background:var(--deep);border-bottom:1px solid var(--border-soft);font-family:var(--font-ui);font-size:var(--fs-sm);letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);flex-shrink:0}
+.sb-panel-header.is-active{color:var(--gold)}
+.sb-status-bar{display:flex;align-items:center;gap:var(--space-4);height:24px;padding:0 var(--space-3);background:var(--deep);border-top:1px solid var(--border-soft);font-family:var(--font-mono);font-size:11px;color:var(--text-mute);letter-spacing:.04em;flex-shrink:0}
+.sb-status-section{display:flex;align-items:center;gap:6px;padding-right:var(--space-4);border-right:1px solid var(--border-soft)}
+.sb-mode-badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-ui);font-size:var(--fs-md);text-transform:uppercase;letter-spacing:.14em;padding:3px 10px}
+.sb-mode-badge.is-setup{background:repeating-linear-gradient(45deg,var(--mode-setup) 0 4px,transparent 4px 8px),var(--sunk);color:var(--mode-setup);border:1px solid var(--mode-setup)}
+.sb-slider{position:relative;height:6px;background:var(--sunk);border:1px solid var(--border-soft);overflow:hidden}
+.sb-slider-fill{position:absolute;inset:0 auto 0 0;background:var(--gold)}
+.sb-slider-thumb{position:absolute;top:50%;width:12px;height:12px;background:var(--gold);transform:translate(-50%,-50%);box-shadow:0 0 6px var(--gold-bright)}
+.sb-num{display:inline-flex;align-items:center;justify-content:space-between;min-width:50px;padding:2px 6px;background:var(--sunk);border:1px solid var(--border-soft);font-family:var(--font-mono);font-size:var(--fs-sm);color:var(--text)}
+.sb-inspector{background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:auto}
+.sb-inspector-section{padding:var(--space-3);border-bottom:1px solid var(--border-soft)}
+
+/* ── LAYOUT ── */
+#app{display:flex;flex-direction:column;height:calc(100% - 36px);background:var(--night)}
+#ce-top-bar{display:grid;grid-template-columns:180px 1fr 180px;align-items:center;gap:12px;padding:8px 16px;background:var(--deep);border-bottom:1px solid var(--border);flex-shrink:0}
+#ce-toolbar{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 2px 0 rgba(0,0,0,.3);flex-shrink:0}
+#ce-body{display:grid;grid-template-columns:1fr 320px;flex:1;min-height:0;overflow:hidden}
+#ce-main{background:var(--surface);display:flex;flex-direction:column;min-height:0}
+#ce-scroll{flex:1;min-height:0;overflow:auto;padding:16px 22px}
+#ce-palette{border-top:1px solid var(--border);background:var(--deep);max-height:168px;display:flex;flex-direction:column;flex-shrink:0}
+.ce-palette-header{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border-soft);flex-shrink:0}
+#ce-palette-chips{padding:10px 16px;display:flex;flex-wrap:wrap;gap:5px;overflow:auto}
+
+/* ── INPUT ── */
+.ce-input{width:100%;padding:6px 8px;background:var(--sunk);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:14px;outline:none}
+.ce-input:focus{border-color:var(--border-strong)}
+.ce-field{display:flex;flex-direction:column;gap:4px}
+.ce-field-label{font-family:var(--font-ui);font-size:11px;color:var(--text-mute);letter-spacing:.18em}
+.ce-field-hint{font-family:var(--font-mono);font-size:10px;color:var(--text-mute)}
+
+/* ── PROTOTYPE BAR ── */
+#proto-bar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;gap:4px;padding:6px 10px;background:rgba(8,8,26,.9);border-bottom:1px solid var(--border-soft);backdrop-filter:blur(8px)}
+.pb-btn{background:transparent;border:1px solid var(--border-soft);color:var(--text-mute);font-family:var(--font-ui);font-size:13px;padding:2px 9px;cursor:pointer;border-radius:2px;transition:all .15s;line-height:1.4}
+.pb-btn:hover{border-color:var(--gold);color:var(--gold)}
+.pb-btn.active{border-color:var(--gold);color:var(--gold);background:var(--gold-soft)}
+.pb-sep{flex:1}
+.pb-link{color:var(--text-mute);font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-decoration:none;padding:4px 6px}
+.pb-link:hover{color:var(--text-dim)}
+</style>
+</head>
+<body>
+
+<!-- ── PROTOTYPE CONTROLS ── -->
+<div id="proto-bar">
+  <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-mute);padding:4px 6px;letter-spacing:1px">PROTO</span>
+  <button class="pb-btn active">COMBO EDITOR</button>
+  <span class="pb-sep"></span>
+  <a class="pb-link" href="menu.html">Menu</a>
+  <a class="pb-link" href="board.html">Board</a>
+  <a class="pb-link" href="library.html">Library</a>
+  <a class="pb-link" href="settings.html">Settings</a>
+  <a class="pb-link" href="tips-about.html">Tips &amp; About</a>
+  <a class="pb-link" href="pad-editor.html">PAD Editor</a>
+</div>
+
+<!-- ══════════════ COMBO EDITOR APP ══════════════ -->
+<div id="app" class="sb">
+
+  <!-- ── TOP BAR ── -->
+  <div id="ce-top-bar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="color:var(--text-dim);cursor:pointer">
+        <svg width="18" height="13" viewBox="0 0 18 13" fill="currentColor"><rect x="0" y="0" width="18" height="2"/><rect x="0" y="5" width="18" height="2"/><rect x="0" y="11" width="18" height="2"/></svg>
+      </div>
+      <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);letter-spacing:.12em">MENU</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+      <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-mute)">The Tavern</span>
+      <span style="color:var(--border-strong)">›</span>
+      <span style="font-family:var(--font-ui);font-size:15px;color:var(--text);letter-spacing:.06em">COMBO EDITOR</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:flex-end">
+      <span class="sb-mode-badge is-setup">SETUP</span>
+    </div>
+  </div>
+
+  <!-- ── STICKY EDITOR TOOLBAR ── -->
+  <div id="ce-toolbar">
+    <div style="display:flex;align-items:center;gap:6px;color:var(--text-dim);cursor:pointer">
+      <span style="font-size:18px">←</span>
+      <span style="font-family:var(--font-ui);font-size:12px;letter-spacing:.1em">BACK</span>
+    </div>
+    <div style="width:1px;height:32px;background:var(--border-soft)"></div>
+    <div id="toolbar-minipad"></div>
+    <div style="flex:1;min-width:0">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);letter-spacing:.14em;text-transform:uppercase;margin-bottom:2px">EDITING COMBO-PAD</div>
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <span style="font-family:var(--font-ui);font-size:18px;color:var(--text);letter-spacing:.04em">WIN</span>
+        <span style="font-family:var(--font-mono);font-size:11px;padding:1px 5px;background:var(--sunk);border:1px solid var(--border-soft);color:var(--text-dim)">.</span>
+        <span class="sb-pill is-combo" style="font-size:9px"><span class="sb-dot"></span>COMBO</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-mute)">· 3 steps · 5 pads · 1 bg loop</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" id="toolbar-preview"></button>
+      <button class="sb-btn sb-btn-sm sb-btn-ghost">CANCEL</button>
+      <button class="sb-btn sb-btn-sm sb-btn-filled" id="toolbar-save"></button>
+    </div>
+    <div style="width:1px;height:32px;background:var(--border-soft)"></div>
+    <button class="sb-btn sb-btn-sm sb-btn-danger" id="toolbar-delete"></button>
+  </div>
+
+  <!-- ── BODY: LEFT + RIGHT ── -->
+  <div id="ce-body">
+
+    <!-- LEFT COLUMN -->
+    <main id="ce-main">
+      <div id="ce-scroll">
+
+        <!-- Identity: NAME + KEY -->
+        <div style="display:grid;grid-template-columns:1fr 220px;gap:18px;margin-bottom:18px">
+          <div class="ce-field">
+            <span class="ce-field-label">NAME</span>
+            <span class="ce-field-hint">shown on the pad and in search</span>
+            <input class="ce-input" type="text" value="WIN">
+          </div>
+          <div class="ce-field">
+            <span class="ce-field-label">KEY</span>
+            <span class="ce-field-hint">single key or combo</span>
+            <div style="display:flex;align-items:center;gap:8px" id="key-field"></div>
+          </div>
+        </div>
+
+        <!-- Visual icons -->
+        <div id="visual-section-label"></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:22px">
+          <div style="aspect-ratio:4/3;background:var(--sunk);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-mute);font-family:var(--font-display);font-size:14px">+</div>
+          <div style="aspect-ratio:4/3;background:var(--sunk);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-mute);font-family:var(--font-display);font-size:14px">+</div>
+          <div style="aspect-ratio:4/3;background:var(--sunk);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-mute);font-family:var(--font-display);font-size:14px">+</div>
+          <div style="aspect-ratio:4/3;background:var(--sunk);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-mute);font-family:var(--font-display);font-size:14px">+</div>
+        </div>
+
+        <!-- Steps header -->
+        <div style="display:flex;align-items:center;margin-bottom:8px">
+          <div id="steps-section-label" style="flex:1"></div>
+          <button class="sb-btn sb-btn-sm sb-btn-ghost" style="padding:3px 10px">+ STEP</button>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:14px">
+          // Pads within the same step start <span style="color:var(--gold)">simultaneously</span>. Steps run <span style="color:var(--gold)">sequentially</span> — the next step begins only when all pads of the previous one have finished. A loop set to <span style="color:var(--pad-loop)">∞</span> runs as a <span style="color:var(--pad-loop)">background sound</span> and does not block the next step.
+        </div>
+
+        <!-- Steps list (JS-filled) -->
+        <div id="steps-list" style="display:flex;flex-direction:column"></div>
+
+        <!-- Trailing add -->
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-top:14px;padding:8px 14px">
+          <span style="font-family:var(--font-display);font-size:11px;margin-right:4px">+</span> ADD STEP
+        </button>
+      </div>
+
+      <!-- DRAG-FROM PALETTE (pinned bottom) -->
+      <div id="ce-palette">
+        <div class="ce-palette-header">
+          <span id="palette-icon"></span>
+          <span style="font-family:var(--font-ui);font-size:11px;color:var(--gold);letter-spacing:.14em">PADS · DRAG TO ADD</span>
+          <div style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:3px 8px;background:var(--sunk);border:1px solid var(--border);color:var(--text-mute)">
+            <span id="palette-search-icon"></span>
+            <span style="font-family:var(--font-mono);font-size:11px">Find a pad…</span>
+          </div>
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute)">27 available</span>
+        </div>
+        <div id="ce-palette-chips"></div>
+      </div>
+    </main>
+
+    <!-- RIGHT: INSPECTOR -->
+    <aside class="sb-inspector">
+
+      <!-- HOW STEPS WORK -->
+      <div class="sb-panel-header is-active">
+        <span id="insp-icon-info"></span>
+        HOW STEPS WORK
+      </div>
+      <div class="sb-inspector-section">
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);line-height:1.6;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:6px;align-items:flex-start">
+            <span style="color:var(--gold)">▸</span>
+            <span>Pads in a step play together.</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:flex-start">
+            <span style="color:var(--gold)">▸</span>
+            <span>The next step waits for the slowest one to finish.</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:flex-start">
+            <span style="color:var(--pad-loop)">▸</span>
+            <span>Loops set to <b style="color:var(--pad-loop)">∞</b> run as background and never block — they stop when the combo ends.</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:flex-start">
+            <span style="color:var(--blood)">▸</span>
+            <span>Drop <b style="color:var(--blood)">STOP ALL</b> or <b style="color:var(--gold)">FADE OUT ALL</b> in a step to cut background loops mid-combo.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMBO STATS -->
+      <div class="sb-panel-header">
+        <span id="insp-icon-diamond"></span>
+        COMBO STATS
+      </div>
+      <div class="sb-inspector-section" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;padding:2px 0;gap:8px">
+          <span style="flex:1;font-family:var(--font-ui);font-size:12px;color:var(--text-mute);letter-spacing:.12em">STEPS</span>
+          <span class="sb-num">3</span>
+        </div>
+        <div style="display:flex;align-items:center;padding:2px 0;gap:8px">
+          <span style="flex:1;font-family:var(--font-ui);font-size:12px;color:var(--text-mute);letter-spacing:.12em">PADS TOTAL</span>
+          <span class="sb-num">5</span>
+        </div>
+        <div style="display:flex;align-items:center;padding:2px 0;gap:8px">
+          <span style="flex:1;font-family:var(--font-ui);font-size:12px;color:var(--text-mute);letter-spacing:.12em">BACKGROUND LOOPS</span>
+          <span class="sb-pill is-loop" style="font-size:9px"><span class="sb-dot"></span>1</span>
+        </div>
+        <div style="display:flex;align-items:center;padding:2px 0;gap:8px">
+          <span style="flex:1;font-family:var(--font-ui);font-size:12px;color:var(--text-mute);letter-spacing:.12em">EST. DURATION</span>
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--text)">~12 s + bg loops</span>
+        </div>
+      </div>
+
+      <!-- PLAYBACK -->
+      <div class="sb-panel-header">
+        <span id="insp-icon-potion"></span>
+        PLAYBACK
+      </div>
+      <div class="sb-inspector-section" style="display:flex;flex-direction:column;gap:12px">
+        <div id="insp-slider-vol"></div>
+        <div id="insp-slider-fadein"></div>
+        <div id="insp-slider-fadeout"></div>
+        <div style="display:flex;align-items:center;padding:2px 0;gap:8px">
+          <span style="flex:1;font-family:var(--font-ui);font-size:12px;color:var(--text-mute);letter-spacing:.12em">ON STOP</span>
+          <div style="display:flex;gap:4px">
+            <span class="sb-pill is-on" style="font-size:9px">FADED</span>
+            <span class="sb-pill" style="font-size:9px">HARD</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- META -->
+      <div class="sb-panel-header">
+        <span id="insp-icon-tag"></span>
+        META
+      </div>
+      <div class="sb-inspector-section" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;padding:2px 0;gap:8px">
+          <span style="flex:1;font-family:var(--font-ui);font-size:12px;color:var(--text-mute);letter-spacing:.12em">FOLDER</span>
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">Climax ▾</span>
+        </div>
+        <div style="display:flex;align-items:center;padding:2px 0;gap:8px">
+          <span style="flex:1;font-family:var(--font-ui);font-size:12px;color:var(--text-mute);letter-spacing:.12em">TAGS</span>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <span class="sb-pill is-combo" style="font-size:9px">victory</span>
+            <span class="sb-pill" style="font-size:9px;color:var(--text-mute)">+</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div><!-- /#ce-body -->
+
+  <!-- ── STATUS BAR ── -->
+  <div class="sb-status-bar">
+    <div class="sb-status-section">
+      <div style="width:8px;height:8px;background:var(--mode-setup);border-radius:50%"></div>
+      SETUP
+    </div>
+    <div class="sb-status-section">Combo Editor · WIN</div>
+    <div class="sb-status-section">3 steps · 5 pads · 1 bg loop</div>
+    <div style="flex:1"></div>
+    <span style="color:var(--gold)">● unsaved changes</span>
+    <span style="padding-left:var(--space-4);border-left:1px solid var(--border-soft)">ESC cancel · ⌘S save · ⇧⌫ delete</span>
+  </div>
+
+</div><!-- /#app -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   PIXEL ICONS
+═══════════════════════════════════════════════════════════════ */
+(function(root){'use strict';
+const ICONS=[
+  {id:'flame',d:['7 1','8 1','6 2','7 2','8 2','9 2','5 3','6 3','8 3','9 3','10 3','5 4','6 4','7 4','8 4','9 4','10 4','11 4','4 5','5 5','7 5','9 5','10 5','11 5','4 6','5 6','6 6','9 6','10 6','11 6','12 6','3 7','4 7','5 7','6 7','7 7','9 7','10 7','11 7','12 7','3 8','4 8','5 8','6 8','7 8','8 8','10 8','11 8','12 8','3 9','4 9','5 9','6 9','7 9','8 9','9 9','10 9','11 9','12 9','3 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','12 10','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','5 12','6 12','7 12','8 12','9 12','10 12','6 13','7 13','8 13','9 13']},
+  {id:'play',d:['5 3','5 4','5 5','5 6','5 7','5 8','5 9','5 10','5 11','5 12','6 4','6 5','6 6','6 7','6 8','6 9','6 10','6 11','7 5','7 6','7 7','7 8','7 9','7 10','8 6','8 7','8 8','8 9','9 7','9 8']},
+  {id:'loop',d:['5 4','6 4','7 4','8 4','9 4','10 4','4 5','11 5','3 6','12 6','3 7','12 7','11 7','3 8','12 8','10 8','3 9','12 9','9 9','10 9','11 9','4 10','11 10','5 11','6 11','7 11','8 11','9 11','10 11']},
+  {id:'save',d:['3 3','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','3 4','11 4','12 4','3 5','5 5','6 5','7 5','8 5','12 5','3 6','5 6','7 6','12 6','3 7','12 7','3 8','12 8','3 9','5 9','6 9','7 9','8 9','9 9','12 9','3 10','5 10','9 10','12 10','3 11','5 11','9 11','12 11','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12']},
+  {id:'search',d:['5 3','6 3','7 3','8 3','4 4','9 4','3 5','10 5','3 6','10 6','3 7','10 7','3 8','10 8','4 9','9 9','5 10','6 10','7 10','8 10','10 10','11 11','12 11','12 12','13 12']},
+  {id:'scroll',d:['3 3','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','2 4','12 4','3 5','4 5','5 5','6 5','7 5','8 5','9 5','10 5','11 5','3 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6','3 7','5 7','7 7','8 7','9 7','11 7','3 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','3 9','5 9','6 9','7 9','8 9','9 9','11 9','3 10','11 10','3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','2 12','12 12','3 13','4 13','5 13','6 13','7 13','8 13','9 13','10 13','11 13']},
+  {id:'diamond',d:['7 4','8 4','6 5','7 5','8 5','9 5','5 6','6 6','7 6','8 6','9 6','10 6','4 7','5 7','6 7','7 7','8 7','9 7','10 7','11 7','4 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','5 9','6 9','7 9','8 9','9 9','10 9','6 10','7 10','8 10','9 10','7 11','8 11']},
+  {id:'skull',d:['5 3','6 3','7 3','8 3','9 3','10 3','4 4','11 4','3 5','12 5','3 6','5 6','6 6','9 6','10 6','12 6','3 7','5 7','6 7','9 7','10 7','12 7','3 8','12 8','3 9','7 9','8 9','12 9','4 10','11 10','5 11','6 11','7 11','8 11','9 11','10 11','5 12','7 12','9 12','5 13','7 13','9 13']},
+  {id:'info',d:['6 2','7 2','8 2','9 2','5 3','10 3','4 4','7 4','8 4','11 4','4 5','11 5','4 6','7 6','8 6','11 6','4 7','6 7','7 7','8 7','11 7','4 8','7 8','8 8','11 8','4 9','7 9','8 9','11 9','4 10','7 10','8 10','11 10','5 11','7 11','8 11','10 11','6 12','7 12','8 12','9 12']},
+  {id:'hourglass',d:['3 2','4 2','5 2','6 2','7 2','8 2','9 2','10 2','11 2','12 2','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','5 4','6 4','7 4','8 4','9 4','10 4','6 5','7 5','8 5','9 5','7 6','8 6','6 7','7 7','8 7','9 7','5 8','6 8','9 8','10 8','4 9','5 9','10 9','11 9','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','12 11','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12']},
+  {id:'potion',d:['6 2','7 2','8 2','9 2','6 3','9 3','6 4','7 4','8 4','9 4','6 5','7 5','8 5','9 5','4 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6','3 7','11 7','2 8','7 8','8 8','12 8','2 9','5 9','6 9','7 9','8 9','9 9','10 9','12 9','2 10','5 10','6 10','7 10','8 10','9 10','10 10','12 10','2 11','5 11','6 11','7 11','8 11','9 11','10 11','12 11','3 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','3 13','4 13','5 13','6 13','7 13','8 13','9 13','10 13','11 13','12 13']},
+  {id:'eye',d:['6 4','7 4','8 4','9 4','4 5','5 5','10 5','11 5','2 6','3 6','12 6','13 6','1 7','14 7','1 8','6 8','7 8','8 8','9 8','14 8','1 9','6 9','7 9','8 9','9 9','14 9','2 10','3 10','12 10','13 10','4 11','5 11','10 11','11 11','6 12','7 12','8 12','9 12']},
+  {id:'rune',d:['7 2','8 2','6 3','7 3','8 3','9 3','6 4','9 4','5 5','10 5','5 6','10 6','4 7','11 7','4 8','7 8','8 8','11 8','3 9','12 9','2 10','3 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','12 10','13 10','7 11','8 11','7 12','8 12','6 13','7 13','8 13','9 13']},
+  {id:'tag',d:['3 6','4 6','5 6','6 6','7 6','8 6','9 6','10 6','3 7','10 7','11 7','3 8','11 8','12 8','3 9','12 9','3 10','11 10','12 10','3 11','10 11','11 11','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','5 9','6 9']},
+];
+const BY_ID={};for(let i=0;i<ICONS.length;i++)BY_ID[ICONS[i].id]=ICONS[i];
+function pixelIcon(id,size,color){size=size||16;color=color||'currentColor';const def=BY_ID[id];if(!def)return`<svg width="${size}" height="${size}" viewBox="0 0 16 16"></svg>`;let r='';for(let i=0;i<def.d.length;i++){const p=def.d[i].split(' ');r+=`<rect x="${p[0]}" y="${p[1]}" width="1" height="1" fill="${color}"/>`}return`<svg width="${size}" height="${size}" viewBox="0 0 16 16" shape-rendering="crispEdges" style="display:block">${r}</svg>`}
+root.pixelIcon=pixelIcon;
+})(window);
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════ */
+function pi(id,size,color){return pixelIcon(id,size,color)}
+
+function sectionLabel(glyph,text){
+  return`<div style="display:flex;align-items:center;gap:8px;margin:4px 0 10px">
+    ${pi(glyph,13,'var(--gold)')}
+    <span style="font-family:var(--font-ui);font-size:11px;color:var(--gold);letter-spacing:.18em;text-transform:uppercase;font-weight:bold">${text}</span>
+    <div style="flex:1;height:1px;background-image:repeating-linear-gradient(90deg,var(--gold-dim) 0,var(--gold-dim) 2px,transparent 2px,transparent 6px);margin-left:4px"></div>
+    ${pi(glyph,13,'var(--gold)')}
+  </div>`;
+}
+
+function miniPad(type,name,hk){
+  const c=`var(--pad-${type})`;
+  const iconName=type==='single'?'flame':type==='loop'?'loop':type==='playlist'?'scroll':'rune';
+  const hkEl=hk?`<div style="font-family:var(--font-ui);font-size:11px;color:var(--gold)">${hk}</div>`:'<div></div>';
+  return`<div style="width:70px;height:70px;background:var(--surface);border:1px solid var(--border);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:5px 4px 4px;flex-shrink:0">
+    <div style="position:absolute;top:0;bottom:0;left:0;width:3px;background:${c}"></div>
+    ${hkEl}
+    <div style="color:${c}">${pi(iconName,24,c)}</div>
+    <div style="font-family:var(--font-ui);font-size:9px;color:var(--gold);letter-spacing:.04em">${name}</div>
+  </div>`;
+}
+
+function keyCap(text,kind){
+  const W=text.length>4;
+  const C={game:{stroke:'var(--gold)',text:'var(--gold-bright)',face:'var(--surface)'}}[kind]
+    ||{stroke:'var(--border-strong)',text:'var(--text)',face:'var(--raised)'};
+  return`<div style="display:inline-block;position:relative;min-width:${W?96:36}px">
+    <div style="position:absolute;top:3px;left:3px;right:-3px;bottom:-3px;background:var(--sunk);border:1px solid ${C.stroke};opacity:.6;z-index:0"></div>
+    <div style="position:relative;z-index:1;padding:${W?'8px 14px':'6px 8px'};min-height:32px;background:${C.face};border:2px solid ${C.stroke};color:${C.text};font-family:var(--font-ui);font-size:14px;letter-spacing:.06em;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1">${text}</div>
+  </div>`;
+}
+
+function labelSlider(label,pct,color){
+  return`<div style="display:flex;flex-direction:column;gap:6px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-dim);letter-spacing:.1em">${label}</span>
+      <span style="font-family:var(--font-mono);font-size:12px;color:var(--text)">${Math.round(pct*100)}%</span>
+    </div>
+    <div class="sb-slider">
+      <div class="sb-slider-fill" style="width:${pct*100}%;background:${color}"></div>
+      <div class="sb-slider-thumb" style="left:${pct*100}%;background:${color};box-shadow:0 0 6px ${color}"></div>
+    </div>
+  </div>`;
+}
+
+function chipX(color){
+  return`<span style="margin-left:4px;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;color:${color};opacity:.65;font-family:var(--font-display);font-size:9px;line-height:1;cursor:pointer">×</span>`;
+}
+
+function padChip(pad,inStep){
+  if(pad.kind==='stop'){
+    return`<div style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;background:rgba(160,40,40,.14);border:1px solid var(--blood);${inStep?'':'cursor:grab'}">
+      <span style="width:8px;height:8px;background:var(--blood-bright);display:inline-block;flex-shrink:0"></span>
+      <span style="font-family:var(--font-ui);font-size:11px;color:var(--blood-bright);letter-spacing:.1em">STOP ALL</span>
+      ${inStep?chipX('var(--blood)'):''}
+    </div>`;
+  }
+  if(pad.kind==='fade'){
+    return`<div style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;background:rgba(212,178,92,.14);border:1px solid var(--gold);${inStep?'':'cursor:grab'}">
+      ${pi('hourglass',11,'var(--gold)')}
+      <span style="font-family:var(--font-ui);font-size:11px;color:var(--gold);letter-spacing:.1em">FADE OUT ALL</span>
+      ${inStep?chipX('var(--gold)'):''}
+    </div>`;
+  }
+  const color=`var(--pad-${pad.kind})`;
+  const iconName=pad.kind==='loop'?'loop':pad.kind==='playlist'?'scroll':pad.kind==='combo'?'rune':'play';
+  const borderC=inStep?color:'var(--border)';
+  const bgC=inStep?`var(--pad-${pad.kind}-soft)`:'var(--raised)';
+  const noteEl=inStep&&pad.note?`<span style="font-family:var(--font-mono);font-size:9px;color:${pad.note.includes('∞')?'var(--pad-loop)':'var(--text-mute)'};letter-spacing:.06em">${pad.note}</span>`:'';
+  return`<div style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;background:${bgC};border:1px solid ${borderC};${inStep?'':'cursor:grab'}">
+    ${pi(iconName,11,color)}
+    <span style="font-family:var(--font-mono);font-size:12px;color:${inStep?'var(--text)':'var(--text-dim)'}">${pad.name}</span>
+    ${noteEl}
+    ${inStep?chipX(color):''}
+  </div>`;
+}
+
+function stepBlock(step,idx){
+  const hasLoop=step.pads.some(p=>p.kind==='loop');
+  return`<div style="background:var(--raised);border:1px solid var(--border);border-left:3px solid var(--pad-combo);padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;background:var(--pad-combo);color:var(--text-on-gold);display:flex;align-items:center;justify-content:center;font-family:var(--font-ui);font-size:14px;flex-shrink:0">${idx}</div>
+      <div>
+        <div style="font-family:var(--font-ui);font-size:13px;color:var(--pad-combo);letter-spacing:.14em">STEP ${idx}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute)">${step.pads.length} pad${step.pads.length===1?'':'s'}${hasLoop?'<span style="color:var(--pad-loop)"> · contains ∞ background</span>':''}</div>
+      </div>
+      <div style="flex:1"></div>
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" style="padding:2px 8px">
+        <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" stroke-width="1.4"><line x1="2" y1="2" x2="7" y2="2"/><circle cx="2" cy="4.5" r=".8" fill="currentColor"/><line x1="3.5" y1="4.5" x2="7" y2="4.5"/><circle cx="2" cy="7" r=".8" fill="currentColor"/><line x1="3.5" y1="7" x2="7" y2="7"/></svg>
+      </button>
+      <button class="sb-btn sb-btn-sm sb-btn-danger" style="padding:2px 8px">×</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">
+      ${step.pads.map(p=>padChip(p,true)).join('')}
+      <button style="padding:4px 10px;border:1px dashed var(--border-strong);color:var(--text-mute);background:transparent;font-family:var(--font-ui);font-size:11px;letter-spacing:.1em;cursor:pointer">+ DROP PAD</button>
+    </div>
+  </div>`;
+}
+
+function insertStepDivider(){
+  return`<div style="position:relative;height:24px;display:flex;align-items:center;justify-content:center">
+    <div style="position:absolute;left:22px;right:22px;top:50%;height:1px;background:var(--border-soft);background-image:repeating-linear-gradient(90deg,var(--border) 0 4px,transparent 4px 8px)"></div>
+    <button class="sb-btn sb-btn-sm sb-btn-ghost" style="padding:2px 12px;position:relative;background:var(--surface);z-index:1">+ INSERT STEP</button>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════════════════ */
+const STEPS=[
+  {id:1,pads:[
+    {kind:'loop',    name:'Heartbeat', note:'background · ∞'},
+    {kind:'single',  name:'Thunder',   note:'0:03'},
+  ]},
+  {id:2,pads:[
+    {kind:'single',  name:'bell deep', note:'0:06'},
+  ]},
+  {id:3,pads:[
+    {kind:'playlist',name:'victory music',              note:'list · 3:24'},
+    {kind:'single',  name:'crowd applause cheers double',note:'0:05'},
+  ]},
+];
+
+const PAD_LIBRARY=[
+  {kind:'stop',     name:'STOP ALL'},
+  {kind:'fade',     name:'FADE OUT ALL'},
+  {kind:'loop',     name:'NIGHT'},
+  {kind:'loop',     name:'DAY'},
+  {kind:'loop',     name:'Wind'},
+  {kind:'loop',     name:'ghost_whisper_01'},
+  {kind:'loop',     name:'Rain'},
+  {kind:'playlist', name:'Playlist_Music_BotC'},
+  {kind:'single',   name:'bell deep'},
+  {kind:'single',   name:'Rooster'},
+  {kind:'single',   name:'Thunder'},
+  {kind:'single',   name:'Sword hit with Blood and Hall'},
+  {kind:'single',   name:'hammer'},
+  {kind:'loop',     name:'clock ticking js'},
+  {kind:'single',   name:'wolf howl'},
+  {kind:'single',   name:'witch 01'},
+  {kind:'loop',     name:'fire'},
+  {kind:'loop',     name:'gear runnig'},
+  {kind:'single',   name:'fall body'},
+  {kind:'single',   name:'ghost 01'},
+  {kind:'playlist', name:'victory music'},
+  {kind:'loop',     name:'gear clicking loop'},
+  {kind:'loop',     name:'ticking clock light'},
+  {kind:'loop',     name:'Clocktower'},
+  {kind:'single',   name:'Kill'},
+  {kind:'single',   name:'boom cinematic'},
+  {kind:'single',   name:'Anklage'},
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT — inject all dynamic content
+═══════════════════════════════════════════════════════════════ */
+
+// Toolbar MiniPad
+document.getElementById('toolbar-minipad').innerHTML=miniPad('combo','WIN','.');
+
+// Toolbar buttons with icons
+document.getElementById('toolbar-preview').innerHTML=pi('play',10,'currentColor')+' PREVIEW';
+document.getElementById('toolbar-save').innerHTML=pi('save',10,'var(--text-on-gold)')+' SAVE';
+document.getElementById('toolbar-delete').innerHTML=pi('skull',10,'currentColor')+' DELETE';
+
+// Key field
+document.getElementById('key-field').innerHTML=keyCap('.','game')+'<button class="sb-btn sb-btn-sm sb-btn-ghost" style="padding:3px 8px">CAPTURE</button>';
+
+// Section labels
+document.getElementById('visual-section-label').innerHTML=sectionLabel('eye','VISUAL · optional · up to 4 icons');
+document.getElementById('steps-section-label').innerHTML=sectionLabel('rune','STEPS');
+
+// Palette icons
+document.getElementById('palette-icon').innerHTML=pi('diamond',10,'var(--gold)');
+document.getElementById('palette-search-icon').innerHTML=pi('search',10,'currentColor');
+
+// Inspector panel header icons
+document.getElementById('insp-icon-info').innerHTML=pi('info',12,'currentColor');
+document.getElementById('insp-icon-diamond').innerHTML=pi('diamond',12,'currentColor');
+document.getElementById('insp-icon-potion').innerHTML=pi('potion',12,'currentColor');
+document.getElementById('insp-icon-tag').innerHTML=pi('tag',12,'currentColor');
+
+// Inspector sliders
+document.getElementById('insp-slider-vol').innerHTML=labelSlider('MASTER VOLUME',0.80,'var(--pad-combo)');
+document.getElementById('insp-slider-fadein').innerHTML=labelSlider('FADE IN',0.10,'var(--pad-combo)');
+document.getElementById('insp-slider-fadeout').innerHTML=labelSlider('FADE OUT',0.30,'var(--pad-combo)');
+
+// Step blocks
+const stepsEl=document.getElementById('steps-list');
+stepsEl.innerHTML=STEPS.map((s,i)=>
+  stepBlock(s,i+1)+(i<STEPS.length-1?insertStepDivider():'')
+).join('');
+
+// Palette chips
+document.getElementById('ce-palette-chips').innerHTML=PAD_LIBRARY.map(p=>padChip(p,false)).join('');
+</script>
+</body>
+</html>

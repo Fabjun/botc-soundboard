@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SoS — Board Prototype</title>
+<style>
+/* ── FONTS ── */
+@font-face{font-family:'Press Start 2P';font-display:swap;src:url('../fonts/press-start-2p.woff2') format('woff2')}
+@font-face{font-family:'Share Tech Mono';font-display:swap;src:url('../fonts/share-tech-mono.woff2') format('woff2')}
+@font-face{font-family:'VT323';font-display:swap;src:url('../fonts/vt323.woff2') format('woff2')}
+
+/* ── TOKENS ── */
+:root {
+  --night:#08081A; --deep:#0E0E22; --surface:#16162E; --raised:#22224A; --top:#2D2D60; --sunk:#060614;
+  --border:#383868; --border-soft:#232348; --border-strong:#5252A0; --border-gold:#C9A84C; --border-blood:#A02828;
+  --text:#F0E8D0; --text-strong:#FFFFFF; --text-dim:#B8B0C8; --text-mute:#7E7494; --text-on-gold:#14100A;
+  --gold:#D4B25C; --gold-bright:#F5D57A; --gold-dim:#8A6E34; --gold-soft:rgba(212,178,92,.18);
+  --flame:#E8821E; --blood:#A02828; --blood-bright:#D04545; --blood-soft:rgba(160,40,40,.18);
+  --pad-single:#D4B25C;  --pad-single-soft:rgba(212,178,92,.16);  --pad-single-glow:rgba(245,213,122,.55);
+  --pad-loop:#6DB5B8;    --pad-loop-soft:rgba(109,181,184,.16);   --pad-loop-glow:rgba(141,213,216,.55);
+  --pad-playlist:#9D7FC7;--pad-playlist-soft:rgba(157,127,199,.16);--pad-playlist-glow:rgba(189,159,231,.55);
+  --pad-combo:#D18B4A;   --pad-combo-soft:rgba(209,139,74,.16);   --pad-combo-glow:rgba(241,171,90,.55);
+  --mode-setup:#6DB5B8; --mode-setup-soft:rgba(109,181,184,.06);
+  --mode-game:#D4B25C;  --mode-game-soft:rgba(212,178,92,.05);
+  --glow-radial:#2C1F4A;
+  --success:#6DB5B8; --warning:#D4B25C; --danger:var(--blood); --info:#9D7FC7;
+  --shadow-card:drop-shadow(0 4px 8px rgba(0,0,0,.28));
+  --glow-gold:drop-shadow(0 0 6px rgba(245,213,122,.55)) drop-shadow(0 0 14px rgba(245,213,122,.28));
+  --font-display:"Press Start 2P","VT323",monospace;
+  --font-ui:"VT323","Share Tech Mono",monospace;
+  --font-mono:"Share Tech Mono","VT323",monospace;
+  --fs-xs:12px; --fs-sm:14px; --fs-md:16px; --fs-lg:18px; --fs-xl:22px;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px;
+  --space-6:24px; --space-8:32px;
+}
+
+/* ── RESET ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:var(--night);color:var(--text);font-family:var(--font-mono);user-select:none}
+
+/* ── SB BASE CLASSES (from tokens.css) ── */
+.sb{font-family:var(--font-mono);color:var(--text);height:100%;width:100%;box-sizing:border-box;overflow:hidden;position:relative;letter-spacing:.01em;-webkit-font-smoothing:antialiased}
+.sb *,.sb *::before,.sb *::after{box-sizing:border-box}
+.sb ::-webkit-scrollbar{width:8px;height:8px}
+.sb ::-webkit-scrollbar-thumb{background:var(--border)}
+.sb ::-webkit-scrollbar-track{background:var(--sunk)}
+.sb-display{font-family:var(--font-display);color:var(--gold-bright);text-shadow:0 0 4px rgba(245,213,122,.55),0 0 16px rgba(245,213,122,.32),0 0 32px rgba(245,213,122,.16);letter-spacing:.02em;line-height:1.25;font-weight:400}
+.sb-display-vt{font-family:var(--font-ui);color:var(--gold-bright);text-shadow:0 0 4px rgba(245,213,122,.55),0 0 16px rgba(245,213,122,.32);letter-spacing:.02em;line-height:1.05;font-weight:400}
+.sb-label{font-family:var(--font-ui);font-weight:400;text-transform:uppercase;letter-spacing:.10em;color:var(--text)}
+.sb-mono{font-family:var(--font-mono);font-weight:400;color:var(--text-dim)}
+.sb-mono.is-italic{font-style:italic}
+.sb-caption{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-mute);letter-spacing:.04em}
+.sb-pix,.sb-card,.sb-menu-row,.sb-btn,.sb-pad,.sb-pill{
+  --pix-step:5px;--pix-thick:2px;--pix-bg:var(--surface);--pix-border:var(--border);
+  background:linear-gradient(var(--pix-bg),var(--pix-bg)) padding-box,linear-gradient(var(--pix-border),var(--pix-border)) border-box;
+  border:var(--pix-thick) solid transparent;border-radius:0;
+  clip-path:polygon(0 var(--pix-step),var(--pix-step) var(--pix-step),var(--pix-step) 0,calc(100% - var(--pix-step)) 0,calc(100% - var(--pix-step)) var(--pix-step),100% var(--pix-step),100% calc(100% - var(--pix-step)),calc(100% - var(--pix-step)) calc(100% - var(--pix-step)),calc(100% - var(--pix-step)) 100%,var(--pix-step) 100%,var(--pix-step) calc(100% - var(--pix-step)),0 calc(100% - var(--pix-step)))
+}
+.sb-card{--pix-step:6px;padding:var(--space-5);filter:var(--shadow-card)}
+.sb-card.is-raised{--pix-bg:var(--raised)}
+.sb-btn{--pix-step:4px;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);font-family:var(--font-ui);font-size:var(--fs-md);text-transform:uppercase;letter-spacing:.10em;padding:6px var(--space-5);color:var(--text);cursor:pointer}
+.sb-btn:hover{--pix-border:var(--border-gold)}
+.sb-btn-primary{--pix-border:var(--border-gold);color:var(--gold)}
+.sb-btn-filled{--pix-bg:var(--gold);--pix-border:var(--gold);color:var(--text-on-gold)}
+.sb-btn-ghost{--pix-bg:transparent;--pix-border:var(--border-soft);color:var(--text-dim)}
+.sb-btn-danger{--pix-bg:transparent;--pix-border:var(--border-blood);color:var(--danger)}
+.sb-btn-sm{--pix-step:3px;font-size:var(--fs-sm);padding:3px var(--space-3)}
+.sb-pill{--pix-step:3px;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);--pix-bg:var(--sunk);--pix-border:var(--border-soft);padding:2px 10px;cursor:pointer}
+.sb-pill.is-on{--pix-border:var(--gold);color:var(--gold-bright)}
+.sb-pill.is-loop{--pix-border:var(--pad-loop);color:var(--pad-loop)}
+.sb-pill.is-playlist{--pix-border:var(--pad-playlist);color:var(--pad-playlist)}
+.sb-pill.is-combo{--pix-border:var(--pad-combo);color:var(--pad-combo)}
+.sb-slider{position:relative;height:6px;background:var(--sunk);border:1px solid var(--border-soft);overflow:hidden}
+.sb-slider-fill{position:absolute;inset:0 auto 0 0;background:var(--gold)}
+.sb-slider-thumb{position:absolute;top:50%;width:12px;height:12px;background:var(--gold);transform:translate(-50%,-50%);box-shadow:0 0 6px var(--gold-bright)}
+.sb-tabs{display:flex;gap:var(--space-1);border-bottom:1px solid var(--border)}
+.sb-tab{font-family:var(--font-ui);text-transform:uppercase;letter-spacing:.10em;font-size:var(--fs-md);padding:var(--space-3) var(--space-4);color:var(--text-mute);border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px}
+.sb-tab.is-active{color:var(--gold);border-bottom-color:var(--gold)}
+.sb-panel-header{display:flex;align-items:center;gap:var(--space-2);height:28px;padding:0 var(--space-3);background:var(--deep);border-bottom:1px solid var(--border-soft);font-family:var(--font-ui);font-size:var(--fs-sm);letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);flex-shrink:0}
+.sb-panel-header.is-active{color:var(--gold)}
+.sb-status-bar{display:flex;align-items:center;gap:var(--space-4);height:24px;padding:0 var(--space-3);background:var(--deep);border-top:1px solid var(--border-soft);font-family:var(--font-mono);font-size:11px;color:var(--text-mute);letter-spacing:.04em;flex-shrink:0}
+.sb-status-section{display:flex;align-items:center;gap:6px;padding-right:var(--space-4);border-right:1px solid var(--border-soft)}
+.sb-mode-badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-ui);font-size:var(--fs-md);text-transform:uppercase;letter-spacing:.14em;padding:3px 10px;--pix-step:3px;background:linear-gradient(var(--pix-bg),var(--pix-bg)) padding-box,linear-gradient(var(--pix-border),var(--pix-border)) border-box;border:2px solid transparent;clip-path:polygon(0 3px,3px 3px,3px 0,calc(100% - 3px) 0,calc(100% - 3px) 3px,100% 3px,100% calc(100% - 3px),calc(100% - 3px) calc(100% - 3px),calc(100% - 3px) 100%,3px 100%,3px calc(100% - 3px),0 calc(100% - 3px));cursor:pointer}
+.sb-mode-badge.is-game{--pix-bg:var(--gold);--pix-border:var(--gold);color:var(--text-on-gold)}
+.sb-mode-badge.is-setup{--pix-bg:var(--sunk);--pix-border:var(--mode-setup);color:var(--mode-setup);background:repeating-linear-gradient(45deg,var(--mode-setup) 0 4px,transparent 4px 8px) padding-box,linear-gradient(var(--mode-setup),var(--mode-setup)) border-box}
+.sb-inspector{background:var(--deep);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sb-inspector-section{padding:var(--space-3);border-bottom:1px solid var(--border-soft)}
+.sb-num{display:inline-flex;align-items:center;justify-content:space-between;min-width:56px;padding:2px 6px;background:var(--sunk);border:1px solid var(--border-soft);font-family:var(--font-mono);font-size:var(--fs-sm);color:var(--text);cursor:ew-resize}
+.sb-num.is-active{border-color:var(--gold);color:var(--gold-bright)}
+.sb-scanlines::after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px);pointer-events:none;mix-blend-mode:overlay}
+.sb-grid-bg{background-image:linear-gradient(var(--border-soft) 1px,transparent 1px),linear-gradient(90deg,var(--border-soft) 1px,transparent 1px);background-size:16px 16px}
+
+/* ── PAD CLASSES (from dist/pad.css) ── */
+.pad{--pad-color:var(--pad-single);--pad-glow:var(--pad-single-glow);position:relative;min-height:110px;padding:8px 8px 8px 12px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;user-select:none;color:var(--text);background:linear-gradient(180deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.04) 12%,transparent 32%) padding-box,linear-gradient(0deg,rgba(0,0,0,.30) 0%,rgba(0,0,0,.14) 14%,transparent 38%) padding-box,var(--raised) padding-box;border:1px solid var(--border-strong);border-radius:0;box-shadow:inset 1px 1px 0 0 rgba(255,255,255,.12),inset -1px -1px 0 0 rgba(0,0,0,.40);filter:drop-shadow(3px 3px 0 rgba(0,0,0,.65));transition:filter .15s ease,border-color .15s ease}
+.pad::before{content:"";position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--pad-color);opacity:.85;pointer-events:none}
+.pad--single{--pad-color:var(--pad-single);--pad-glow:var(--pad-single-glow)}
+.pad--loop{--pad-color:var(--pad-loop);--pad-glow:var(--pad-loop-glow)}
+.pad--playlist{--pad-color:var(--pad-playlist);--pad-glow:var(--pad-playlist-glow)}
+.pad--combo{--pad-color:var(--pad-combo);--pad-glow:var(--pad-combo-glow)}
+.pad:hover{border-color:var(--pad-color)}
+.pad--hot{border-color:var(--pad-color);filter:drop-shadow(3px 3px 0 rgba(0,0,0,.65)) drop-shadow(0 0 6px var(--pad-glow)) drop-shadow(0 0 14px var(--pad-glow))}
+.pad--hot::before{width:6px;opacity:1}
+.pad--hot .pad__title{color:var(--pad-color)}
+.pad--setup{background:linear-gradient(180deg,rgba(255,255,255,.06) 0%,transparent 32%) padding-box,var(--surface) padding-box;border:2px dashed var(--border-strong)}
+.pad--setup::before{opacity:.55}
+.pad--setup:hover{border-color:var(--mode-setup)}
+.pad--setup.pad--hot{border-color:var(--mode-setup);filter:drop-shadow(3px 3px 0 rgba(0,0,0,.65))}
+.pad__hotkey{position:absolute;top:6px;right:6px;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);background:var(--sunk);border:1px solid var(--border-soft);padding:1px 5px;line-height:1;letter-spacing:.04em}
+.pad__drag{position:absolute;top:6px;left:6px;width:9px;height:11px;color:var(--mode-setup);opacity:.8;display:none}
+.pad--setup .pad__drag{display:block}
+.pad--setup .pad__hotkey{display:none}
+.pad__type{display:flex;align-items:center;gap:6px;color:var(--pad-color);font-family:var(--font-ui);font-size:10px;letter-spacing:.10em;text-transform:uppercase}
+.pad__type svg{display:block}
+.pad__title{font-family:var(--font-ui);font-size:13px;color:var(--text);letter-spacing:.04em;line-height:1.05}
+.pad__meta{font-family:var(--font-mono);font-size:10px;color:var(--text-mute);margin-top:2px}
+.pad__meter{display:flex;align-items:flex-end;gap:1px;height:10px;margin-top:6px}
+.pad__meter>i{flex:1;background:var(--pad-color);opacity:.85;animation:pad-meter-bounce 1.2s ease-in-out infinite}
+.pad__meter>i:nth-child(2){animation-delay:.05s}.pad__meter>i:nth-child(3){animation-delay:.10s}
+.pad__meter>i:nth-child(4){animation-delay:.15s}.pad__meter>i:nth-child(5){animation-delay:.20s}
+.pad__meter>i:nth-child(6){animation-delay:.25s}.pad__meter>i:nth-child(7){animation-delay:.30s}
+.pad__meter>i:nth-child(8){animation-delay:.35s}.pad__meter>i:nth-child(9){animation-delay:.40s}
+.pad__meter>i:nth-child(10){animation-delay:.45s}
+@keyframes pad-meter-bounce{0%,100%{height:30%}50%{height:100%}}
+
+/* ── BOARD LAYOUT ── */
+#app{display:flex;flex-direction:column;height:100%;background:radial-gradient(120% 70% at 50% -10%,var(--glow-radial) 0%,transparent 65%),var(--night)}
+#top-bar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--deep);border-bottom:1px solid var(--border);height:48px;flex-shrink:0}
+#board-body{display:grid;grid-template-columns:220px 1fr 280px;flex:1;min-height:0;overflow:hidden}
+#left-rail{background:var(--deep);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#main-area{position:relative;padding:18px;overflow:auto;background:var(--surface)}
+#right-rail{background:var(--deep);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#status-bar-row{display:flex;flex-shrink:0}
+
+/* ── LEFT RAIL ── */
+#scenes-list{flex:1;overflow:auto;padding:8px}
+.scene-row{padding:7px 10px;border-left:2px solid transparent;font-family:var(--font-ui);font-size:14px;letter-spacing:.04em;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:1px}
+.scene-row.is-active{background:var(--top);border-left-color:var(--gold);color:var(--gold)}
+.scene-num{width:18px;font-family:var(--font-mono);font-size:11px;color:var(--text-mute)}
+.filter-area{padding:10px;border-top:1px solid var(--border-soft)}
+.filter-pills{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.search-box{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--sunk);border:1px solid var(--border-soft);color:var(--text-mute)}
+.search-box .sb-mono{font-size:11px}
+
+/* ── PAD GRID ── */
+#scene-title-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+#grid-controls{display:flex;align-items:center;gap:8px}
+#pad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+
+/* ── RIGHT RAIL: LIVE TRANSPORT ── */
+#live-transport,#setup-inspector{display:flex;flex-direction:column;overflow-y:auto;flex:1}
+.mixer-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--raised);border-left:3px solid var(--pad-color,var(--gold));flex-shrink:0}
+.mixer-row-info{flex:1;min-width:0}
+.mixer-row-name{font-family:var(--font-ui);font-size:12px;letter-spacing:.08em}
+.mixer-row-sub{font-family:var(--font-mono);font-size:10px;color:var(--text-mute)}
+.mixer-row-slider{width:60px}
+.mixer-stop{color:var(--text-mute);cursor:pointer;flex-shrink:0}
+.transport-section{padding:10px;display:flex;flex-direction:column;gap:6px}
+.master-section{padding:12px;display:flex;flex-direction:column;gap:12px}
+.now-playing-section{padding:10px;display:flex;flex-direction:column;gap:6px}
+
+/* ── LABEL SLIDER ── */
+.label-slider{display:flex;flex-direction:column;gap:4px}
+.label-slider-header{display:flex;justify-content:space-between;align-items:baseline}
+.label-slider-label{font-family:var(--font-ui);font-size:12px;color:var(--text-dim);letter-spacing:.08em}
+.label-slider-val{font-family:var(--font-mono);font-size:11px;color:var(--text);font-variant-numeric:tabular-nums}
+
+/* ── KV ROW ── */
+.kv-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;gap:8px}
+.kv-label{font-family:var(--font-ui);font-size:13px;color:var(--text-dim);letter-spacing:.06em}
+
+/* ── SETUP INSPECTOR ── */
+.inspector-body{padding:12px;border-bottom:1px solid var(--border-soft)}
+.inspector-pad-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.inspector-pad-spine{width:4px;height:24px;background:var(--pad-loop)}
+.inspector-pad-name{font-family:var(--font-ui);font-size:15px;color:var(--text)}
+.inspector-add{padding:10px;border-top:1px solid var(--border-soft);margin-top:auto}
+.inspector-pills{padding:10px;display:flex;flex-wrap:wrap;gap:4px}
+.inspector-layout{padding:12px;display:flex;flex-direction:column;gap:10px}
+
+/* ── PROTOTYPE CONTROL BAR ── */
+#proto-bar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;gap:4px;padding:6px 10px;background:rgba(8,8,26,.9);border-bottom:1px solid var(--border-soft);backdrop-filter:blur(8px)}
+.pb-btn{background:transparent;border:1px solid var(--border-soft);color:var(--text-mute);font-family:var(--font-ui);font-size:13px;padding:2px 9px;cursor:pointer;border-radius:2px;transition:all .15s;line-height:1.4}
+.pb-btn:hover{border-color:var(--gold);color:var(--gold)}
+.pb-btn.active{border-color:var(--gold);color:var(--gold);background:var(--gold-soft)}
+.pb-sep{flex:1}
+.pb-link{color:var(--text-mute);font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-decoration:none;padding:4px 6px;cursor:pointer}
+.pb-link:hover{color:var(--text-dim)}
+
+/* ── BOARD CONTENT OFFSET (under proto bar) ── */
+body{padding-top:36px}
+#app{height:calc(100% - 36px)}
+</style>
+</head>
+<body>
+
+<!-- ── PROTOTYPE CONTROLS ── -->
+<div id="proto-bar">
+  <span style="font-family:var(--font-ui);font-size:12px;color:var(--text-mute);padding:4px 6px;letter-spacing:1px">MODE</span>
+  <button class="pb-btn active" id="btn-game" onclick="setMode('game')">GAME</button>
+  <button class="pb-btn" id="btn-setup" onclick="setMode('setup')">SETUP</button>
+  <span class="pb-sep"></span>
+  <a class="pb-link" href="menu.html">Menu</a>
+  <a class="pb-link" href="pad-editor.html">PAD Editor</a>
+</div>
+
+<!-- ══════════════ BOARD APP ══════════════ -->
+<div id="app" class="sb">
+
+  <!-- ── TOP BAR ── -->
+  <div id="top-bar">
+    <span id="flame-icon" style="color:var(--flame);display:flex;align-items:center"></span>
+    <div style="display:flex;align-items:baseline;gap:8px;min-width:0">
+      <span style="font-family:var(--font-ui);font-size:16px;color:var(--text);letter-spacing:.08em;white-space:nowrap">The Tavern</span>
+      <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-mute);white-space:nowrap">· Board 1</span>
+    </div>
+    <div id="mode-badge-wrap" style="margin-left:8px"></div>
+    <div style="flex:1"></div>
+    <div style="display:flex;gap:6px">
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" id="save-btn"></button>
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" id="export-btn"></button>
+    </div>
+  </div>
+
+  <!-- ── BODY (3-COLUMN GRID) ── -->
+  <div id="board-body">
+
+    <!-- ── LEFT RAIL: SCENES + FILTER ── -->
+    <aside id="left-rail">
+      <div class="sb-panel-header is-active" id="scenes-header">
+        <span id="icon-moon"></span>
+        SCENES
+        <span style="margin-left:auto;cursor:pointer" id="icon-edit-sm"></span>
+      </div>
+      <div id="scenes-list">
+        <div class="scene-row"><span class="scene-num">01</span><span>Approach</span></div>
+        <div class="scene-row is-active"><span class="scene-num">02</span><span>The Tavern</span></div>
+        <div class="scene-row"><span class="scene-num">03</span><span>Combat — Forest</span></div>
+        <div class="scene-row"><span class="scene-num">04</span><span>Boss · Necromancer</span></div>
+        <div class="scene-row"><span class="scene-num">05</span><span>Aftermath</span></div>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" id="add-scene-btn" style="width:100%;margin-top:8px">+ ADD SCENE</button>
+      </div>
+
+      <div class="sb-panel-header" id="filter-header">
+        <span id="icon-tag"></span>
+        FILTER
+      </div>
+      <div class="filter-area">
+        <div class="filter-pills">
+          <span class="sb-pill is-on">ALL</span>
+          <span class="sb-pill is-loop">LOOP</span>
+          <span class="sb-pill is-playlist">PLAY</span>
+          <span class="sb-pill is-combo">COMBO</span>
+        </div>
+        <div class="search-box">
+          <span id="icon-search"></span>
+          <span class="sb-mono">Find by name…</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── MAIN: PAD GRID ── -->
+    <main id="main-area">
+      <div id="scene-title-row">
+        <div class="sb-display" style="font-size:18px">The Tavern</div>
+        <div id="grid-controls" style="display:none">
+          <span class="sb-caption">GRID</span>
+          <span class="sb-num">4 × 4</span>
+          <span class="sb-caption">GAP</span>
+          <span class="sb-num">10px</span>
+        </div>
+      </div>
+      <div id="pad-grid"></div>
+    </main>
+
+    <!-- ── RIGHT RAIL ── -->
+    <aside id="right-rail" class="sb-inspector">
+
+      <!-- GAME: LIVE TRANSPORT -->
+      <div id="live-transport">
+        <div class="sb-panel-header is-active">
+          <span id="icon-sparkle"></span>
+          NOW PLAYING
+          <span style="margin-left:auto" class="sb-caption">3</span>
+        </div>
+        <div class="now-playing-section" id="now-playing-list"></div>
+
+        <div class="sb-panel-header">
+          <span id="icon-diamond"></span>
+          MASTER
+        </div>
+        <div class="master-section" id="master-sliders"></div>
+
+        <div class="sb-panel-header">
+          <span id="icon-keyboard"></span>
+          TRANSPORT
+        </div>
+        <div class="transport-section" id="transport-btns"></div>
+      </div>
+
+      <!-- SETUP: INSPECTOR -->
+      <div id="setup-inspector" style="display:none">
+        <div class="sb-panel-header is-active">
+          <span id="icon-cog"></span>
+          INSPECTOR
+          <span style="margin-left:auto" class="sb-caption">1 sel</span>
+        </div>
+        <div class="inspector-body">
+          <div class="inspector-pad-header">
+            <div class="inspector-pad-spine"></div>
+            <span class="inspector-pad-name">RAIN HEAVY</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-label">TYPE</span>
+            <span class="sb-pill is-loop">LOOP</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-label">KEY</span>
+            <span class="sb-num">F2</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-label">VOLUME</span>
+            <span class="sb-num is-active">72%</span>
+          </div>
+          <button class="sb-btn sb-btn-sm sb-btn-primary" style="width:100%;margin-top:10px" id="open-editor-btn">
+            <span id="icon-edit-sm2"></span> OPEN PAD EDITOR
+          </button>
+        </div>
+
+        <div class="sb-panel-header">
+          <span id="icon-diamond2"></span>
+          LAYOUT
+        </div>
+        <div class="inspector-layout">
+          <div class="kv-row"><span class="kv-label">COLUMNS</span><span class="sb-num">4</span></div>
+          <div class="kv-row"><span class="kv-label">ROWS</span><span class="sb-num">4</span></div>
+          <div class="kv-row"><span class="kv-label">GAP</span><span class="sb-num">10px</span></div>
+          <div class="kv-row"><span class="kv-label">PAD SIZE</span><span class="sb-num">M</span></div>
+          <div class="kv-row">
+            <span class="kv-label">SHAPE</span>
+            <div style="display:flex;gap:4px">
+              <span class="sb-pill is-on" style="font-size:9px">STEP</span>
+              <span class="sb-pill" style="font-size:9px">RECT</span>
+              <span class="sb-pill" style="font-size:9px">HEX</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sb-panel-header">
+          <span id="icon-tag2"></span>
+          FILTER
+        </div>
+        <div class="inspector-pills">
+          <span class="sb-pill">SHOW ALL</span>
+          <span class="sb-pill is-loop">LOOP ONLY</span>
+          <span class="sb-pill">UNTAGGED</span>
+        </div>
+
+        <div style="flex:1"></div>
+        <div class="inspector-add">
+          <button class="sb-btn sb-btn-sm" style="width:100%" id="add-pad-btn">+ ADD PAD</button>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+
+  <!-- ── STATUS BAR ── -->
+  <div class="sb-status-bar">
+    <span class="sb-status-section" id="status-mode" style="color:var(--gold)">LIVE</span>
+    <span class="sb-status-section">Board 1 · The Tavern</span>
+    <span class="sb-status-section" id="status-info">3 playing</span>
+    <span style="margin-left:auto;display:flex;gap:16px">
+      <span>Master 72%</span>
+      <span>48 kHz</span>
+    </span>
+  </div>
+
+</div><!-- /#app -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   PIXEL ICON LIBRARY (from dist/icons.js)
+═══════════════════════════════════════════════════════════════ */
+(function(root){'use strict';
+const ICONS=[
+  {id:'flame',d:['7 1','8 1','6 2','7 2','8 2','9 2','5 3','6 3','8 3','9 3','10 3','5 4','6 4','7 4','8 4','9 4','10 4','11 4','4 5','5 5','7 5','9 5','10 5','11 5','4 6','5 6','6 6','9 6','10 6','11 6','12 6','3 7','4 7','5 7','6 7','7 7','9 7','10 7','11 7','12 7','3 8','4 8','5 8','6 8','7 8','8 8','10 8','11 8','12 8','3 9','4 9','5 9','6 9','7 9','8 9','9 9','10 9','11 9','12 9','3 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','12 10','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','5 12','6 12','7 12','8 12','9 12','10 12','6 13','7 13','8 13','9 13']},
+  {id:'play',d:['5 3','5 4','5 5','5 6','5 7','5 8','5 9','5 10','5 11','5 12','6 4','6 5','6 6','6 7','6 8','6 9','6 10','6 11','7 5','7 6','7 7','7 8','7 9','7 10','8 6','8 7','8 8','8 9','9 7','9 8']},
+  {id:'stop',d:(()=>{const r=[];for(let y=4;y<12;y++)for(let x=4;x<12;x++)r.push(`${x} ${y}`);return r})()},
+  {id:'loop',d:['5 4','6 4','7 4','8 4','9 4','10 4','4 5','11 5','3 6','12 6','3 7','12 7','11 7','3 8','12 8','10 8','3 9','12 9','9 9','10 9','11 9','4 10','11 10','5 11','6 11','7 11','8 11','9 11','10 11']},
+  {id:'tag',d:['3 6','4 6','5 6','6 6','7 6','8 6','9 6','10 6','3 7','10 7','11 7','3 8','11 8','12 8','3 9','12 9','3 10','11 10','12 10','3 11','10 11','11 11','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','5 9','6 9']},
+  {id:'cog',d:['7 2','8 2','5 3','7 3','8 3','10 3','5 4','7 4','8 4','10 4','4 5','5 5','11 5','2 6','3 6','5 6','6 6','7 6','8 6','9 6','10 6','12 6','13 6','2 7','3 7','5 7','6 7','9 7','10 7','12 7','13 7','2 8','3 8','5 8','6 8','9 8','10 8','12 8','13 8','2 9','3 9','5 9','6 9','7 9','8 9','9 9','10 9','12 9','13 9','4 10','5 10','11 10','5 11','7 11','8 11','10 11','5 12','7 12','8 12','10 12','7 13','8 13']},
+  {id:'save',d:['3 3','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','3 4','11 4','12 4','3 5','5 5','6 5','7 5','8 5','12 5','3 6','5 6','7 6','12 6','3 7','12 7','3 8','12 8','3 9','5 9','6 9','7 9','8 9','9 9','12 9','3 10','5 10','9 10','12 10','3 11','5 11','9 11','12 11','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12']},
+  {id:'download',d:['7 2','8 2','7 3','8 3','7 4','8 4','7 5','8 5','5 6','7 6','8 6','10 6','5 7','6 7','7 7','8 7','9 7','10 7','6 8','7 8','8 8','9 8','7 9','8 9','3 12','4 12','5 12','6 12','7 12','8 12','9 12','10 12','11 12','12 12']},
+  {id:'search',d:['5 3','6 3','7 3','8 3','4 4','9 4','3 5','10 5','3 6','10 6','3 7','10 7','3 8','10 8','4 9','9 9','5 10','6 10','7 10','8 10','10 10','11 11','12 11','12 12','13 12']},
+  {id:'edit',d:['10 2','11 2','9 3','10 3','11 3','12 3','8 4','9 4','10 4','11 4','7 5','8 5','9 5','10 5','6 6','7 6','8 6','9 6','5 7','6 7','7 7','8 7','4 8','5 8','6 8','7 8','3 9','4 9','5 9','6 9','3 10','4 10','5 10','3 11','4 11','5 11','3 12','4 12']},
+  {id:'moon',d:['6 2','7 2','8 2','4 3','5 3','6 3','7 3','8 3','9 3','3 4','4 4','5 4','6 4','7 4','2 5','3 5','4 5','5 5','2 6','3 6','4 6','2 7','3 7','4 7','2 8','3 8','4 8','2 9','3 9','4 9','2 10','3 10','4 10','5 10','3 11','4 11','5 11','6 11','7 11','4 12','5 12','6 12','7 12','8 12','9 12','6 13','7 13','8 13']},
+  {id:'sparkle',d:['7 3','8 3','6 4','7 4','8 4','9 4','7 5','8 5','2 7','3 7','7 7','8 7','12 7','13 7','2 8','3 8','7 8','8 8','12 8','13 8','7 9','8 9','6 11','7 11','8 11','9 11','7 12','8 12']},
+  {id:'diamond',d:['7 4','8 4','6 5','7 5','8 5','9 5','5 6','6 6','7 6','8 6','9 6','10 6','4 7','5 7','6 7','7 7','8 7','9 7','10 7','11 7','4 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','5 9','6 9','7 9','8 9','9 9','10 9','6 10','7 10','8 10','9 10','7 11','8 11']},
+  {id:'keyboard',d:['2 4','3 4','4 4','5 4','6 4','7 4','8 4','9 4','10 4','11 4','12 4','13 4','2 5','13 5','2 6','3 6','5 6','6 6','8 6','9 6','11 6','12 6','13 6','2 7','13 7','2 8','4 8','5 8','7 8','8 8','10 8','11 8','13 8','2 9','13 9','2 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','13 10','2 11','3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','12 11','13 11']},
+  {id:'scroll',d:['3 3','4 3','5 3','6 3','7 3','8 3','9 3','10 3','11 3','2 4','12 4','3 5','4 5','5 5','6 5','7 5','8 5','9 5','10 5','11 5','3 6','5 6','6 6','7 6','8 6','9 6','10 6','11 6','3 7','5 7','7 7','8 7','9 7','11 7','3 8','5 8','6 8','7 8','8 8','9 8','10 8','11 8','3 9','5 9','6 9','7 9','8 9','9 9','11 9','3 10','11 10','3 11','4 11','5 11','6 11','7 11','8 11','9 11','10 11','11 11','2 12','12 12','3 13','4 13','5 13','6 13','7 13','8 13','9 13','10 13','11 13']},
+  {id:'rune',d:['7 2','8 2','6 3','7 3','8 3','9 3','6 4','9 4','5 5','10 5','5 6','10 6','4 7','11 7','4 8','7 8','8 8','11 8','3 9','12 9','2 10','3 10','4 10','5 10','6 10','7 10','8 10','9 10','10 10','11 10','12 10','13 10','7 11','8 11','7 12','8 12','6 13','7 13','8 13','9 13']},
+  {id:'eye',d:['6 4','7 4','8 4','9 4','4 5','5 5','10 5','11 5','2 6','3 6','12 6','13 6','1 7','14 7','1 8','6 8','7 8','8 8','9 8','14 8','1 9','6 9','7 9','8 9','9 9','14 9','2 10','3 10','12 10','13 10','4 11','5 11','10 11','11 11','6 12','7 12','8 12','9 12']},
+];
+const BY_ID={};for(let i=0;i<ICONS.length;i++)BY_ID[ICONS[i].id]=ICONS[i];
+function pixelIcon(id,size,color){size=size||16;color=color||'currentColor';const def=BY_ID[id];if(!def)return`<svg width="${size}" height="${size}" viewBox="0 0 16 16"></svg>`;let r='';for(let i=0;i<def.d.length;i++){const p=def.d[i].split(' ');r+=`<rect x="${p[0]}" y="${p[1]}" width="1" height="1" fill="${color}"/>`}return`<svg width="${size}" height="${size}" viewBox="0 0 16 16" shape-rendering="crispEdges" style="display:block">${r}</svg>`}
+root.pixelIcon=pixelIcon;
+})(window);
+
+/* ═══════════════════════════════════════════════════════════════
+   PAD RENDERER (from dist/render-pad.js)
+═══════════════════════════════════════════════════════════════ */
+(function(root){'use strict';
+const TYPE_ICONS={single:'play',loop:'loop',playlist:'scroll',combo:'rune'};
+function renderPad(p){
+  const type=p.type||'single';
+  const cls=['pad','pad--'+type,p.hot?'pad--hot':'',p.setup?'pad--setup':''].filter(Boolean).join(' ');
+  const icon=TYPE_ICONS[type]||'play';
+  const iconSvg=root.pixelIcon?root.pixelIcon(icon,12,'currentColor'):'';
+  const dragDots=`<svg class="pad__drag" viewBox="0 0 9 11" fill="currentColor" aria-hidden="true"><circle cx="2" cy="2" r="1.1"/><circle cx="7" cy="2" r="1.1"/><circle cx="2" cy="5.5" r="1.1"/><circle cx="7" cy="5.5" r="1.1"/><circle cx="2" cy="9" r="1.1"/><circle cx="7" cy="9" r="1.1"/></svg>`;
+  const meter=p.hot?`<div class="pad__meter">${'<i></i>'.repeat(10)}</div>`:'';
+  const hotkey=p.hotkey?`<span class="pad__hotkey">${p.hotkey}</span>`:'';
+  return`<div class="${cls}" data-pad-type="${type}">
+    ${dragDots}${hotkey}
+    <div class="pad__type">${iconSvg}<span>${type.toUpperCase()}</span></div>
+    <div><div class="pad__title">${p.name||'Untitled'}</div>${p.meta?`<div class="pad__meta">${p.meta}</div>`:''}${meter}</div>
+  </div>`;
+}
+root.renderPad=renderPad;
+})(window);
+
+/* ═══════════════════════════════════════════════════════════════
+   BOARD DATA
+═══════════════════════════════════════════════════════════════ */
+const PADS=[
+  {type:'single', name:'Tavern Door',  meta:'0:04',     hotkey:'F1'},
+  {type:'loop',   name:'Rain Heavy',   meta:'∞',        hotkey:'F2', hot:true},
+  {type:'loop',   name:'Fireplace',    meta:'∞',        hotkey:'F3', hot:true},
+  {type:'single', name:'Sword Clash',  meta:'0:02',     hotkey:'F4'},
+  {type:'single', name:'Wolf Howl',    meta:'0:08',     hotkey:'F5'},
+  {type:'loop',   name:'Crowd',        meta:'∞',        hotkey:'F6'},
+  {type:'playlist',name:'Tavern Mix',  meta:'14 trax',  hotkey:'F7'},
+  {type:'single', name:'Thunder',      meta:'0:03',     hotkey:'F8'},
+  {type:'combo',  name:'Boss Reveal',  meta:'4-chain',  hotkey:'Q'},
+  {type:'single', name:'Door Slam',    meta:'0:01',     hotkey:'W'},
+  {type:'playlist',name:'Combat Mix',  meta:'6 trax',   hotkey:'E'},
+  {type:'loop',   name:'Whispers',     meta:'∞',        hotkey:'R'},
+  {type:'single', name:'Coin Drop',    meta:'0:01',     hotkey:'T'},
+  {type:'single', name:'Owl Hoot',     meta:'0:04',     hotkey:'Y'},
+  {type:'loop',   name:'Wind',         meta:'∞',        hotkey:'U'},
+  {type:'single', name:'Bell Toll',    meta:'0:06',     hotkey:'I'},
+];
+
+const NOW_PLAYING=[
+  {type:'loop',     title:'RAIN HEAVY',  sub:'0:42 / 2:14',      value:.50},
+  {type:'loop',     title:'FIREPLACE',   sub:'∞ · 0:12',         value:.60},
+  {type:'playlist', title:'TAVERN MIX',  sub:'3/14 · Lute Drone',value:.45},
+];
+
+const MASTER_SLIDERS=[
+  {label:'MASTER',      value:.72, color:null},
+  {label:'AMBIENT BUS', value:.45, color:'var(--pad-loop)'},
+  {label:'STINGER BUS', value:.90, color:'var(--pad-single)'},
+  {label:'MUSIC BUS',   value:.60, color:'var(--pad-playlist)'},
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════ */
+let currentMode='game';
+
+function pi(id, size, color){ return pixelIcon(id, size, color); }
+
+function renderMixerRow(r){
+  const color=`var(--pad-${r.type})`;
+  const iconName=r.type==='loop'?'loop':r.type==='playlist'?'scroll':'play';
+  const pct=Math.round(r.value*100);
+  return `<div class="mixer-row" style="--pad-color:${color}">
+    <span style="color:${color};display:flex">${pi(iconName,14,color)}</span>
+    <div class="mixer-row-info">
+      <div class="mixer-row-name" style="color:${color}">${r.title}</div>
+      <div class="mixer-row-sub">${r.sub}</div>
+    </div>
+    <div class="mixer-row-slider">
+      <div class="sb-slider"><div class="sb-slider-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>
+    <span class="mixer-stop">${pi('stop',10,'var(--text-mute)')}</span>
+  </div>`;
+}
+
+function renderLabelSlider(s){
+  const color=s.color||'var(--gold)';
+  const pct=Math.round(s.value*100);
+  return `<div class="label-slider">
+    <div class="label-slider-header">
+      <span class="label-slider-label">${s.label}</span>
+      <span class="label-slider-val">${pct}</span>
+    </div>
+    <div class="sb-slider">
+      <div class="sb-slider-fill" style="width:${pct}%;background:${color}"></div>
+      <div class="sb-slider-thumb" style="left:${pct}%;background:${color}"></div>
+    </div>
+  </div>`;
+}
+
+function initIcons(){
+  document.getElementById('flame-icon').innerHTML    = pi('flame',20,'var(--flame)');
+  document.getElementById('icon-moon').innerHTML     = pi('moon',12,'currentColor');
+  document.getElementById('icon-edit-sm').innerHTML  = pi('edit',10,'var(--text-mute)');
+  document.getElementById('icon-tag').innerHTML      = pi('tag',12,'currentColor');
+  document.getElementById('icon-search').innerHTML   = pi('search',11,'currentColor');
+  document.getElementById('icon-sparkle').innerHTML  = pi('sparkle',12,'currentColor');
+  document.getElementById('icon-diamond').innerHTML  = pi('diamond',12,'currentColor');
+  document.getElementById('icon-keyboard').innerHTML = pi('keyboard',12,'currentColor');
+  document.getElementById('icon-cog').innerHTML      = pi('cog',12,'currentColor');
+  document.getElementById('icon-edit-sm2').innerHTML = pi('edit',10,'currentColor');
+  document.getElementById('icon-diamond2').innerHTML = pi('diamond',12,'currentColor');
+  document.getElementById('icon-tag2').innerHTML     = pi('tag',12,'currentColor');
+  document.getElementById('save-btn').innerHTML      = pi('save',11,'currentColor')+' SAVE';
+  document.getElementById('export-btn').innerHTML    = pi('download',11,'currentColor')+' EXPORT';
+  document.getElementById('add-scene-btn').textContent = '+ ADD SCENE';
+  document.getElementById('open-editor-btn').innerHTML = pi('edit',10,'currentColor')+' OPEN PAD EDITOR';
+  document.getElementById('add-pad-btn').textContent = '+ ADD PAD';
+}
+
+function initNowPlaying(){
+  document.getElementById('now-playing-list').innerHTML = NOW_PLAYING.map(renderMixerRow).join('');
+}
+
+function initMasterSliders(){
+  document.getElementById('master-sliders').innerHTML = MASTER_SLIDERS.map(renderLabelSlider).join('');
+}
+
+function initTransport(){
+  document.getElementById('transport-btns').innerHTML = `
+    <button class="sb-btn sb-btn-sm sb-btn-ghost" style="justify-content:flex-start">
+      ${pi('stop',10,'currentColor')} STOP ALL
+      <span style="margin-left:auto;color:var(--text-mute)">ESC</span>
+    </button>
+    <button class="sb-btn sb-btn-sm sb-btn-ghost" style="justify-content:flex-start">
+      ${pi('loop',12,'currentColor')} CROSSFADE NEXT
+      <span style="margin-left:auto;color:var(--text-mute)">SPACE</span>
+    </button>`;
+}
+
+function renderGrid(mode){
+  const isSetup = mode==='setup';
+  document.getElementById('pad-grid').innerHTML =
+    PADS.map(p => renderPad({...p, hot: p.hot && !isSetup, setup: isSetup})).join('');
+}
+
+function setMode(mode){
+  currentMode = mode;
+  const isSetup = mode==='setup';
+
+  /* proto bar buttons */
+  document.getElementById('btn-game').classList.toggle('active', !isSetup);
+  document.getElementById('btn-setup').classList.toggle('active', isSetup);
+
+  /* mode badge */
+  const badgeWrap = document.getElementById('mode-badge-wrap');
+  const badgeClass = isSetup ? 'sb-mode-badge is-setup' : 'sb-mode-badge is-game';
+  const badgeIcon = isSetup ? pi('edit',11,'currentColor') : pi('play',11,'currentColor');
+  const badgeText = isSetup ? 'SETUP' : 'GAME';
+  badgeWrap.innerHTML = `<span class="${badgeClass}" onclick="setMode('${isSetup?'game':'setup'}')">${badgeIcon} ${badgeText}</span>`;
+
+  /* main area background */
+  const main = document.getElementById('main-area');
+  main.className = isSetup ? 'sb-grid-bg' : 'sb-scanlines';
+  main.style.cssText = `padding:18px;overflow:auto;background:${
+    isSetup ? 'var(--surface)' :
+    'radial-gradient(70% 60% at 50% 50%,transparent 0%,rgba(0,0,0,.25) 100%),var(--surface)'
+  }`;
+
+  /* grid controls visibility */
+  document.getElementById('grid-controls').style.display = isSetup ? 'flex' : 'none';
+
+  /* right rail */
+  document.getElementById('live-transport').style.display  = isSetup ? 'none'  : 'flex';
+  document.getElementById('setup-inspector').style.display = isSetup ? 'flex'  : 'none';
+
+  /* pad grid */
+  renderGrid(mode);
+
+  /* status bar */
+  const statusMode = document.getElementById('status-mode');
+  statusMode.textContent = isSetup ? 'EDIT' : 'LIVE';
+  statusMode.style.color = isSetup ? 'var(--mode-setup)' : 'var(--gold)';
+  document.getElementById('status-info').textContent = isSetup ? '16 pads · 0 selected' : '3 playing';
+}
+
+/* ── BOOT ── */
+initIcons();
+initNowPlaying();
+initMasterSliders();
+initTransport();
+setMode('game');
+</script>
+</body>
+</html>
