@@ -321,6 +321,19 @@ input[type=file]{display:none}
   .screen{transition:margin-left .25s ease,width .25s ease}
   body.sidebar-open .screen.active{margin-left:min(220px,75vw);width:calc(100% - min(220px,75vw))}
 }
+/* Desktop (≥900px): pin sidebar for screens that have one, hide hamburger */
+@media(min-width:900px){
+  #sidebar-btn{display:none!important}
+  body:not(.dt-nosidebar) #sidebar{transform:translateX(0)!important;transition:none!important}
+  body:not(.dt-nosidebar) .screen.active{margin-left:min(220px,75vw)!important;width:calc(100% - min(220px,75vw))!important}
+}
+/* Status bar — shown at bottom of board screen on desktop */
+#sp-bar{display:none;flex-shrink:0;height:22px;align-items:center;overflow:hidden;background:var(--deep);border-top:1px solid var(--border-soft);font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));letter-spacing:.06em;color:var(--text-mute);position:relative;z-index:2}
+@media(min-width:900px){#sp-bar{display:flex}}
+.sp-seg{padding:0 12px;height:100%;display:flex;align-items:center;border-right:1px solid var(--border-soft);white-space:nowrap;flex-shrink:0}
+.sp-seg.sp-mode-live{color:var(--gold);letter-spacing:.12em}
+.sp-seg.sp-mode-edit{color:var(--active);letter-spacing:.12em}
+.sp-seg.sp-vol{margin-left:auto;border-right:none;border-left:1px solid var(--border-soft)}
 .sb-section{display:flex;flex-direction:column;gap:8px}
 .sb-lbl{font-family:var(--ff-label);font-size:calc(12px * var(--font-scale));color:var(--text-dim);letter-spacing:1px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 .sb-tabs{display:flex;flex-direction:column;gap:4px}
@@ -2160,6 +2173,12 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
     <span id="nptxt" style="color:var(--text-dim);font-style:italic;position:relative;z-index:1">No sound active</span>
   </div>
   <div id="dbg" style="display:none;padding:4px 13px;background:var(--night);border-top:1px solid var(--raised);font-family:monospace;font-size:calc(10px * var(--font-scale));color:var(--mist);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+  <div id="sp-bar">
+    <span class="sp-seg" id="sp-bar-mode">LIVE</span>
+    <span class="sp-seg" id="sp-bar-board"></span>
+    <span class="sp-seg" id="sp-bar-play" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">No sound active</span>
+    <span class="sp-seg sp-vol" id="sp-bar-vol">Master 100%</span>
+  </div>
 </div>
 
 <!-- PAD TYPE PICKER -->
@@ -2355,8 +2374,11 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 172;
+const APP_VERSION = 173;
 const CHANGELOG=[
+  {v:173,date:'2026-05-25',items:[
+    "Desktop Pro-Tool Layout (Phase 10): at ≥900px #sidebar-btn is hidden and the sidebar auto-pins (body:not(.dt-nosidebar) forces translateX(0)); show() toggles body.dt-nosidebar based on SCREEN_CONFIG[id].hasSidebar so sidebar only pins on sp/sli; persistent status bar #sp-bar at bottom of #sp (display:flex at ≥900px) shows LIVE/EDIT mode badge (gold/blue), board name, N playing summary, and master volume; _updSpBar() keeps it live — called from chkNP(), applyModeVisuals(), updBoardSubtitle(), setMasterVolume()"
+  ]},
   {v:172,date:'2026-05-25',items:[
     "Animated Pixel Flame (Phase 9): replaces the static SVG sigil on the intro screen and main menu with a canvas-based pixel-art flame (16×17 grid, cellSize 6/5); warm flame (orange/gold, flicker+sway+embers+tongue-lick) = GAME mode; frozen crystal (blue/cyan, ice facets+icicles+glitter) = SETUP mode; intro flame is interactive — tap to freeze/spawn sparks or ice chips; main menu flame is mode-linked — applyModeVisuals() calls _flameSetMode(locked) for an animated warm↔freeze transition; features: tip flicker at 12fps, body sway ±0.4px sine, vertical breath ±3%, rising ember streams, radial halo with pulse, frost vignette, ice-facet overlay, icicles below base; particle system: 9–13 sparks on warm tap (rise+cool), 5–7 ice chips on frozen tap (gravity+rotation+fade); _makeFlame/_flameTick/_flameTap/_flameSetMode/_drawFlame/_initFlames/_lerpHexRGB/_lerpHexStr/_flameColor added"
   ]},
@@ -3460,6 +3482,7 @@ function renameBoard(id,name){
 function updBoardSubtitle(){
   const el=document.getElementById('board-subtitle');
   if(el) el.textContent=currentBoardName;
+  _updSpBar();
 }
 function deleteBoard(id){
   return new Promise(res=>{
@@ -4670,6 +4693,24 @@ function updBtn(id,on,loop){
   updEdgeGlow();
 }
 
+function _updSpBar(){
+  const mEl=document.getElementById('sp-bar-mode');
+  if(!mEl) return;
+  const bEl=document.getElementById('sp-bar-board');
+  const pEl=document.getElementById('sp-bar-play');
+  const vEl=document.getElementById('sp-bar-vol');
+  mEl.textContent=locked?'LIVE':'EDIT';
+  mEl.className='sp-seg '+(locked?'sp-mode-live':'sp-mode-edit');
+  if(bEl) bEl.textContent=currentBoardName||'';
+  const playing=Object.keys(srcs).map(id=>pads[+id]?.label||'?').filter(Boolean);
+  const qaCount=Object.keys(_qaXSrcs).length;
+  const total=playing.length+qaCount;
+  if(pEl) pEl.textContent=total
+    ?`${total} playing: ${[...playing.slice(0,3),...(qaCount?[`+${qaCount} QA`]:[])].join(' · ')}${playing.length>3?'…':''}`
+    :'No sound active';
+  const vol=+(localStorage.getItem('master-vol')??100);
+  if(vEl) vEl.textContent=`Master ${vol}%`;
+}
 function chkNP(){
   if(!Object.keys(srcs).length && !Object.keys(_qaXSrcs).length){
     document.getElementById('nptxt').textContent='No sound active';
@@ -4677,6 +4718,7 @@ function chkNP(){
     const d=document.querySelector('.npdot'); if(d) d.remove();
     updEdgeGlow(); stopEQ();
   }
+  _updSpBar();
 }
 // ── VISUAL EFFECTS ──
 function spawnRipple(padEl, e){
@@ -6107,6 +6149,7 @@ function show(id){
   document.getElementById(id).classList.add('active');
   if(menuConfirmTimer) hideMenuConfirm();
   cur=id;
+  document.body.classList.toggle('dt-nosidebar', !SCREEN_CONFIG[id]?.hasSidebar);
   SCREEN_CONFIG[id]?.onShow?.();
   updateTopBar(id);
 }
@@ -6201,6 +6244,7 @@ function applyModeVisuals(){
   document.body.classList.toggle('mode-play',locked);
   if(cur==='sp') _applyScreenAccent('mode');
   if(_flameMenuState) _flameSetMode(_flameMenuState,locked);
+  _updSpBar();
 }
 function applyStartMode(){
   const sm=localStorage.getItem('start-mode')||'unlocked';
@@ -8087,6 +8131,7 @@ function setMasterVolume(v){
   if(masterGain) masterGain.gain.value=clamped/100;
   const lbl=document.getElementById('master-vol-lbl'); if(lbl) lbl.textContent=clamped+'%';
   const sl=document.getElementById('master-vol-slider'); if(sl) sl.value=clamped;
+  _updSpBar();
 }
 function _initMasterVolumeUI(){
   const v=+(localStorage.getItem('master-vol')??100);
