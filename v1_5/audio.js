@@ -184,6 +184,17 @@ function audioIsPlaying(padId) {
   return !!srcs[padId];
 }
 
+/**
+ * Live gain update for a playing pad (used by quick-volume slider).
+ * @param {string} padId
+ * @param {number} v  0–100
+ */
+function setPadVolume(padId, v) {
+  const g = gains[padId];
+  if (!g || !ctx) return;
+  g.gain.setValueAtTime(Math.max(0, Math.min(1, v / 100)), ctx.currentTime);
+}
+
 /** @returns {string[]} */
 function audioGetPlayingIds() {
   return Object.keys(srcs);

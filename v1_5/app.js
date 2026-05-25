@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.16';
+const APP_VERSION = '1.5.17';
 
 const CHANGELOG = [
+  { v: '1.5.17', date: '2026-05-26', items: [
+    'Per-pad quick volume: long-press (500ms) on a playing pad in GAME mode opens a live gain slider',
+    'Slider updates gain in real-time; saves new volume to pad on close',
+    'Works for both scene pads and set-strip pads; move-to-cancel threshold 8px',
+  ]},
   { v: '1.5.16', date: '2026-05-26', items: [
     'Library BOARDS tab: list all boards with scene/set counts, last-updated date, OPEN + 2-tap delete',
     'Active board highlighted in the list; OPEN navigates directly to the board',
@@ -1232,6 +1237,16 @@ const _plState = {};             // padId → { order: number[], pos: number }
 let _editingPlaylistFiles = [];  // files being edited in pad opts sheet
 let _bdPickerMode = 'single';    // 'single' | 'playlist-add'
 
+// Quick-volume long-press state
+let _lpTimer  = null;
+let _lpFired  = false;
+let _lpStartX = 0;
+let _lpStartY = 0;
+let _lpPadId  = null;
+let _lpSlot   = null;
+let _lpIsSet  = false;
+let _lpNewVol = null;
+
 /** @returns {string} */
 function boardHTML() {
   if (!S.boardId) {
@@ -2250,6 +2265,69 @@ function handleBdRenameBoard() {
   input.addEventListener('blur', commit, { once: true });
 }
 
+/* ── QUICK VOLUME SLIDER ────────────────────────────────────── */
+
+/**
+ * @param {Object} pad
+ * @param {Element} padEl
+ */
+function openPadVolSlider(pad, padEl) {
+  document.getElementById('pad-vol-slider')?.remove();
+  const vol = pad.volume ?? 80;
+  _lpNewVol = vol;
+
+  const rect = padEl.getBoundingClientRect();
+  const top  = rect.top > window.innerHeight / 2
+    ? rect.top - 88
+    : rect.bottom + 8;
+  const left = Math.max(8, Math.min(
+    rect.left + rect.width / 2 - 80,
+    window.innerWidth - 168
+  ));
+
+  const el = document.createElement('div');
+  el.id        = 'pad-vol-slider';
+  el.className = 'pad-vol-slider';
+  el.style.cssText = `top:${top}px;left:${left}px`;
+  el.innerHTML = `
+    <div class="pvs-label">VOL <span id="pvs-val">${vol}</span>%</div>
+    <input class="pvs-range" id="pvs-input" type="range" min="0" max="100" value="${vol}">
+  `;
+  document.body.appendChild(el);
+
+  const input = document.getElementById('pvs-input');
+  if (input) {
+    input.oninput = () => {
+      const v = +input.value;
+      _lpNewVol = v;
+      const valEl = document.getElementById('pvs-val');
+      if (valEl) valEl.textContent = v;
+      setPadVolume(pad.id, v);
+    };
+  }
+}
+
+/** @param {boolean} [save=true] */
+function closePadVolSlider(save = true) {
+  document.getElementById('pad-vol-slider')?.remove();
+  if (save && _lpPadId !== null && _lpNewVol !== null) {
+    const vol   = _lpNewVol;
+    const slot  = _lpSlot;
+    const isSet = _lpIsSet;
+    if (!isSet && _bdScene) {
+      _bdScene.pads = _bdScene.pads.map(p => p.slot === slot ? { ...p, volume: vol } : p);
+      scenePut(_bdScene).catch(() => {});
+    } else if (isSet && _bdSet) {
+      _bdSet.pads = _bdSet.pads.map(p => p.slot === slot ? { ...p, volume: vol } : p);
+      setPut(_bdSet).catch(() => {});
+    }
+  }
+  _lpPadId  = null;
+  _lpSlot   = null;
+  _lpIsSet  = false;
+  _lpNewVol = null;
+}
+
 /* ── CHANGELOG MODAL ────────────────────────────────────────── */
 
 let _clOpen = false;
@@ -2862,12 +2940,57 @@ document.addEventListener('keydown', e => {
   }
 });
 
+/* ── LONG-PRESS: QUICK VOLUME ───────────────────────────────── */
+
+document.addEventListener('pointerdown', e => {
+  if (S.screen !== 'board' || S.boardMode !== 'game') return;
+  const targetEl = e.target.closest('[data-pad-id][data-pad-slot]')
+                || e.target.closest('[data-pad-id][data-set-pad-slot]');
+  if (!targetEl) return;
+  const padId = targetEl.dataset.padId;
+  if (!audioIsPlaying(padId)) return;
+
+  _lpStartX = e.clientX;
+  _lpStartY = e.clientY;
+  _lpFired  = false;
+  const slot  = targetEl.dataset.padSlot !== undefined ? +targetEl.dataset.padSlot : +targetEl.dataset.setPadSlot;
+  const isSet = targetEl.dataset.setPadSlot !== undefined;
+
+  _lpTimer = setTimeout(() => {
+    _lpTimer = null;
+    _lpFired = true;
+    _lpPadId = padId;
+    _lpSlot  = slot;
+    _lpIsSet = isSet;
+    const pad = isSet
+      ? _bdSet?.pads.find(p => p.slot === slot)
+      : _bdScene?.pads.find(p => p.slot === slot);
+    if (pad) openPadVolSlider(pad, targetEl);
+  }, 500);
+});
+
+document.addEventListener('pointerup',     () => { if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; } });
+document.addEventListener('pointercancel', () => { if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; } });
+document.addEventListener('pointermove', e => {
+  if (!_lpTimer) return;
+  const dx = e.clientX - _lpStartX, dy = e.clientY - _lpStartY;
+  if (dx * dx + dy * dy > 64) { clearTimeout(_lpTimer); _lpTimer = null; }
+});
+
 document.addEventListener('click', e => {
   // close import modal on backdrop click
   if (_importModalOpen && !e.target.closest('#import-modal')) { closeImportModal(); return; }
 
   // close changelog on backdrop click
   if (_clOpen && !e.target.closest('#cl-modal')) { closeChangelog(); return; }
+
+  // suppress the click that immediately follows a long-press (keep slider open)
+  if (_lpFired) { _lpFired = false; return; }
+
+  // close quick-volume slider on outside click
+  if (document.getElementById('pad-vol-slider') && !e.target.closest('#pad-vol-slider')) {
+    closePadVolSlider(true); return;
+  }
 
   // clear lib delete confirm
   if (_libDeleteCfm) {
