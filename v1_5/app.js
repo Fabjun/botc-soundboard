@@ -1,8 +1,16 @@
 'use strict';
 
-const APP_VERSION = '1.5.11';
+const APP_VERSION = '1.5.12';
 
 const CHANGELOG = [
+  { v: '1.5.12', date: '2026-05-25', items: [
+    'Board create: replace prompt() with bottom sheet (matches scene/set add UX)',
+    'Loop pads: show ↻ badge on pad cell in GAME mode',
+    'Scene delete: replace alert() with showToast',
+    'Tips & About: real content (controls guide, hotkeys, about text)',
+    'Remove dead handleBdSceneRename (scene opts sheet handles this)',
+    'Library: remove non-functional NEW FOLDER button',
+  ]},
   { v: '1.5.11', date: '2026-05-25', items: [
     'Slice 8: Settings screen — theme picker, new-pad volume/fade defaults, about section',
     'Pad opts sheet: type selector (SINGLE / LOOP) and volume control',
@@ -713,9 +721,6 @@ function libraryHTML() {
           </div>
         </div>
         <div style="flex:1"></div>
-        <div class="sidebar-footer">
-          <button class="sb-btn sb-btn-sm sb-btn-ghost" style="width:100%" data-action="lib-new-folder">+ NEW FOLDER</button>
-        </div>
       </aside>
       <main class="lib-main">
         <div class="lib-toolbar">
@@ -931,12 +936,12 @@ async function handleLibRename(hash) {
   });
 }
 
-function handleLibNewFolder() { alert('Folder management — coming soon'); }
 
 /* ── SCREEN: BOARD LIST ──────────────────────────────────────── */
 
-let _blBoards    = [];
-let _blDeleteCfm = null;
+let _blBoards     = [];
+let _blDeleteCfm  = null;
+let _blCreateOpen = false;
 
 async function _blRefresh() {
   _blBoards = await boardGetAll();
@@ -957,6 +962,7 @@ function boardListHTML() {
   <div class="bl-body" id="bl-body">
     <p class="lib-empty">Loading…</p>
   </div>
+  <div id="bl-sheet-wrap"></div>
   <div class="sb-status-bar">
     <span class="sb-status-section" style="color:var(--gold)">BOARDS</span>
     <span class="sb-status-section" id="bl-status">—</span>
@@ -1009,14 +1015,43 @@ function boardCardHTML(b) {
   </div>`;
 }
 
-async function handleBlCreate() {
-  const raw  = prompt('Board name:');
-  const name = (raw || '').trim();
+function openBoardCreate() {
+  if (_blCreateOpen) return;
+  _blCreateOpen = true;
+  const wrap = document.getElementById('bl-sheet-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = `<div class="scene-opts" id="bl-create-sheet">
+    <div class="scene-opts-header">
+      <span class="scene-opts-title">${pi('rune', 12, 'var(--mode-setup)')} NEW BOARD</span>
+      <button class="act-btn" data-action="bl-create-close">×</button>
+    </div>
+    <div class="scene-opts-body">
+      <div class="scene-opts-row">
+        <label class="scene-opts-label">NAME</label>
+        <input class="scene-opts-input" id="bl-create-name" type="text"
+               placeholder="Board name" maxlength="40" autocomplete="off">
+      </div>
+      <div class="scene-opts-actions">
+        <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="bl-create-confirm">CREATE</button>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById('bl-create-name')?.focus();
+}
+
+function closeBoardCreate() {
+  _blCreateOpen = false;
+  const wrap = document.getElementById('bl-sheet-wrap');
+  if (wrap) wrap.innerHTML = '';
+}
+
+async function handleBoardCreateConfirm() {
+  const name = (document.getElementById('bl-create-name')?.value || '').trim();
   if (!name) return;
+  closeBoardCreate();
   const board = await boardCreate(name);
   set.boardId(board.id);
-  await _blRefresh();
-  renderBoardList();
+  navigate('board');
 }
 
 async function handleBlOpen(boardId) {
@@ -1169,7 +1204,9 @@ function renderPadGrid() {
 /** @param {Object} pad @returns {string} */
 function padCellHTML(pad) {
   const playing = audioIsPlaying(pad.id);
-  return `<div class="pad is-assigned${playing ? ' is-playing' : ''}" data-pad-slot="${pad.slot}" data-pad-id="${escAttr(pad.id)}" data-action="bd-pad-tap">
+  const isLoop  = pad.type === 'loop';
+  return `<div class="pad is-assigned${playing ? ' is-playing' : ''}${isLoop ? ' is-loop' : ''}" data-pad-slot="${pad.slot}" data-pad-id="${escAttr(pad.id)}" data-action="bd-pad-tap">
+    ${isLoop ? `<span class="pad-loop-badge">↻</span>` : ''}
     <div class="pad-wave">${_waveMiniFromHash(pad.hash)}</div>
     <div class="pad-name">${escHtml(pad.name || '—')}</div>
     ${pad.hotkey ? `<span class="pad-hotkey">${escHtml(pad.hotkey)}</span>` : ''}
@@ -1428,26 +1465,9 @@ async function handleBdSceneAdd() { openSceneAdd(); }
 
 async function handleBdSceneOpts(sceneId) { openSceneOpts(sceneId); }
 
-async function handleBdSceneRename(sceneId) {
-  const s    = _bdBoard?.scenes?.find(x => x.id === sceneId);
-  if (!s) return;
-  const raw  = prompt('New name:', s.name);
-  const name = (raw || '').trim();
-  if (!name || name === s.name) return;
-
-  _bdBoard.scenes   = _bdBoard.scenes.map(x => x.id === sceneId ? { ...x, name } : x);
-  _bdBoard.updated  = Date.now();
-  await boardPut(_bdBoard);
-
-  if (_bdScene?.id === sceneId) { _bdScene.name = name; await scenePut(_bdScene); }
-  else { const sc = await sceneGet(sceneId); if (sc) { sc.name = name; await scenePut(sc); } }
-
-  renderBoardUI();
-}
-
 async function handleBdSceneDelete(sceneId) {
   if (!_bdBoard) return;
-  if ((_bdBoard.scenes || []).length <= 1) { alert('Cannot delete the last scene.'); return; }
+  if ((_bdBoard.scenes || []).length <= 1) { showToast('Cannot delete the last scene.'); return; }
   _bdBoard.scenes  = _bdBoard.scenes.filter(x => x.id !== sceneId);
   if (_bdBoard.activeSceneId === sceneId) _bdBoard.activeSceneId = _bdBoard.scenes[0]?.id || null;
   _bdBoard.updated = Date.now();
@@ -2239,6 +2259,116 @@ function settingsHTML() {
   </div>`;
 }
 
+/* ── SCREEN: TIPS ───────────────────────────────────────────── */
+
+/** @returns {string} */
+function tipsHTML() {
+  const tip = (title, body) => `<div class="tips-card">
+    <div class="tips-card-title">${title}</div>
+    <div class="tips-card-body">${body}</div>
+  </div>`;
+  return `
+  <div class="lib-top-bar">
+    <div class="lib-top-col">
+      <button class="lib-menu-btn" data-target="menu">${pi('scroll', 18, 'currentColor')}<span>MENU</span></button>
+    </div>
+    <div class="lib-top-col lib-top-center">
+      <span class="lib-title">TIPS &amp; TRICKS</span>
+    </div>
+    <div class="lib-top-col lib-top-right" style="width:80px"></div>
+  </div>
+  <div class="tips-body">
+
+    ${tip(`${pi('cog',12,'var(--mode-setup)')} SETUP MODE`,
+      `<p>Tap an empty pad to assign audio from the library.</p>
+       <p>Tap a filled pad to open its options — rename it, set a hotkey, choose SINGLE or LOOP, and adjust volume.</p>
+       <p>Use the ⋯ button next to a scene tab to rename the scene, change the grid column count, or delete it.</p>`)}
+
+    ${tip(`${pi('rune',12,'var(--mode-game)')} GAME MODE`,
+      `<p>Tap a pad to start playback. Tap again to stop (with fade-out if configured).</p>
+       <p>LOOP pads (↻) play continuously until tapped again. SINGLE pads stop when the file ends.</p>
+       <p>■ STOP ALL stops every playing sound immediately.</p>
+       <p>Switching scenes stops all active audio automatically.</p>`)}
+
+    ${tip(`${pi('keyboard',12,'var(--gold)')} HOTKEYS`,
+      `<p>Assign a hotkey to any pad in its options sheet (SETUP mode).</p>
+       <p>In GAME mode, pressing the assigned key triggers the pad — same as tapping it.</p>
+       <p>Works great with a Bluetooth numpad: assign keys 1–9 and 0 to your most-used pads.</p>
+       <p>Hotkeys are case-insensitive (A = a). Up to 4 characters, but 1-character keys are most reliable.</p>`)}
+
+    ${tip(`${pi('scroll',12,'var(--gold)')} SETS (QUICK ACCESS)`,
+      `<p>Sets are independent pad strips at the bottom of the board, visible across all scenes.</p>
+       <p>Use them for sounds you need in every scene — ambience, stings, transitions.</p>
+       <p>Create a set with + ADD SET in SETUP mode. Switch active set with the tabs above the strip.</p>`)}
+
+    ${tip(`${pi('save',12,'var(--gold)')} BACKUP &amp; IMPORT`,
+      `<p>Use BACKUP in the main menu to export all boards, scenes, sets, and audio files into a single .json file.</p>
+       <p>IMPORT merges a backup into the current library — audio is deduplicated by hash, name conflicts are auto-renamed.</p>
+       <p>Backups include the audio data, so they can be large. Store them safely.</p>`)}
+
+  </div>
+  <div class="sb-status-bar">
+    <span class="sb-status-section" style="color:var(--gold)">TIPS</span>
+    <span class="sb-status-section">Controls &amp; key bindings</span>
+  </div>`;
+}
+
+/* ── SCREEN: ABOUT ──────────────────────────────────────────── */
+
+/** @returns {string} */
+function aboutHTML() {
+  return `
+  <div class="lib-top-bar">
+    <div class="lib-top-col">
+      <button class="lib-menu-btn" data-target="menu">${pi('scroll', 18, 'currentColor')}<span>MENU</span></button>
+    </div>
+    <div class="lib-top-col lib-top-center">
+      <span class="lib-title">ABOUT</span>
+    </div>
+    <div class="lib-top-col lib-top-right" style="width:80px"></div>
+  </div>
+  <div class="tips-body">
+
+    <div class="tips-card">
+      <div class="tips-card-title">${pi('flame',12,'var(--gold)')} SOUNDBOARD OF STORYTELLING</div>
+      <div class="tips-card-body">
+        <p>A sound tool for Game-Masters and other creative Creatures.</p>
+        <p>Built to work offline as a PWA — install it from your browser's share/add-to-home-screen menu for the best experience.</p>
+        <p style="color:var(--text-mute)">Version ${APP_VERSION}</p>
+      </div>
+    </div>
+
+    <div class="tips-card">
+      <div class="tips-card-title">${pi('info',12,'var(--gold)')} DATA &amp; PRIVACY</div>
+      <div class="tips-card-body">
+        <p>Everything stays on your device. Audio files are stored in IndexedDB. Settings are in localStorage. Nothing is sent to any server.</p>
+        <p>Use BACKUP (main menu) to export your data as a portable .json file.</p>
+      </div>
+    </div>
+
+    <div class="tips-card">
+      <div class="tips-card-title">${pi('cog',12,'var(--gold)')} TECHNICAL</div>
+      <div class="tips-card-body">
+        <p>No frameworks. No build step. Plain HTML, CSS, and JavaScript.</p>
+        <p>Audio engine: Web Audio API with LRU PCM buffer cache (150 MB max). iOS silent-switch bypass via HTMLAudioElement.</p>
+        <p>Service worker provides offline-first caching.</p>
+      </div>
+    </div>
+
+    <div class="tips-card" style="text-align:center">
+      <div class="tips-card-body" style="align-items:center">
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="show-changelog">VIEW CHANGELOG</button>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-top:8px" data-action="check-update">CHECK FOR UPDATES</button>
+      </div>
+    </div>
+
+  </div>
+  <div class="sb-status-bar">
+    <span class="sb-status-section" style="color:var(--gold)">ABOUT</span>
+    <span class="sb-status-section">v ${APP_VERSION}</span>
+  </div>`;
+}
+
 /* ── STUB SCREEN ────────────────────────────────────────────── */
 
 /** @param {string} label @returns {string} */
@@ -2260,8 +2390,8 @@ const SCREENS = {
   board:        boardHTML,
   library:      libraryHTML,
   settings:     settingsHTML,
-  tips:         () => stubHTML('TIPS & TRICKS'),
-  about:        () => stubHTML('ABOUT'),
+  tips:         tipsHTML,
+  about:        aboutHTML,
 };
 
 /** @type {Partial<Record<ScreenId, () => void>>} */
@@ -2301,6 +2431,7 @@ document.addEventListener('keydown', e => {
     if (_bdSceneAddOpen)        { closeSceneAdd();  return; }
     if (_bdSetOptsId !== null)  { closeSetOpts();   return; }
     if (_bdSetAddOpen)          { closeSetAdd();    return; }
+    if (_blCreateOpen)          { closeBoardCreate(); return; }
   }
   // GAME mode hotkeys
   if (S.screen === 'board' && S.boardMode === 'game' && !e.target.closest('input,textarea')) {
@@ -2383,6 +2514,10 @@ document.addEventListener('click', e => {
     closeSetAdd(); return;
   }
 
+  if (_blCreateOpen && !e.target.closest('#bl-create-sheet') && !e.target.closest('[data-action="bl-create"]')) {
+    closeBoardCreate(); return;
+  }
+
   const navEl = e.target.closest('[data-target]');
   if (navEl) { navigate(navEl.dataset.target); return; }
 
@@ -2408,7 +2543,7 @@ function handleAction(action, el) {
         reg.update().then(() => {
           const w = reg.waiting || reg.installing;
           if (w) { w.postMessage({ type: 'SKIP_WAITING' }); }
-          else { alert(`v ${APP_VERSION} — already up to date.`); }
+          else { showToast(`v ${APP_VERSION} — already up to date.`); }
         });
       });
       break;
@@ -2420,10 +2555,11 @@ function handleAction(action, el) {
     case 'lib-folder':        handleLibFolder(el.dataset.folder); break;
     case 'lib-rename':        handleLibRename(el.dataset.hash); break;
     case 'lib-delete':        handleLibDelete(el.dataset.hash); break;
-    case 'lib-new-folder':    handleLibNewFolder(); break;
 
     // board list
-    case 'bl-create':         handleBlCreate(); break;
+    case 'bl-create':         openBoardCreate(); break;
+    case 'bl-create-close':   closeBoardCreate(); break;
+    case 'bl-create-confirm': handleBoardCreateConfirm(); break;
     case 'bl-open':           handleBlOpen(el.dataset.boardId); break;
     case 'bl-delete':         handleBlDelete(el.dataset.boardId); break;
 
