@@ -1151,7 +1151,17 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
   <div style="flex:1;overflow-y:auto">
    <div class="cx">
     <button class="sg-back" onclick="show('sa')">← SETTINGS</button>
-    <div class="sg-hdr" style="margin-top:0;border-top:none;padding-top:4px">START MODE</div>
+    <div class="sg-hdr" style="margin-top:0;border-top:none;padding-top:4px">MASTER VOLUME</div>
+    <div class="sec-body" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);width:20px;text-align:center">▲</span>
+        <input type="range" id="master-vol-slider" min="0" max="100" step="1" value="100"
+          style="flex:1;accent-color:var(--gold)" oninput="setMasterVolume(+this.value)">
+        <span style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);width:32px;text-align:right" id="master-vol-lbl">100%</span>
+      </div>
+      <p style="font-size:calc(11px * var(--font-scale));color:var(--text-dim);margin:0;line-height:1.7">Overall output level — scales all sounds proportionally. Individual PAD volumes are relative to this. Does not affect the system volume.</p>
+    </div>
+    <div class="sg-hdr">START MODE</div>
     <div class="sec-body">
       <div class="trow">
         <div class="topt" id="sm-unlocked" onclick="setStartMode('unlocked')">SETUP</div>
@@ -2096,8 +2106,11 @@ body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!impor
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 157;
+const APP_VERSION = 158;
 const CHANGELOG=[
+  {v:158,date:'2026-05-25',items:[
+    "Master volume: global GainNode slider in Settings → CONTROLS → MASTER VOLUME (0–100%, default 100%); setMasterVolume() sets masterGain.gain.value live; persisted as master-vol in SETTINGS_KEYS; _initMasterVolumeUI() called at startup and on sa-ctrl.onShow"
+  ]},
   {v:157,date:'2026-05-25',items:[
     "PAD icon visibility toggle: ICON ON/OFF in PAD STYLE sidebar; body.hide-pad-icons hides all .pico elements; label repositioned to centered, larger, wrapping text with text-shadow; circle PADs also render a hidden .plbl div that activates instead of the arc SVG when icons are off; show-pad-icons key in SETTINGS_KEYS",
     "Animations toggle: body.no-anim kills all CSS animations and transitions (fire, glow pulses, breathing, screen-in) via *::before/after{animation:none!important;transition:none!important}; static playing-state border and box-shadow remain visible; toggle in Settings → VISUALS → ANIMATIONS; animations key in SETTINGS_KEYS",
@@ -2295,7 +2308,7 @@ const CHANGELOG=[
   {v:37,date:'2026-05-21',items:['True pad reorder with combo reference remapping','Library picker with search, preview and in-use hints','Two-tap delete for pads and combos, auto-name from filename','About screen, Cinzel Decorative + Uncial Antiqua fonts, full English UI sweep']},
 ];
 console.assert(CHANGELOG[0].v===APP_VERSION,'CHANGELOG out of sync with APP_VERSION — add entry before bumping version');
-const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations'];
+const SETTINGS_KEYS=['theme','font-scale','sym-scale','cx-width','pad-sz','pad-gap','ico-scale','ico-density','pad-radius','pad-shape-key','start-mode','last-mode','help-key-code','help-key-label','help-info-density','help-duration','pad-level-vis','wake-lock-enabled','switch-sound-b64','switch-sound-name','enter-stop-mode','auto-stop-enabled','auto-stop-minutes','pad-label-scale','auto-icon','show-pad-icons','animations','master-vol'];
 // ── DEBUG LOG ──
 let _debugLogEnabled = localStorage.getItem('debug-log') === '1';
 const _DEBUG_LOG_MAX = 200;
@@ -3356,6 +3369,7 @@ function unlock(){
   initGridCtrl();
   initAutoIcon();
   _initAnimationsUI();
+  _initMasterVolumeUI();
   _boardSsbUpdateSortUI();
   openDB().then(load).then(async ()=>{
     await migrateToLibrary();
@@ -5223,7 +5237,7 @@ function updateMenuBackupBtns(){
 const SCREEN_CONFIG = {
   sp:  { title: null,            hasSidebar: true,  accent: 'mode', hints: ['sp'],  onShow: ()=>{ renderBoard(); if(locked) focusKB(); } },
   sa:       { title: 'SETTINGS',    hasSidebar: false, accent: 'gold', hints: ['sa'],  onShow: ()=>{} },
-  'sa-ctrl':  { title: 'CONTROLS',   hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _renderSwitchSoundRow(); _initWakeLockUI(); _initAutoStopUI(); } },
+  'sa-ctrl':  { title: 'CONTROLS',   hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initMasterVolumeUI(); _renderSwitchSoundRow(); _initWakeLockUI(); _initAutoStopUI(); } },
   'sa-appear':{ title: 'APPEARANCE', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initThemeSettings(); } },
   'sa-vis':   { title: 'VISUALS',    hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ _initPadLevelUI(); _initAnimationsUI(); } },
   'sa-keys':  { title: 'KEYBINDING', hasSidebar: false, accent: 'gold', hints: null,    onShow: ()=>{ initHelpSettings(); } },
@@ -7171,6 +7185,19 @@ function _padLevelTick(){
   }
   _padLevelRAF=requestAnimationFrame(_padLevelTick);
 }
+// ── MASTER VOLUME ──
+function setMasterVolume(v){
+  const clamped=Math.max(0,Math.min(100,+v));
+  localStorage.setItem('master-vol',clamped);
+  if(masterGain) masterGain.gain.value=clamped/100;
+  const lbl=document.getElementById('master-vol-lbl'); if(lbl) lbl.textContent=clamped+'%';
+  const sl=document.getElementById('master-vol-slider'); if(sl) sl.value=clamped;
+}
+function _initMasterVolumeUI(){
+  const v=+(localStorage.getItem('master-vol')??100);
+  setMasterVolume(v);
+}
+
 function setPadLevel(v){
   localStorage.setItem('pad-level-vis',v?'1':'0');
   _initPadLevelUI();
