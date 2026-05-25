@@ -1,8 +1,12 @@
 'use strict';
 
-const APP_VERSION = '1.5.19';
+const APP_VERSION = '1.5.20';
 
 const CHANGELOG = [
+  { v: '1.5.20', date: '2026-05-26', items: [
+    'Import fix: board ID collision now correctly remaps all scene/set IDs and boardId references',
+    'Backup age indicator in main menu now shows time since last export',
+  ]},
   { v: '1.5.19', date: '2026-05-26', items: [
     'One-time migration from V1 localStorage settings (runs on first V1.5 launch)',
     'Migrates: master volume, wake lock, auto-stop, auto-stop minutes, theme, start mode',
@@ -721,6 +725,7 @@ function menuHTML() {
 
 async function mountMenu() {
   new AnimatedFlame(document.getElementById('flame-smm'), { size: 84, interactive: true });
+  _updateBkpAge();
   const boards = await boardGetAll();
   const subEl  = document.getElementById('menu-board-sub');
   if (subEl) {
@@ -2496,25 +2501,41 @@ async function doExport() {
     const filename = `sos-backup-${date}.json`;
     const file = new File([blob], filename, { type: 'application/json' });
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: 'SoS Backup' }); return; }
-      catch (e) { if (e.name === 'AbortError') return; }
+      try {
+        await navigator.share({ files: [file], title: 'SoS Backup' });
+        _markExport(); return;
+      } catch (e) { if (e.name === 'AbortError') return; }
     }
     if (window.showSaveFilePicker) {
       try {
         const fh = await window.showSaveFilePicker({ suggestedName: filename, types: [{ description: 'SoS Backup', accept: { 'application/json': ['.json'] } }] });
         const w = await fh.createWritable(); await w.write(blob); await w.close();
-        showToast('Backup saved.'); return;
+        _markExport(); showToast('Backup saved.'); return;
       } catch (e) { if (e.name === 'AbortError') return; }
     }
     const url = URL.createObjectURL(blob);
     const a = Object.assign(document.createElement('a'), { href: url, download: filename });
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('Saved to Downloads.');
+    _markExport(); showToast('Saved to Downloads.');
   } catch (e) {
     console.error('Export failed:', e);
     showToast('Export failed — see console.');
   }
+}
+
+function _markExport() {
+  localStorage.setItem('sos-last-export', String(Date.now()));
+  _updateBkpAge();
+}
+
+function _updateBkpAge() {
+  const el = document.querySelector('.m-bkp-age');
+  if (!el) return;
+  const ts = parseInt(localStorage.getItem('sos-last-export') || '0', 10);
+  if (!ts) { el.textContent = '· never'; return; }
+  const h = Math.floor((Date.now() - ts) / 3600000);
+  el.textContent = h < 1 ? '· <1h ago' : `· ${h}h ago`;
 }
 
 /* ── IMPORT ─────────────────────────────────────────────────── */
@@ -2628,15 +2649,46 @@ async function executeImport() {
         await libPut({ hash: e.hash, name: e.name, ...meta });
       }
     }
-    // 2. Scenes + sets
-    for (const sc of data.scenes || []) await scenePut(sc);
-    for (const se of data.sets   || []) await setPut(se);
-    // 3. Boards — if ID collision assign a new ID
-    const existIds = new Set((await boardGetAll()).map(b => b.id));
+    // 2. Build ID remap table for boards with colliding IDs (before writing anything structural)
+    const existBoardIds = new Set((await boardGetAll()).map(b => b.id));
+    const boardRemap = {}; // oldId → { newBoardId, sceneMap, setMap }
     for (const b of data.boards) {
-      const boardToSave = { ...b };
-      if (existIds.has(b.id)) { boardToSave.id = _newId('b'); boardToSave.name = b.name + ' (imported)'; }
-      await boardPut(boardToSave);
+      if (existBoardIds.has(b.id)) {
+        boardRemap[b.id] = {
+          newBoardId: _newId('b'),
+          sceneMap:   Object.fromEntries((b.scenes || []).map(s => [s.id, _newId('sc')])),
+          setMap:     Object.fromEntries((b.sets   || []).map(s => [s.id, _newId('st')])),
+        };
+      }
+    }
+    // 3. Write boards
+    for (const b of data.boards) {
+      const r = boardRemap[b.id];
+      if (r) {
+        await boardPut({
+          ...b,
+          id:            r.newBoardId,
+          name:          b.name + ' (imported)',
+          scenes:        (b.scenes || []).map(s => ({ ...s, id: r.sceneMap[s.id] || s.id })),
+          sets:          (b.sets   || []).map(s => ({ ...s, id: r.setMap[s.id]   || s.id })),
+          activeSceneId: r.sceneMap[b.activeSceneId] || b.activeSceneId,
+          activeSetId:   r.setMap[b.activeSetId]     || b.activeSetId,
+        });
+      } else {
+        await boardPut({ ...b });
+      }
+    }
+    // 4. Write scenes (remapped when board ID collided)
+    for (const sc of data.scenes || []) {
+      const r = boardRemap[sc.boardId];
+      if (r) { const newId = r.sceneMap[sc.id]; if (newId) await scenePut({ ...sc, id: newId, boardId: r.newBoardId }); }
+      else    { await scenePut(sc); }
+    }
+    // 5. Write sets (remapped when board ID collided)
+    for (const se of data.sets || []) {
+      const r = boardRemap[se.boardId];
+      if (r) { const newId = r.setMap[se.id]; if (newId) await setPut({ ...se, id: newId, boardId: r.newBoardId }); }
+      else    { await setPut(se); }
     }
     showToast('Import complete!');
   } catch (e) {
