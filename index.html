@@ -2416,8 +2416,11 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 177;
+const APP_VERSION = 178;
 const CHANGELOG=[
+  {v:178,date:'2026-05-26',items:[
+    "Fix: IDB version conflict — open 'botc' at schema version 2 (matching v1.5) so both apps share the same database without VersionError; onupgradeneeded creates scenes/sets stores if absent (v1.5 schema); old app ignores them"
+  ]},
   {v:177,date:'2026-05-25',items:[
     "Code review fixes: remove redundant entry.buf.slice(0) in lib-preview (toggleLibPreview) and lpPlay — IDB get() returns a structured clone so the copy is unnecessary, saves 5-8 MB per call; add await to decodeWaveform(fi) in _processFilesSerial fallback path — without it, multiple concurrent decodes could fire when addToLib peak-computation fails for several files in a row"
   ]},
@@ -2813,11 +2816,13 @@ let _dragInsertAt=null, _dragSwapWith=null;
 // DB name is permanently "botc" — never rename it, use version bumps for schema changes only.
 function openDB(){
   return new Promise((res,rej)=>{
-    const r = indexedDB.open('botc', 1);
+    const r = indexedDB.open('botc', 2);
     r.onupgradeneeded = e => {
       const d=e.target.result;
-      if(!d.objectStoreNames.contains('lib')) d.createObjectStore('lib',{keyPath:'hash'});
-      if(!d.objectStoreNames.contains('p'))   d.createObjectStore('p',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('lib'))    d.createObjectStore('lib',{keyPath:'hash'});
+      if(!d.objectStoreNames.contains('p'))      d.createObjectStore('p',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('scenes')) d.createObjectStore('scenes',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('sets'))   d.createObjectStore('sets',{keyPath:'id'});
     };
     r.onsuccess = e => { db=e.target.result; res(); };
     r.onerror = e => rej(e.target.error||new Error('IndexedDB failed to open'));
