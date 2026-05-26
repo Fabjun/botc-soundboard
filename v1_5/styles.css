@@ -280,6 +280,19 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
 .facet-row.is-active{color:var(--mode-setup);background:var(--surface)}
 .facet-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .facet-n{font-size:10px;color:var(--text-mute)}
+.facet-act-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;background:transparent;border:none;
+  color:var(--text-mute);font-size:12px;cursor:pointer;opacity:0;
+  transition:opacity .1s,color .1s;flex-shrink:0}
+.facet-row:hover .facet-act-btn{opacity:1}
+.facet-act-btn:hover{color:var(--text)}
+.facet-act-btn.danger:hover{color:var(--blood-bright)}
+.facet-new-btn{
+  display:block;width:100%;padding:7px 12px;background:transparent;border:none;
+  font-family:var(--font-mono);font-size:11px;color:var(--text-mute);
+  text-align:left;cursor:pointer;transition:color .1s}
+.facet-new-btn:hover{color:var(--mode-setup)}
 
 /* action buttons (per-row) */
 .act-btn{

@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '2.0.3';
+const APP_VERSION = '2.0.4';
 
 const CHANGELOG = [
+  { v: '2.0.4', date: '2026-05-27', items: [
+    'Library: folder create, rename, delete — rename/delete buttons on each folder facet row',
+    'Folder delete: 2-tap confirm (first tap shows toast, second tap executes)',
+    'Folder operations use libGetAllMeta() — never loads audio bufs into heap',
+  ]},
   { v: '2.0.3', date: '2026-05-27', items: [
     'Library: sort controls — newest/oldest/name A-Z/name Z-A/last modified',
   ]},
@@ -1129,8 +1134,12 @@ async function renderAudioList() {
         <span style="flex:1">All folders</span><span class="facet-n">${entries.length}</span>
       </div>
       ${folders.map(f => `<div class="facet-row${_libFolder === f ? ' is-active' : ''}" data-action="lib-folder" data-folder="${escAttr(f)}">
-        <span style="flex:1">${escHtml(f)}</span><span class="facet-n">${entries.filter(e => e.folder === f).length}</span>
-      </div>`).join('')}`;
+        <span style="flex:1">${escHtml(f)}</span>
+        <span class="facet-n">${entries.filter(e => e.folder === f).length}</span>
+        <button class="facet-act-btn" data-action="lib-folder-rename" data-folder="${escAttr(f)}" title="Rename folder">${pi('edit',10,'currentColor')}</button>
+        <button class="facet-act-btn danger" data-action="lib-folder-delete" data-folder="${escAttr(f)}" title="Delete folder">×</button>
+      </div>`).join('')}
+      <button class="facet-new-btn" data-action="lib-folder-new">+ NEW FOLDER</button>`;
   }
 
   const usedHashes = new Set();
@@ -1222,6 +1231,53 @@ async function toggleLibPreview(hash) {
   const btn = document.getElementById('lpb-' + hash);
   if (btn) { btn.innerHTML = '&#x23F8;'; btn.style.color = 'var(--active)'; }
   node.onended = () => { if (_libPreviewHash === hash) stopLibPreview(); };
+}
+
+let _libFolderDeleteCfm = null;
+
+async function libNewFolder() {
+  const name = prompt('New folder name:');
+  if (!name || !name.trim()) return;
+  const folderName = name.trim();
+  const entries = await libGetAllMeta();
+  if (entries.some(e => e.folder === folderName)) { showToast(`Folder "${folderName}" already exists.`); return; }
+  _libFolder = folderName;
+  await _libRefresh();
+  showToast(`Folder "${folderName}" created. Move audio files here by editing them.`);
+}
+
+async function libRenameFolder(oldName) {
+  const newName = prompt('Rename folder:', oldName);
+  if (!newName || !newName.trim() || newName.trim() === oldName) return;
+  const name = newName.trim();
+  const entries = await libGetAllMeta();
+  await Promise.all(entries.filter(e => e.folder === oldName).map(e => libUpdateMeta(e.hash, { folder: name })));
+  if (_libFolder === oldName) _libFolder = name;
+  await _libRefresh();
+  showToast(`Folder renamed to "${name}".`);
+}
+
+async function libDeleteFolder(name) {
+  if (_libFolderDeleteCfm !== name) {
+    _libFolderDeleteCfm = name;
+    showToast(`Tap delete again to remove folder "${name}" (files stay in library).`);
+    setTimeout(() => { _libFolderDeleteCfm = null; }, 4000);
+    return;
+  }
+  _libFolderDeleteCfm = null;
+  const entries = await libGetAllMeta();
+  await Promise.all(entries.filter(e => e.folder === name).map(e => libUpdateMeta(e.hash, { folder: '' })));
+  if (_libFolder === name) _libFolder = null;
+  await _libRefresh();
+  showToast(`Folder "${name}" removed. Files kept in library.`);
+}
+
+async function handleLibFolderRename(folder) {
+  libRenameFolder(folder);
+}
+
+async function handleLibFolderDelete(folder) {
+  libDeleteFolder(folder);
 }
 
 function handleLibTab(tab) {
@@ -5719,6 +5775,9 @@ function handleAction(action, el) {
     case 'lib-folder':        handleLibFolder(el.dataset.folder); break;
     case 'lib-preview':       toggleLibPreview(el.dataset.hash); break;
     case 'lib-sort-change':   _libSort = el.value; renderAudioList(); break;
+    case 'lib-folder-new':    libNewFolder(); break;
+    case 'lib-folder-rename': handleLibFolderRename(el.dataset.folder); break;
+    case 'lib-folder-delete': handleLibFolderDelete(el.dataset.folder); break;
     case 'lib-rename':        handleLibRename(el.dataset.hash); break;
     case 'lib-delete':        handleLibDelete(el.dataset.hash); break;
     case 'lib-bd-open':       handleBlOpen(el.dataset.boardId); break;
