@@ -1,8 +1,12 @@
 'use strict';
 
-const APP_VERSION = '2.0.11';
+const APP_VERSION = '2.0.12';
 
 const CHANGELOG = [
+  { v: '2.0.12', date: '2026-05-27', items: [
+    'Pad Editor: unsaved-changes warning — "← BACK" shows red DISCARD/KEEP EDITING bar when edits exist',
+    '_peDirty flag set by any input/change event, icon selection; reset on editor open and after save',
+  ]},
   { v: '2.0.11', date: '2026-05-27', items: [
     'First-launch onboarding: 3 slides (Welcome, Three Modes, Get Started) shown on first visit',
     'Stored in sos-onboarded localStorage key; "Get Started" button marks as complete',
@@ -1920,6 +1924,7 @@ let _peEditPad       = null;
 let _peLibEntry      = null;
 let _peCaptureKey    = false;
 let _peDeleteCfm     = false;
+let _peDirty         = false;
 let _pePickerOpen    = false;   // audio-from-lib picker
 let _peTrackPickerOpen = false; // playlist-add picker
 let _peScrubRaf      = null;
@@ -4054,6 +4059,7 @@ function closeIconPicker() {
 
 function handleIconSelect(iconId) {
   _editingIconId = iconId;
+  if (_peOpen) _peDirty = true;
   if (_ipCtx === 'pad-opts') {
     const preview = document.getElementById('pad-icon-preview');
     if (preview && typeof padIconSvg === 'function') preview.innerHTML = padIconSvg(iconId, 24, 'var(--gold)');
@@ -4404,8 +4410,11 @@ function openPadEditor(slot, isSet) {
     dur: s.dur || 0,
     action: s.action || null,
   }));
+  _peDirty = false;
   document.body.insertAdjacentHTML('beforeend', _renderPadEditor());
   document.getElementById('pe-name-input')?.focus();
+  document.getElementById('pad-editor')?.addEventListener('input', () => { _peDirty = true; });
+  document.getElementById('pad-editor')?.addEventListener('change', () => { _peDirty = true; });
 }
 
 function closePadEditor() {
@@ -4749,6 +4758,21 @@ function _peUpdateWave() {
 
 function handlePeCancel() {
   if (_peEditPad) audioStop(_peEditPad.id, { fade: 0 });
+  if (_peDirty) {
+    const overlay = document.getElementById('pad-editor');
+    if (overlay) {
+      const cfmBar = document.getElementById('pe-discard-bar');
+      if (cfmBar) return; // already showing
+      const bar = document.createElement('div');
+      bar.id = 'pe-discard-bar';
+      bar.className = 'pe-discard-bar';
+      bar.innerHTML = `<span class="pe-discard-msg">Unsaved changes will be lost.</span>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-discard-confirm">DISCARD</button>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-discard-cancel">KEEP EDITING</button>`;
+      overlay.insertBefore(bar, overlay.firstChild);
+      return;
+    }
+  }
   closePadEditor();
 }
 
@@ -6229,7 +6253,9 @@ function handleAction(action, el) {
     case 'ip-select':  handleIconSelect(el.dataset.iconId); break;
 
     // pad editor
-    case 'pe-cancel':        handlePeCancel(); break;
+    case 'pe-cancel':           handlePeCancel(); break;
+    case 'pe-discard-confirm':  if (_peEditPad) audioStop(_peEditPad.id, { fade: 0 }); closePadEditor(); break;
+    case 'pe-discard-cancel':   document.getElementById('pe-discard-bar')?.remove(); break;
     case 'pe-save':          handlePeSave(); break;
     case 'pe-delete':        handlePeDelete(); break;
     case 'pe-preview':       handlePePreview(); break;

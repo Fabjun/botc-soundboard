@@ -1301,6 +1301,14 @@ body.pad-ci .pad-hotkey{top:4px;right:4px;font-size:8px}
   background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
 .lib-ip-wrap{
   flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* pad editor unsaved-changes bar */
+.pe-discard-bar{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 16px;background:var(--blood);border-bottom:1px solid var(--blood-bright);
+  flex-shrink:0}
+.pe-discard-msg{
+  flex:1;font-family:var(--font-mono);font-size:12px;color:var(--text)}
+
 /* ── ONBOARDING ──────────────────────────────────────────────── */
 .onboard-overlay{
   position:fixed;inset:0;z-index:950;background:rgba(5,5,15,.88);
