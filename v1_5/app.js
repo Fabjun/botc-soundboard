@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.26';
+const APP_VERSION = '1.5.27';
 
 const CHANGELOG = [
+  { v: '1.5.27', date: '2026-05-26', items: [
+    'Quick Rename: 500 ms long-press on an assigned pad in SETUP mode opens a compact rename overlay',
+    'Enter = save, Esc = cancel, tap outside box = cancel; movement > 8 px cancels before timer fires',
+    'Works for both scene-grid pads and set-strip pads; subsequent tap-click is suppressed after long-press',
+  ]},
   { v: '1.5.26', date: '2026-05-26', items: [
     'Library PADS tab: save any configured pad as a reusable template (◈ TEMPLATE button in PAD EDITOR)',
     'Templates stored locally; browse in Library → PADS with type badge, file/track info, saved date',
@@ -1475,6 +1480,15 @@ let _lpSlot   = null;
 let _lpIsSet  = false;
 let _lpNewVol = null;
 
+// Quick-rename long-press state (SETUP mode)
+let _qrTimer  = null;
+let _qrFired  = false;
+let _qrSlot   = null;
+let _qrIsSet  = false;
+let _qrOpen   = false;
+let _qrStartX = 0;
+let _qrStartY = 0;
+
 // Combo pad runtime state
 /** @type {Object.<string,{stopped:boolean,bgIds:Set<string>,fgIds:Set<string>,fgRem:number,stepIdx:number,pauseTimer:any}>} */
 const _comboState = {};
@@ -2819,6 +2833,65 @@ function closePadVolSlider(save = true) {
   _lpSlot   = null;
   _lpIsSet  = false;
   _lpNewVol = null;
+}
+
+/* ── QUICK RENAME (SETUP mode long-press) ───────────────────── */
+
+function openQuickRename(slot, isSet) {
+  closeQuickRename(false);
+  const pad = isSet ? _bdSet?.pads.find(p => p.slot === slot)
+                    : _bdScene?.pads.find(p => p.slot === slot);
+  if (!pad) return;
+  _qrSlot  = slot;
+  _qrIsSet = isSet;
+  _qrOpen  = true;
+
+  const el = document.createElement('div');
+  el.id        = 'qr-overlay';
+  el.className = 'qr-overlay';
+  el.innerHTML = `
+    <div class="qr-box">
+      <div class="qr-title">RENAME PAD</div>
+      <input class="qr-input" id="qr-input" type="text" value="${escAttr(pad.name || '')}" maxlength="40" autocomplete="off" spellcheck="false">
+      <div class="qr-hint">Enter = save · Esc = cancel</div>
+    </div>
+  `;
+  document.body.appendChild(el);
+
+  const input = document.getElementById('qr-input');
+  if (input) {
+    input.focus();
+    input.select();
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  { e.preventDefault(); closeQuickRename(true); }
+      if (e.key === 'Escape') { closeQuickRename(false); }
+    });
+  }
+  el.addEventListener('pointerdown', e => {
+    if (!e.target.closest('.qr-box')) closeQuickRename(false);
+  });
+}
+
+async function closeQuickRename(save = true) {
+  if (!_qrOpen) return;
+  const input = document.getElementById('qr-input');
+  const name  = save && input ? input.value.trim() : null;
+  document.getElementById('qr-overlay')?.remove();
+  _qrOpen = false;
+
+  if (!name) { _qrSlot = null; _qrIsSet = false; return; }
+  const slot  = _qrSlot;
+  const isSet = _qrIsSet;
+  _qrSlot  = null;
+  _qrIsSet = false;
+
+  if (!isSet && _bdScene) {
+    _bdScene.pads = _bdScene.pads.map(p => p.slot === slot ? { ...p, name } : p);
+    await scenePut(_bdScene); renderPadGrid();
+  } else if (isSet && _bdSet) {
+    _bdSet.pads = _bdSet.pads.map(p => p.slot === slot ? { ...p, name } : p);
+    await setPut(_bdSet); renderSetStrip();
+  }
 }
 
 /* ── CHANGELOG MODAL ────────────────────────────────────────── */
@@ -4464,6 +4537,7 @@ document.addEventListener('keydown', e => {
     if (_peOpen) { e.preventDefault(); handlePeSave(); return; }
   }
   if (e.key === 'Escape') {
+    if (_qrOpen)               { closeQuickRename(false); return; }
     if (_peTrackPickerOpen)    { closePeTrackPicker(); return; }
     if (_pePickerOpen)         { closePeAudioPicker(); return; }
     if (_ceCpOpen)             { closeCeChipPicker(); return; }
@@ -4647,6 +4721,36 @@ document.addEventListener('pointermove', e => {
   if (dx * dx + dy * dy > 64) { clearTimeout(_lpTimer); _lpTimer = null; }
 });
 
+/* ── LONG-PRESS: QUICK RENAME (SETUP mode) ──────────────────── */
+
+document.addEventListener('pointerdown', e => {
+  if (S.screen !== 'board' || S.boardMode !== 'setup') return;
+  if (_bdOptsSlot !== null || _bdPickerSlot !== null || _peOpen) return;
+  const targetEl = e.target.closest('.pad.is-assigned[data-pad-slot]')
+                || e.target.closest('.set-pad.is-assigned[data-set-pad-slot]');
+  if (!targetEl) return;
+
+  _qrStartX = e.clientX;
+  _qrStartY = e.clientY;
+  _qrFired  = false;
+  const slot  = targetEl.dataset.padSlot  !== undefined ? +targetEl.dataset.padSlot  : +targetEl.dataset.setPadSlot;
+  const isSet = targetEl.dataset.setPadSlot !== undefined;
+
+  _qrTimer = setTimeout(() => {
+    _qrTimer = null;
+    _qrFired = true;
+    openQuickRename(slot, isSet);
+  }, 500);
+});
+
+document.addEventListener('pointerup',     () => { if (_qrTimer) { clearTimeout(_qrTimer); _qrTimer = null; } });
+document.addEventListener('pointercancel', () => { if (_qrTimer) { clearTimeout(_qrTimer); _qrTimer = null; } });
+document.addEventListener('pointermove', e => {
+  if (!_qrTimer) return;
+  const dx = e.clientX - _qrStartX, dy = e.clientY - _qrStartY;
+  if (dx * dx + dy * dy > 64) { clearTimeout(_qrTimer); _qrTimer = null; }
+});
+
 document.addEventListener('click', e => {
   // close import modal on backdrop click
   if (_importModalOpen && !e.target.closest('#import-modal')) { closeImportModal(); return; }
@@ -4661,8 +4765,9 @@ document.addEventListener('click', e => {
   // close changelog on backdrop click
   if (_clOpen && !e.target.closest('#cl-modal')) { closeChangelog(); return; }
 
-  // suppress the click that immediately follows a long-press (keep slider open)
+  // suppress the click that immediately follows a long-press
   if (_lpFired) { _lpFired = false; return; }
+  if (_qrFired) { _qrFired = false; return; }
 
   // suppress the click that follows a drag drop
   if (_dragDidDrop) { _dragDidDrop = false; return; }

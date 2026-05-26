@@ -710,6 +710,28 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
   -webkit-appearance:none;width:18px;height:18px;
   border-radius:50%;background:var(--gold);cursor:pointer}
 
+/* ── QUICK RENAME OVERLAY ───────────────────────────────────── */
+.qr-overlay{
+  position:fixed;inset:0;z-index:700;
+  background:rgba(0,0,0,.72);
+  display:flex;align-items:center;justify-content:center;
+  overscroll-behavior:none}
+.qr-box{
+  background:var(--raised);border:1px solid var(--border-strong);
+  clip-path:var(--cc);padding:16px 18px;
+  width:min(280px,90vw);display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.qr-title{
+  font-family:var(--font-ui);font-size:11px;color:var(--mode-setup);
+  letter-spacing:.12em;text-align:center}
+.qr-input{
+  width:100%;background:var(--deep);border:1px solid var(--mode-setup);
+  color:var(--text);font-family:var(--font-mono);font-size:15px;
+  padding:7px 10px;border-radius:2px;outline:none;box-sizing:border-box}
+.qr-hint{
+  font-family:var(--font-mono);font-size:10px;color:var(--text-mute);
+  text-align:center}
+
 /* ── IMPORT MODAL ────────────────────────────────────────────── */
 .imp-section{display:flex;flex-direction:column;gap:4px}
 .imp-section-title{
