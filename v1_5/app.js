@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '2.0.9';
+const APP_VERSION = '2.0.10';
 
 const CHANGELOG = [
+  { v: '2.0.10', date: '2026-05-27', items: [
+    'Command palette: Ctrl+K / ⌘K opens search overlay with pads, boards, and built-in actions',
+    'Arrow up/down to navigate, Enter to run, Escape to close',
+    'Items: current scene+set pads, all boards (async), Library/Settings/Export/Import/Changelog/Stop All',
+  ]},
   { v: '2.0.9', date: '2026-05-27', items: [
     'Pad Editor: auto-icon suggestion from pad name — scores PAD_ICONS by word match (id=+3, substring=+2, label=+1), threshold ≥2',
     'German/English synonym table for BotC-relevant terms (Mord→skull, Geist→ghost, etc.)',
@@ -5637,11 +5642,131 @@ bus.on('theme', applyTheme);
 
 /* ── EVENT DELEGATION ───────────────────────────────────────── */
 
+/* ── COMMAND PALETTE ─────────────────────────────────────────── */
+
+let _cp = null;
+let _cpItems = [];
+let _cpFiltered = [];
+let _cpSel = 0;
+let _cpOpen = false;
+
+function _cpCreateDom() {
+  if (_cp) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'cp-overlay';
+  overlay.className = 'cp-overlay';
+  overlay.innerHTML = `<div class="cp-modal" role="dialog" aria-label="Command palette">
+    <div class="cp-input-row">
+      <span class="cp-search-icon">⌕</span>
+      <input class="cp-input" id="cp-inp" type="text" placeholder="Search pads, boards, actions…" autocomplete="off" spellcheck="false">
+      <span class="cp-count" id="cp-count"></span>
+    </div>
+    <div class="cp-results" id="cp-results" role="listbox"></div>
+    <div class="cp-footer"><span>↑↓ navigate</span><span>↵ run</span><span>esc close</span></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  _cp = { overlay, input: document.getElementById('cp-inp'), results: document.getElementById('cp-results'), countEl: document.getElementById('cp-count') };
+  _cp.input.addEventListener('input', () => { _cpFilter(_cp.input.value); _cpSel = 0; _cpRender(); });
+  overlay.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); _closeCp(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); _cpMove(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); _cpMove(-1); }
+    else if (e.key === 'Enter') { e.preventDefault(); _cpRun(); }
+  });
+  _cp.results.addEventListener('click', e => { const row = e.target.closest('.cp-result'); if (!row) return; _cpSel = +row.dataset.index; _cpRun(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) _closeCp(); });
+}
+
+function _openCp() {
+  _cpCreateDom();
+  _cpRefreshItems();
+  _cpFilter('');
+  _cpSel = 0;
+  _cp.input.value = '';
+  _cp.overlay.classList.add('is-open');
+  _cpOpen = true;
+  requestAnimationFrame(() => { _cp.input.focus(); _cpRender(); });
+}
+
+function _closeCp() {
+  if (!_cp || !_cpOpen) return;
+  _cp.overlay.classList.remove('is-open');
+  _cpOpen = false;
+}
+
+function _cpRefreshItems() {
+  _cpItems = [];
+  // Pads from current scene
+  for (const pad of (_bdScene?.pads || [])) {
+    _cpItems.push({ label: pad.name || '—', meta: 'PAD · SCENE', action: () => { handleBdPadTap(pad.slot); _closeCp(); } });
+  }
+  // Pads from current set
+  for (const pad of (_bdSet?.pads || [])) {
+    _cpItems.push({ label: pad.name || '—', meta: 'PAD · SET', action: () => { handleQaPadTap(pad.slot); _closeCp(); } });
+  }
+  // Boards (from cache via boardGetAll — async, so we fire-and-forget and add when ready)
+  boardGetAll().then(boards => {
+    const boardItems = boards.map(b => ({ label: b.name || '—', meta: 'BOARD', action: () => { set.boardId(b.id); navigate('board'); _closeCp(); } }));
+    _cpItems = [..._cpItems.filter(i => i.meta !== 'BOARD'), ...boardItems];
+    _cpFilter(_cp?.input?.value || '');
+    _cpRender();
+  });
+  // Built-in actions
+  _cpItems.push(
+    { label: 'Library', meta: 'SCREEN', action: () => { navigate('library'); _closeCp(); } },
+    { label: 'Settings', meta: 'SCREEN', action: () => { navigate('settings'); _closeCp(); } },
+    { label: 'Export / Backup', meta: 'ACTION', action: () => { doExport(); _closeCp(); } },
+    { label: 'Import', meta: 'ACTION', action: () => { triggerImport(); _closeCp(); } },
+    { label: 'Changelog', meta: 'ACTION', action: () => { showChangelog(); _closeCp(); } },
+    { label: 'Stop All Sounds', meta: 'ACTION', action: () => { audioStopAll(0); _onFgStopAll(); _closeCp(); } },
+  );
+}
+
+function _cpFilter(q) {
+  const query = (q || '').trim().toLowerCase();
+  if (!query) { _cpFiltered = _cpItems.slice(0, 40); return; }
+  _cpFiltered = _cpItems.filter(it =>
+    (it.label || '').toLowerCase().includes(query) ||
+    (it.meta || '').toLowerCase().includes(query)
+  ).slice(0, 40);
+}
+
+function _cpRender() {
+  if (!_cp) return;
+  const n = _cpFiltered.length;
+  _cp.countEl.textContent = n > 0 ? `${n}` : '';
+  if (!n) { _cp.results.innerHTML = `<div class="cp-empty">No results</div>`; return; }
+  _cpSel = Math.max(0, Math.min(_cpSel, n - 1));
+  _cp.results.innerHTML = _cpFiltered.map((it, i) =>
+    `<div class="cp-result${i === _cpSel ? ' is-sel' : ''}" data-index="${i}" role="option">
+      <span class="cp-result-label">${escHtml(it.label)}</span>
+      <span class="cp-result-meta">${escHtml(it.meta || '')}</span>
+    </div>`
+  ).join('');
+  _cp.results.querySelector('.cp-result.is-sel')?.scrollIntoView({ block: 'nearest' });
+}
+
+function _cpMove(dir) {
+  _cpSel = (_cpSel + dir + _cpFiltered.length) % _cpFiltered.length;
+  _cpRender();
+}
+
+function _cpRun() {
+  const item = _cpFiltered[_cpSel];
+  if (item?.action) item.action();
+}
+
 document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    if (_cpOpen) { _closeCp(); } else { _openCp(); }
+    return;
+  }
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     if (_peOpen) { e.preventDefault(); handlePeSave(); return; }
   }
   if (e.key === 'Escape') {
+    if (_cpOpen)               { _closeCp(); return; }
     if (_kmOpen)               { closeKeymap(); return; }
     if (_qrOpen)               { closeQuickRename(false); return; }
     if (_peTrackPickerOpen)    { closePeTrackPicker(); return; }
