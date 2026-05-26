@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.31';
+const APP_VERSION = '1.5.32';
 
 const CHANGELOG = [
+  { v: '1.5.32', date: '2026-05-26', items: [
+    'Settings → APPEARANCE: pad size (60–140 px), pad gap (0–16 px), label scale (0.6–1.6×), pad shape (SQUARE/CIRCLE)',
+    'Appearance applied via CSS custom properties; persisted in localStorage; restored on every page load',
+    'CIRCLE shape sets border-radius:50% and disables clip-path octagon on pads',
+  ]},
   { v: '1.5.31', date: '2026-05-26', items: [
     'Auto-Backup: Settings → DATA → AUTO-BACKUP — pick a folder; 3 rotating botc-autobackup-1/2/3.json every 10 min',
     'Requires File System Access API (desktop Chromium); iOS/Safari shows "not supported" message',
@@ -642,6 +647,18 @@ function _waveMiniFromHash(hash) {
 function applyTheme(name) {
   document.body.className = document.body.className.replace(/\btheme-\w+\b/g, '').trim();
   if (name) document.body.classList.add('theme-' + name);
+}
+
+function applyAppearance() {
+  const root  = document.documentElement.style;
+  const padSz    = +(localStorage.getItem('sos-pad-sz')           ?? 80);
+  const padGap   = +(localStorage.getItem('sos-pad-gap')          ?? 6);
+  const labelSc  = +(localStorage.getItem('sos-pad-label-scale')  ?? 1);
+  root.setProperty('--pad-sz',          `${padSz}px`);
+  root.setProperty('--pad-gap',         `${padGap}px`);
+  root.setProperty('--pad-label-scale', String(labelSc));
+  const shape = localStorage.getItem('sos-pad-shape') || 'square';
+  document.body.classList.toggle('pad-ci', shape === 'circle');
 }
 
 /** @param {ScreenId} screenId */
@@ -4469,6 +4486,10 @@ function settingsHTML() {
   const enterStopMode = localStorage.getItem('sos-enter-stop-mode')  || 'total';
   const lpAction      = localStorage.getItem('sos-lp-action')        || 'vol';
   const swSndName     = localStorage.getItem('sos-switch-sound-name') || '';
+  const padSz         = localStorage.getItem('sos-pad-sz')           ?? '80';
+  const padGap        = localStorage.getItem('sos-pad-gap')          ?? '6';
+  const padLabelSc    = localStorage.getItem('sos-pad-label-scale')  ?? '1';
+  const padShape      = localStorage.getItem('sos-pad-shape')        || 'square';
   const themes = [
     { id: '',        label: 'DEFAULT' },
     { id: 'verdant', label: 'VERDANT' },
@@ -4493,6 +4514,38 @@ function settingsHTML() {
       <div class="sett-title">${pi('flame', 12, 'var(--gold)')} THEME</div>
       <div class="sett-theme-picker">
         ${themes.map(t => `<button class="sett-theme-btn${theme === t.id ? ' is-active' : ''}" data-action="sett-theme" data-theme="${t.id}">${t.label}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="sett-section">
+      <div class="sett-title">${pi('flame', 12, 'var(--gold)')} APPEARANCE</div>
+      <div class="sett-row">
+        <label class="sett-label">Pad size</label>
+        <input type="range" id="sett-pad-sz" class="sett-vol-slider"
+               min="60" max="140" step="4" value="${escAttr(padSz)}" style="flex:1;min-width:60px">
+        <span class="sett-unit" id="sett-pad-sz-val" style="min-width:32px;text-align:right">${padSz}px</span>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Pad gap</label>
+        <input type="range" id="sett-pad-gap" class="sett-vol-slider"
+               min="0" max="16" step="2" value="${escAttr(padGap)}" style="flex:1;min-width:60px">
+        <span class="sett-unit" id="sett-pad-gap-val" style="min-width:32px;text-align:right">${padGap}px</span>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Label scale</label>
+        <input type="range" id="sett-pad-label-sc" class="sett-vol-slider"
+               min="0.6" max="1.6" step="0.1" value="${escAttr(padLabelSc)}" style="flex:1;min-width:60px">
+        <span class="sett-unit" id="sett-pad-label-sc-val" style="min-width:32px;text-align:right">${(+padLabelSc).toFixed(1)}×</span>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Pad shape</label>
+        <div class="sett-btn-group">
+          ${seg('sett-pad-shape','shape','square','SQUARE', padShape==='square')}
+          ${seg('sett-pad-shape','shape','circle','CIRCLE', padShape==='circle')}
+        </div>
+      </div>
+      <div class="sett-actions">
+        <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="sett-appearance-save">APPLY</button>
       </div>
     </div>
 
@@ -4774,6 +4827,27 @@ function mountSettings() {
       if (duckValEl) duckValEl.textContent = v + '%';
       localStorage.setItem('sos-duck-amount', String(v));
       if (_duckEnabled() && _fgPlayIds.size > 0) audioDuck(v / 100, 0.1);
+    };
+  }
+  const padSzSlider = document.getElementById('sett-pad-sz');
+  const padSzVal    = document.getElementById('sett-pad-sz-val');
+  if (padSzSlider) {
+    padSzSlider.oninput = () => {
+      if (padSzVal) padSzVal.textContent = padSzSlider.value + 'px';
+    };
+  }
+  const padGapSlider = document.getElementById('sett-pad-gap');
+  const padGapVal    = document.getElementById('sett-pad-gap-val');
+  if (padGapSlider) {
+    padGapSlider.oninput = () => {
+      if (padGapVal) padGapVal.textContent = padGapSlider.value + 'px';
+    };
+  }
+  const padLabelSlider = document.getElementById('sett-pad-label-sc');
+  const padLabelVal    = document.getElementById('sett-pad-label-sc-val');
+  if (padLabelSlider) {
+    padLabelSlider.oninput = () => {
+      if (padLabelVal) padLabelVal.textContent = (+padLabelSlider.value).toFixed(1) + '×';
     };
   }
 }
@@ -5331,6 +5405,26 @@ function handleAction(action, el) {
     case 'ce-cp-back':       closeCeChipPicker(); break;
     case 'ce-cp-pick':       handleCeCpPick(el.dataset.hash, el.dataset.name); break;
 
+    // settings — appearance
+    case 'sett-pad-shape':
+      document.querySelectorAll('[data-action="sett-pad-shape"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.shape === el.dataset.shape));
+      break;
+    case 'sett-appearance-save': {
+      const sz  = Math.max(60, Math.min(140, +(document.getElementById('sett-pad-sz')?.value ?? 80)));
+      const gap = Math.max(0,  Math.min(16,  +(document.getElementById('sett-pad-gap')?.value ?? 6)));
+      const lsc = Math.max(.6, Math.min(1.6, +(document.getElementById('sett-pad-label-sc')?.value ?? 1)));
+      const shapeBtn = document.querySelector('[data-action="sett-pad-shape"].is-active');
+      const shape = shapeBtn?.dataset.shape || 'square';
+      localStorage.setItem('sos-pad-sz',          String(sz));
+      localStorage.setItem('sos-pad-gap',         String(gap));
+      localStorage.setItem('sos-pad-label-scale', lsc.toFixed(1));
+      localStorage.setItem('sos-pad-shape',       shape);
+      applyAppearance();
+      showToast('Appearance applied.');
+      break;
+    }
+
     // settings — board + session
     case 'sett-start-mode':
       localStorage.setItem('sos-start-mode', el.dataset.mode);
@@ -5452,6 +5546,7 @@ async function init() {
   _migrateFromV1();
   S.theme = localStorage.getItem('sos-theme') || '';
   applyTheme(S.theme);
+  applyAppearance();
   try {
     await openDB();
   } catch (err) {

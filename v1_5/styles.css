@@ -29,6 +29,8 @@
   --font-gothic:'DotGothic16',sans-serif;
   /* clip-path octagon shortcut */
   --cc:polygon(5px 0%,calc(100% - 5px) 0%,100% 5px,100% calc(100% - 5px),calc(100% - 5px) 100%,5px 100%,0% calc(100% - 5px),0% 5px);
+  /* appearance */
+  --pad-sz:80px; --pad-gap:6px; --pad-label-scale:1;
 }
 
 /* ── THEMES ──────────────────────────────────────────────────── */
@@ -455,14 +457,14 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
 .bd-grid-wrap{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:none;padding:8px}
 .bd-grid{
   display:grid;grid-template-columns:repeat(var(--bd-cols,4),1fr);
-  gap:6px}
+  gap:var(--pad-gap,6px)}
 
 /* pads */
 .pad{
   background:var(--surface);border:1px solid var(--border);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:4px;padding:6px 4px;cursor:pointer;position:relative;
-  min-height:80px;clip-path:var(--cc);
+  min-height:var(--pad-sz,80px);clip-path:var(--cc);
   transition:background .1s,border-color .15s;user-select:none;-webkit-user-select:none}
 .pad.is-empty{opacity:.45;border-style:dashed}
 .pad.is-empty:hover,.pad.is-empty:active{opacity:.85;background:var(--raised);border-color:var(--mode-setup);border-style:solid}
@@ -476,7 +478,7 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
 .pad.is-playing .pad-name{color:var(--mode-game)}
 .pad-wave{opacity:.75;flex-shrink:0}
 .pad-name{
-  font-family:var(--font-ui);font-size:11px;color:var(--text);
+  font-family:var(--font-ui);font-size:calc(11px * var(--pad-label-scale,1));color:var(--text);
   text-align:center;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;width:100%;letter-spacing:0;line-height:1.2}
 .pad-hotkey{
@@ -731,6 +733,13 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
 .qr-hint{
   font-family:var(--font-mono);font-size:10px;color:var(--text-mute);
   text-align:center}
+
+/* ── APPEARANCE OVERRIDES ────────────────────────────────────── */
+body.pad-ci .pad{
+  border-radius:50%;clip-path:none;aspect-ratio:1;
+  padding:4px;overflow:hidden}
+body.pad-ci .pad-wave{display:none}
+body.pad-ci .pad-hotkey{top:4px;right:4px;font-size:8px}
 
 /* ── CUE STRIP ──────────────────────────────────────────────── */
 #bd-cue-strip{flex-shrink:0}
