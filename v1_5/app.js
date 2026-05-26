@@ -1,8 +1,11 @@
 'use strict';
 
-const APP_VERSION = '2.0.2';
+const APP_VERSION = '2.0.3';
 
 const CHANGELOG = [
+  { v: '2.0.3', date: '2026-05-27', items: [
+    'Library: sort controls — newest/oldest/name A-Z/name Z-A/last modified',
+  ]},
   { v: '2.0.2', date: '2026-05-27', items: [
     'Library: audio preview button on each audio row — click to preview, click again to stop',
   ]},
@@ -954,6 +957,7 @@ let _libUploading   = false;
 let _libEntries     = [];
 let _libPreviewHash = null;
 let _libPreviewNode = null;
+let _libSort        = 'date-desc';
 
 /** @returns {Promise<void>} */
 async function _libRefresh() {
@@ -1018,6 +1022,16 @@ function libraryHTML() {
           <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="lib-upload">
             ${pi('download', 13, 'currentColor')} UPLOAD AUDIO
           </button>
+        </div>
+        <div class="lib-sort-bar">
+          <label class="lib-sort-label">SORT</label>
+          <select id="lib-sort-sel" class="lib-sort-sel" data-action="lib-sort-change">
+            <option value="date-desc"${_libSort==='date-desc'?' selected':''}>Newest first</option>
+            <option value="date-asc"${_libSort==='date-asc'?' selected':''}>Oldest first</option>
+            <option value="name-asc"${_libSort==='name-asc'?' selected':''}>Name A→Z</option>
+            <option value="name-desc"${_libSort==='name-desc'?' selected':''}>Name Z→A</option>
+            <option value="edit-desc"${_libSort==='edit-desc'?' selected':''}>Last modified</option>
+          </select>
         </div>
         <div id="lib-audio-list" class="lib-list-area">
           <p class="lib-empty">Loading…</p>
@@ -1134,7 +1148,7 @@ async function renderAudioList() {
   const folderFiltered = _libFolder ? scopeFiltered.filter(e => e.folder === _libFolder) : scopeFiltered;
   const q = _libSearchQ.toLowerCase().trim();
   const searched = q ? folderFiltered.filter(e => (e.name || '').toLowerCase().includes(q)) : folderFiltered;
-  const sorted = searched.slice().sort((a, b) => (b.added || 0) - (a.added || 0));
+  const sorted = _sortItems(searched, _libSort);
 
   if (!sorted.length) {
     const msg = entries.length === 0
@@ -1171,6 +1185,15 @@ function audioRowHTML(e) {
       <button class="act-btn danger${isCfm?' is-confirm':''}" data-action="lib-delete" data-hash="${e.hash}" title="Delete">${isCfm?'SURE?':'×'}</button>
     </div>
   </div>`;
+}
+
+function _sortItems(items, key) {
+  if (key === 'name-asc')  return [...items].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  if (key === 'name-desc') return [...items].sort((a,b) => (b.name||'').localeCompare(a.name||''));
+  if (key === 'date-asc')  return [...items].sort((a,b) => (a.added||0) - (b.added||0));
+  if (key === 'edit-desc') return [...items].sort((a,b) => (b.updatedAt||b.added||0) - (a.updatedAt||a.added||0));
+  if (key === 'edit-asc')  return [...items].sort((a,b) => (a.updatedAt||a.added||0) - (b.updatedAt||b.added||0));
+  return [...items].sort((a,b) => (b.added||0) - (a.added||0)); // date-desc default
 }
 
 function stopLibPreview() {
@@ -5695,6 +5718,7 @@ function handleAction(action, el) {
     case 'lib-filter':        handleLibFilter(el.dataset.filter); break;
     case 'lib-folder':        handleLibFolder(el.dataset.folder); break;
     case 'lib-preview':       toggleLibPreview(el.dataset.hash); break;
+    case 'lib-sort-change':   _libSort = el.value; renderAudioList(); break;
     case 'lib-rename':        handleLibRename(el.dataset.hash); break;
     case 'lib-delete':        handleLibDelete(el.dataset.hash); break;
     case 'lib-bd-open':       handleBlOpen(el.dataset.boardId); break;

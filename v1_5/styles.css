@@ -310,6 +310,18 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
   padding:6px 10px;background:var(--deep);border-bottom:1px solid var(--border-soft);
   flex-shrink:0}
 
+/* sort bar */
+.lib-sort-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:4px 10px;background:var(--deep);border-bottom:1px solid var(--border-soft);
+  flex-shrink:0}
+.lib-sort-label{
+  font-family:var(--font-ui);font-size:11px;color:var(--text-mute);letter-spacing:.05em}
+.lib-sort-sel{
+  background:var(--sunk);border:1px solid var(--border-soft);color:var(--text);
+  font-family:var(--font-mono);font-size:12px;padding:3px 6px;cursor:pointer}
+.lib-sort-sel:focus{outline:none;border-color:var(--border)}
+
 /* audio list */
 .lib-list-area{
   flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
