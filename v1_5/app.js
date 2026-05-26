@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.30';
+const APP_VERSION = '1.5.31';
 
 const CHANGELOG = [
+  { v: '1.5.31', date: '2026-05-26', items: [
+    'Auto-Backup: Settings → DATA → AUTO-BACKUP — pick a folder; 3 rotating botc-autobackup-1/2/3.json every 10 min',
+    'Requires File System Access API (desktop Chromium); iOS/Safari shows "not supported" message',
+    'Dir handle persisted in IDB; auto-restores on reload if permission still granted; disables after 3 consecutive failures',
+  ]},
   { v: '1.5.30', date: '2026-05-26', items: [
     'Switch sound: upload a custom audio file (≤ 2 MB) in Settings → CONTROLS → SWITCH SOUND',
     'Plays on every SETUP ↔ GAME mode toggle; stored as base64 in localStorage, decoded on first audio interaction',
@@ -3185,6 +3190,106 @@ function _updateBkpAge() {
   el.textContent = h < 1 ? '· <1h ago' : `· ${h}h ago`;
 }
 
+/* ── AUTO-BACKUP ─────────────────────────────────────────────── */
+
+let _autoBackupDirHandle = null;
+let _autoBackupIdx       = 0;
+let _autoBackupTimer     = null;
+let _autoBackupFailCount = 0;
+
+function hasFileSystemAccess() { return 'showDirectoryPicker' in window; }
+
+async function _persistAutoBackupHandle(handle) {
+  if (!db) return;
+  return new Promise(r => {
+    const tx = db.transaction('p', 'readwrite');
+    tx.onerror = r;
+    tx.objectStore('p').put({ id: '_autobackup_dir', dirHandle: handle }).onsuccess = r;
+  });
+}
+
+async function _clearAutoBackupHandle() {
+  if (!db) return;
+  return new Promise(r => {
+    const tx = db.transaction('p', 'readwrite');
+    tx.onerror = r;
+    tx.objectStore('p').delete('_autobackup_dir').onsuccess = r;
+  });
+}
+
+async function tryRestoreAutoBackup() {
+  if (!hasFileSystemAccess() || !db) return;
+  const rec = await new Promise(r => {
+    db.transaction('p', 'readonly').objectStore('p').get('_autobackup_dir').onsuccess = e => r(e.target.result);
+  });
+  if (!rec?.dirHandle) return;
+  const perm = await rec.dirHandle.queryPermission({ mode: 'readwrite' });
+  if (perm === 'granted') {
+    _autoBackupDirHandle = rec.dirHandle;
+    startAutoBackupTimer();
+    _updateAutoBackupUI();
+  }
+}
+
+async function toggleAutoBackup() {
+  if (_autoBackupDirHandle) { await stopAutoBackup(); return; }
+  if (!hasFileSystemAccess()) { showToast('Auto-backup is not supported by your browser.'); return; }
+  try {
+    _autoBackupDirHandle = await showDirectoryPicker({ mode: 'readwrite' });
+    await _persistAutoBackupHandle(_autoBackupDirHandle);
+    startAutoBackupTimer();
+    showToast('Auto-backup active — saves every 10 min.');
+    _updateAutoBackupUI();
+    doAutoBackup();
+  } catch (e) { /* user cancelled */ }
+}
+
+async function stopAutoBackup() {
+  clearInterval(_autoBackupTimer); _autoBackupTimer = null; _autoBackupDirHandle = null;
+  await _clearAutoBackupHandle();
+  showToast('Auto-backup disabled.');
+  _updateAutoBackupUI();
+}
+
+function startAutoBackupTimer() {
+  clearInterval(_autoBackupTimer);
+  _autoBackupTimer = setInterval(doAutoBackup, 10 * 60 * 1000);
+}
+
+async function doAutoBackup() {
+  if (!_autoBackupDirHandle) return;
+  _autoBackupIdx = (_autoBackupIdx + 1) % 3;
+  try {
+    const blob = await buildExportBlob();
+    const fh   = await _autoBackupDirHandle.getFileHandle(`botc-autobackup-${_autoBackupIdx + 1}.json`, { create: true });
+    const w    = await fh.createWritable(); await w.write(blob); await w.close();
+    _markExport();
+    _autoBackupFailCount = 0;
+  } catch (e) {
+    _autoBackupFailCount++;
+    if (_autoBackupFailCount >= 3) {
+      await stopAutoBackup();
+      showToast('Auto-backup failed 3 times — disabled. Re-enable in Settings.', 6000);
+    } else {
+      showToast(`Auto-backup failed (attempt ${_autoBackupFailCount}/3) — will retry.`);
+    }
+  }
+}
+
+function _updateAutoBackupUI() {
+  const btn    = document.getElementById('sett-autobackup-btn');
+  const pathEl = document.getElementById('sett-autobackup-path');
+  if (!btn) return;
+  const active = !!_autoBackupDirHandle;
+  btn.textContent = active ? 'AUTO-BACKUP: ON ●' : 'AUTO-BACKUP: OFF';
+  btn.style.borderColor = active ? 'var(--mode-game)' : '';
+  btn.style.color       = active ? 'var(--mode-game)' : '';
+  if (pathEl) {
+    pathEl.textContent = active && _autoBackupDirHandle?.name ? `Folder: ${_autoBackupDirHandle.name}` : '';
+    pathEl.style.display = (active && _autoBackupDirHandle?.name) ? 'block' : 'none';
+  }
+}
+
 /* ── IMPORT ─────────────────────────────────────────────────── */
 
 let _importData = null;
@@ -4503,6 +4608,26 @@ function settingsHTML() {
     </div>
 
     <div class="sett-section">
+      <div class="sett-title">${pi('rune', 12, 'var(--gold)')} DATA</div>
+      ${hasFileSystemAccess() ? `
+      <div class="sett-row" style="flex-wrap:wrap;gap:6px">
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" id="sett-autobackup-btn" data-action="sett-autobackup"
+                style="border-color:${_autoBackupDirHandle ? 'var(--mode-game)' : ''};color:${_autoBackupDirHandle ? 'var(--mode-game)' : ''}">
+          AUTO-BACKUP: ${_autoBackupDirHandle ? 'ON ●' : 'OFF'}
+        </button>
+      </div>
+      <span id="sett-autobackup-path" class="sett-unit" style="font-size:10px;display:${_autoBackupDirHandle?.name ? 'block' : 'none'};padding:0;color:var(--text-mute)">
+        ${_autoBackupDirHandle?.name ? `Folder: ${escHtml(_autoBackupDirHandle.name)}` : ''}
+      </span>
+      <div class="sett-hint" style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);padding:2px 0 4px">
+        3 rotating files every 10 min — requires desktop browser
+      </div>` : `
+      <div class="sett-hint" style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);padding:2px 0 4px">
+        Auto-backup not supported by this browser — use manual EXPORT after each session.
+      </div>`}
+    </div>
+
+    <div class="sett-section">
       <div class="sett-title">${pi('info', 12, 'var(--gold)')} ABOUT</div>
       <div class="sett-about">
         <p class="sett-about-line">Soundboard of Storytelling v ${APP_VERSION}</p>
@@ -5269,6 +5394,7 @@ function handleAction(action, el) {
       break;
     case 'sett-sw-snd-upload': uploadSwitchSound(); break;
     case 'sett-sw-snd-clear':  deleteSwitchSound(); break;
+    case 'sett-autobackup':    toggleAutoBackup(); break;
 
     // settings — theme + defaults
     case 'sett-theme':
@@ -5339,6 +5465,7 @@ async function init() {
     return;
   }
   renderScreen(S.screen);
+  tryRestoreAutoBackup();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
     try {
