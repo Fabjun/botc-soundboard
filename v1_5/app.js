@@ -1,8 +1,15 @@
 'use strict';
 
-const APP_VERSION = '1.5.23';
+const APP_VERSION = '1.5.24';
 
 const CHANGELOG = [
+  { v: '1.5.24', date: '2026-05-26', items: [
+    'V1 backup import: detect and auto-convert V1 backups (numeric version, no sos field)',
+    'Mode mapping: once→single, loop→loop, list→playlist, combo→combo',
+    'Combo steps: board-index references resolved to hashes; per-chip vol/fade/loop preserved',
+    'Playlist: file array and shuffle flag migrated; icons silently dropped (incompatible icon set)',
+    'Import modal shows V1 migration notice with icon-drop warning',
+  ]},
   { v: '1.5.23', date: '2026-05-26', items: [
     'PAD EDITOR: full-screen 3-column editor replaces the bottom-sheet for configured pads in SETUP mode',
     'LEFT: identity (name, hotkey capture), behavior (SOLO/LOOP/LIST/COMBO mode cards), visual (icon)',
@@ -2810,6 +2817,110 @@ function triggerImport() {
   document.getElementById('import-file-input')?.click();
 }
 
+/**
+ * Convert a V1 combo step to V1.5 chip format.
+ * @param {object} step  V1 step: {pads:[padIdx,...], chipOpts:[{vol,fade}|null,...], dur, fadeOutAll}
+ * @param {Array}  v1pads  V1 board.pads sparse array
+ * @param {Object} hashToName  hash → display name
+ * @returns {{chips:Array, dur:number, action:string|null}}
+ */
+function _convertV1Step(step, v1pads, hashToName) {
+  const chips = [];
+  const rawPads = step.pads || [];
+  const chipOpts = step.chipOpts || [];
+  for (let i = 0; i < rawPads.length; i++) {
+    const v1p = v1pads[rawPads[i]];
+    if (!v1p) continue;
+    const hash = (v1p.files || [])[0] || null;
+    if (!hash) continue;
+    const opt    = chipOpts[i] || {};
+    const isLoop = v1p.mode === 'loop' && (!v1p.loopCount || v1p.loopCount === 0);
+    chips.push({
+      name:   v1p.name || hashToName[hash] || '',
+      hash,
+      vol:    opt.vol  != null ? opt.vol   : (v1p.volume  ?? 80),
+      fadeIn: opt.fade != null ? opt.fade  : (v1p.fadeIn  || 0),
+      loop:   isLoop,
+    });
+  }
+  return { chips, dur: step.dur || 0, action: step.fadeOutAll ? 'fade-all' : null };
+}
+
+/**
+ * Convert a full V1 backup object to V1.5 import format.
+ * V1 boards have a flat pads[] array; V1.5 wraps each board in one default scene.
+ * Icons are dropped (incompatible icon sets).
+ * @param {object} v1data
+ * @returns {object}  V1.5-shaped import object
+ */
+function _convertV1ToV15(v1data) {
+  const hashToName = {};
+  for (const e of v1data.library || []) {
+    if (e.hash && e.name) hashToName[e.hash] = e.name;
+  }
+
+  const v15boards = [], v15scenes = [];
+
+  for (const v1b of v1data.boards || []) {
+    const boardId = 'b_v1_' + v1b.id;
+    const sceneId = 's_v1_' + v1b.id;
+    const v1pads  = v1b.pads || [];
+
+    const pads15 = [];
+    for (let slot = 0; slot < v1pads.length; slot++) {
+      const v1p = v1pads[slot];
+      if (!v1p) continue;
+
+      const type = v1p.mode === 'once'  ? 'single'
+                 : v1p.mode === 'loop'  ? 'loop'
+                 : v1p.mode === 'list'  ? 'playlist'
+                 : v1p.mode === 'combo' ? 'combo'
+                 : 'single';
+
+      const firstHash = (v1p.files || [])[0] || null;
+      const pad = {
+        id:      'p_v1_' + v1b.id + '_' + slot,
+        slot,
+        name:    v1p.name    || '',
+        hotkey:  v1p.key     || '',
+        type,
+        volume:  v1p.volume  ?? 80,
+        fadeIn:  v1p.fadeIn  || 0,
+        fadeOut: v1p.fadeOut || 0,
+      };
+
+      // icon: V1 uses a different icon set — drop silently
+      if (type === 'combo') {
+        pad.steps = (v1p.steps || []).map(s => _convertV1Step(s, v1pads, hashToName));
+        pad.hash  = firstHash;
+      } else if (type === 'playlist') {
+        pad.files   = (v1p.files || []).map(h => ({ hash: h, name: hashToName[h] || h }));
+        pad.hash    = firstHash;
+        if (v1p.shuffle) pad.shuffle = true;
+      } else {
+        pad.hash = firstHash;
+      }
+      pads15.push(pad);
+    }
+
+    v15boards.push({
+      id: boardId, name: v1b.name, _app: 'v1_5',
+      scenes: [{ id: sceneId, name: 'Scene 1' }],
+      sets: [], activeSceneId: sceneId, gridCols: 4,
+      created: v1b.createdAt || Date.now(), updated: Date.now(),
+    });
+    v15scenes.push({
+      id: sceneId, boardId, name: 'Scene 1',
+      pads: pads15, gridCols: 4, created: Date.now(),
+    });
+  }
+
+  // Only import audio-type library entries (skip V1 pad templates + SVG icons)
+  const v15lib = (v1data.library || []).filter(e => !e.type || e.type === 'audio');
+
+  return { sos: 'v1_5', version: 'v1-migrated', boards: v15boards, scenes: v15scenes, sets: [], library: v15lib, _v1migrated: true };
+}
+
 async function parseImportFile(inp) {
   const file = inp.files[0]; inp.value = ''; if (!file) return;
   showToast('Parsing file…');
@@ -2819,8 +2930,15 @@ async function parseImportFile(inp) {
     data = JSON.parse(jsonStr);
     jsonStr = null; // allow GC before processing
   } catch (e) { showToast('Invalid file — could not parse.'); return; }
+
+  // Detect V1 backup: numeric version, no sos field, has boards + library arrays
+  if (!data.sos && typeof data.version !== 'undefined' && Array.isArray(data.boards) && Array.isArray(data.library)) {
+    showToast('V1 backup detected — converting…');
+    data = _convertV1ToV15(data);
+  }
+
   if (data.sos !== 'v1_5' || !Array.isArray(data.boards) || !Array.isArray(data.library)) {
-    showToast('Not a V1.5 backup file.'); return;
+    showToast('Not a recognized backup file.'); return;
   }
   _importData = data;
   _importAudioChoices = {};
@@ -2849,6 +2967,11 @@ function showImportModal({ newAudio, skipAudio, conflictAudio, newBoards, dupeBo
   if (_importModalOpen) return;
   _importModalOpen = true;
   const row = (cls, text) => `<div class="imp-row-info ${cls}">${escHtml(text)}</div>`;
+  const v1Banner = _importData?._v1migrated
+    ? `<div class="imp-section" style="margin-bottom:12px"><div class="imp-section-title" style="color:var(--active)">V1 MIGRATION</div>${
+        row('imp-new', 'V1 backup detected and converted automatically')
+      }${row('imp-skip', '· Icons not migrated (incompatible icon set)')}</div>`
+    : '';
   const audioSection = [
     newAudio      ? row('imp-new',      `+ ${newAudio} new file${newAudio !== 1 ? 's' : ''} will be added`) : '',
     conflictAudio ? row('imp-conflict', `⚠ ${conflictAudio} name conflict${conflictAudio !== 1 ? 's' : ''} — auto-renamed with "_imported"`) : '',
@@ -2867,7 +2990,7 @@ function showImportModal({ newAudio, skipAudio, conflictAudio, newBoards, dupeBo
         <button class="act-btn" data-action="import-cancel">×</button>
       </div>
       <div class="cl-body" style="padding:16px 16px 8px;gap:0">
-        <div class="imp-section"><div class="imp-section-title">AUDIO</div>${audioSection}</div>
+        ${v1Banner}<div class="imp-section"><div class="imp-section-title">AUDIO</div>${audioSection}</div>
         <div class="imp-section" style="margin-top:12px"><div class="imp-section-title">BOARDS</div>${boardSection}</div>
       </div>
       <div class="cl-footer" style="gap:8px">
