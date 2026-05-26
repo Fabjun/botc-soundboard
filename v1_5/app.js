@@ -1,8 +1,11 @@
 'use strict';
 
-const APP_VERSION = '2.0.7';
+const APP_VERSION = '2.0.8';
 
 const CHANGELOG = [
+  { v: '2.0.8', date: '2026-05-27', items: [
+    'Settings → DATA: RESET ALL DATA button with 2-tap confirm (5s window) — deletes IDB and localStorage then reloads',
+  ]},
   { v: '2.0.7', date: '2026-05-27', items: [
     'Combo Editor: per-chip volume slider (range, live label) and fade-in field (number, ms)',
     '_ceSetChipVol() / _ceSetChipFade() update _ceSteps directly via oninput handlers',
@@ -4961,6 +4964,29 @@ function handlePeTrackPick(hash, name) {
 /* ── SCREEN: SETTINGS ───────────────────────────────────────── */
 
 /** @returns {string} */
+let _settResetCfm = false;
+
+async function doResetAllData() {
+  if (!_settResetCfm) {
+    _settResetCfm = true;
+    const btn = document.getElementById('sett-reset-btn');
+    if (btn) { btn.textContent = 'CONFIRM RESET'; btn.style.background = 'var(--blood)'; }
+    showToast('Tap CONFIRM RESET again to delete all data. This cannot be undone.');
+    setTimeout(() => {
+      _settResetCfm = false;
+      const b = document.getElementById('sett-reset-btn');
+      if (b) { b.textContent = 'RESET ALL DATA'; b.style.background = ''; }
+    }, 5000);
+    return;
+  }
+  _settResetCfm = false;
+  audioStopAll(0);
+  stopLibPreview();
+  await new Promise(r => { const req = indexedDB.deleteDatabase('botc'); req.onsuccess = r; req.onerror = r; req.onblocked = r; });
+  localStorage.clear();
+  location.reload();
+}
+
 function settingsHTML() {
   const theme        = S.theme || '';
   const defVol       = localStorage.getItem('sos-def-volume')    ?? '80';
@@ -5296,6 +5322,13 @@ function settingsHTML() {
       <div class="sett-hint" style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);padding:2px 0 4px">
         Auto-backup not supported by this browser — use manual EXPORT after each session.
       </div>`}
+      <div class="sett-row" style="margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px">
+        <button class="sb-btn sb-btn-sm" style="border-color:var(--blood);color:var(--blood-bright)"
+                data-action="settings-reset-all" id="sett-reset-btn">RESET ALL DATA</button>
+        <span class="sett-hint" style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute)">
+          Deletes all boards, audio, and settings. Cannot be undone.
+        </span>
+      </div>
     </div>
 
     <div class="sett-section">
@@ -6180,6 +6213,7 @@ function handleAction(action, el) {
     case 'sett-sw-snd-upload': uploadSwitchSound(); break;
     case 'sett-sw-snd-clear':  deleteSwitchSound(); break;
     case 'sett-autobackup':    toggleAutoBackup(); break;
+    case 'settings-reset-all': doResetAllData(); break;
     case 'km-close':           closeKeymap(); break;
     case 'sett-help-key-clear':
       localStorage.removeItem('sos-help-key-code');
