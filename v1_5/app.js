@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.29';
+const APP_VERSION = '1.5.30';
 
 const CHANGELOG = [
+  { v: '1.5.30', date: '2026-05-26', items: [
+    'Switch sound: upload a custom audio file (≤ 2 MB) in Settings → CONTROLS → SWITCH SOUND',
+    'Plays on every SETUP ↔ GAME mode toggle; stored as base64 in localStorage, decoded on first audio interaction',
+    'UPLOAD button replaces the sound; × button removes it',
+  ]},
   { v: '1.5.29', date: '2026-05-26', items: [
     'Configurable GAME long-press action: VOL (quick volume), CUE (add to queue), or OFF — Settings → CONTROLS',
     'Cue Stack: long-press in CUE mode queues up to 3 pads; TAB key (or ▶ TAB button) fires the next one',
@@ -2707,6 +2712,7 @@ function renderTopBar() {
 
 async function handleBdMode(mode) {
   set.boardMode(mode);
+  playSwitchSound();
   const sMode = document.getElementById('bd-status-mode');
   if (sMode) { sMode.textContent = mode.toUpperCase(); sMode.style.color = `var(--mode-${mode})`; }
   closePadPicker();
@@ -2834,6 +2840,45 @@ function handleBdRenameBoard() {
     if (e.key === 'Escape') { input.value = prev; input.blur(); }
   });
   input.addEventListener('blur', commit, { once: true });
+}
+
+/* ── SWITCH SOUND ───────────────────────────────────────────── */
+
+async function uploadSwitchSound() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'audio/*';
+  inp.onchange = async () => {
+    const file = inp.files[0]; if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { showToast('File too large (max 2 MB)'); return; }
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let bin = '';
+    const chunk = 65536;
+    for (let i = 0; i < bytes.length; i += chunk) bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    localStorage.setItem('sos-switch-sound-b64', btoa(bin));
+    localStorage.setItem('sos-switch-sound-name', file.name);
+    await loadSwitchSound();
+    _renderSwitchSoundRow();
+    showToast('Switch sound loaded');
+  };
+  inp.click();
+}
+
+function deleteSwitchSound() {
+  localStorage.removeItem('sos-switch-sound-b64');
+  localStorage.removeItem('sos-switch-sound-name');
+  clearSwitchSoundBuf();
+  _renderSwitchSoundRow();
+}
+
+function _renderSwitchSoundRow() {
+  const nameEl   = document.getElementById('sett-sw-snd-name');
+  const clearBtn = document.getElementById('sett-sw-snd-clear');
+  if (!nameEl) return;
+  const name = localStorage.getItem('sos-switch-sound-name') || '';
+  nameEl.textContent = name || 'none';
+  nameEl.style.color = name ? 'var(--text)' : 'var(--text-mute)';
+  if (clearBtn) clearBtn.style.display = name ? '' : 'none';
 }
 
 /* ── DRAG-TO-REORDER ────────────────────────────────────────── */
@@ -4318,6 +4363,7 @@ function settingsHTML() {
   const masterVol     = localStorage.getItem('sos-master-vol')       ?? '100';
   const enterStopMode = localStorage.getItem('sos-enter-stop-mode')  || 'total';
   const lpAction      = localStorage.getItem('sos-lp-action')        || 'vol';
+  const swSndName     = localStorage.getItem('sos-switch-sound-name') || '';
   const themes = [
     { id: '',        label: 'DEFAULT' },
     { id: 'verdant', label: 'VERDANT' },
@@ -4447,6 +4493,12 @@ function settingsHTML() {
       </div>
       <div class="sett-hint" style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);padding:2px 0 4px">
         VOL = quick volume &nbsp;|&nbsp; CUE = add to queue (TAB fires next)
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Switch sound</label>
+        <span id="sett-sw-snd-name" class="sett-unit" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${swSndName ? 'var(--text)' : 'var(--text-mute)'}">${swSndName ? escHtml(swSndName) : 'none'}</span>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="sett-sw-snd-upload" style="flex-shrink:0">UPLOAD</button>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" id="sett-sw-snd-clear" data-action="sett-sw-snd-clear" style="flex-shrink:0;${swSndName ? '' : 'display:none'}">×</button>
       </div>
     </div>
 
@@ -5215,6 +5267,8 @@ function handleAction(action, el) {
       document.querySelectorAll('[data-action="sett-lp-action"]').forEach(b =>
         b.classList.toggle('is-active', b.dataset.act === el.dataset.act));
       break;
+    case 'sett-sw-snd-upload': uploadSwitchSound(); break;
+    case 'sett-sw-snd-clear':  deleteSwitchSound(); break;
 
     // settings — theme + defaults
     case 'sett-theme':

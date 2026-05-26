@@ -52,6 +52,7 @@ function _initCtx() {
   masterGain = ctx.createGain();
   masterGain.gain.value = Math.max(0, Math.min(1, +(localStorage.getItem('sos-master-vol') ?? 100) / 100));
   masterGain.connect(ctx.destination);
+  loadSwitchSound();
 }
 
 /** @param {number} v 0–100 */
@@ -249,3 +250,31 @@ function audioUnduck(ramp = 0.3) {
     dg.gain.linearRampToValueAtTime(1.0, ctx.currentTime + ramp);
   }
 }
+
+/* ── SWITCH SOUND ───────────────────────────────────────────── */
+
+let _switchSoundBuf = null;
+
+async function loadSwitchSound() {
+  _switchSoundBuf = null;
+  const b64 = localStorage.getItem('sos-switch-sound-b64');
+  if (!b64 || !ctx) return;
+  try {
+    const bin   = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    _switchSoundBuf = await ctx.decodeAudioData(bytes.buffer);
+  } catch (e) { console.warn('switch-sound decode failed', e); }
+}
+
+function playSwitchSound() {
+  if (!_switchSoundBuf || !ctx) return;
+  try {
+    const src = ctx.createBufferSource();
+    src.buffer = _switchSoundBuf;
+    src.connect(masterGain || ctx.destination);
+    src.start(0);
+  } catch (e) {}
+}
+
+function clearSwitchSoundBuf() { _switchSoundBuf = null; }
