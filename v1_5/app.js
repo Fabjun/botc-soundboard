@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.28';
+const APP_VERSION = '1.5.29';
 
 const CHANGELOG = [
+  { v: '1.5.29', date: '2026-05-26', items: [
+    'Configurable GAME long-press action: VOL (quick volume), CUE (add to queue), or OFF — Settings → CONTROLS',
+    'Cue Stack: long-press in CUE mode queues up to 3 pads; TAB key (or ▶ TAB button) fires the next one',
+    'Cue strip appears above the pad grid while queue is active; tap an entry to remove it; ✕ clears all',
+  ]},
   { v: '1.5.28', date: '2026-05-26', items: [
     'Enter Key Stop Mode: Settings → CONTROLS → ENTER STOP — TOTAL (stop all) or SERIAL (LIFO: stop last started)',
     'SERIAL mode tracks play order across scene pads, set pads, hotkeys, combo pads, and loop pads',
@@ -635,7 +640,7 @@ function navigate(screenId) {
   if (_assigningTemplate && screenId !== 'board') _cancelAssignTemplate();
   if (S.screen === 'board' && screenId !== 'board') {
     audioStopAll(0); _onFgStopAll(); _playOrderClear();
-    _comboClearAll();
+    _comboClearAll(); _cueClear();
     document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
     _releaseWakeLock();
     _cancelAutoStop();
@@ -1521,6 +1526,49 @@ function _playOrderAdd(id)    { const i = _playOrder.indexOf(id); if (i !== -1) 
 function _playOrderRemove(id) { const i = _playOrder.indexOf(id); if (i !== -1) _playOrder.splice(i, 1); }
 function _playOrderClear()    { _playOrder.length = 0; }
 
+// Cue stack (GAME mode long-press CUE action)
+const _cueStack = []; // [{padId, slot, isSet}]
+
+function _cueAdd(padId, slot, isSet) {
+  if (_cueStack.some(e => e.padId === padId)) { showToast('Already in cue'); return; }
+  if (_cueStack.length >= 3) { showToast('Cue full (max 3)'); return; }
+  _cueStack.push({ padId, slot, isSet });
+  renderCueStrip();
+}
+
+function _cueFire() {
+  if (!_cueStack.length) return;
+  const { slot, isSet } = _cueStack.shift();
+  renderCueStrip();
+  if (isSet) handleQaPadTap(slot);
+  else handleBdPadTap(slot);
+}
+
+function _cueClear() {
+  _cueStack.length = 0;
+  renderCueStrip();
+}
+
+function renderCueStrip() {
+  const el = document.getElementById('bd-cue-strip');
+  if (!el) return;
+  if (!_cueStack.length || S.boardMode !== 'game') { el.innerHTML = ''; return; }
+  const allPads = [...(_bdScene?.pads || []), ...(_bdSet?.pads || [])];
+  el.innerHTML = `<div class="cue-strip">
+    <span class="cue-label">CUE</span>
+    ${_cueStack.map((entry, i) => {
+      const pad  = allPads.find(p => p.id === entry.padId);
+      const name = pad?.name || '?';
+      return `<div class="cue-item${i === 0 ? ' is-next' : ''}" data-action="cue-remove" data-pad-id="${escAttr(entry.padId)}">
+        <span class="cue-idx">${i + 1}</span>
+        <span class="cue-name">${escHtml(name)}</span>
+      </div>`;
+    }).join('')}
+    <button class="cue-fire-btn" data-action="cue-fire">▶ TAB</button>
+    <button class="cue-clear-btn" data-action="cue-clear">✕</button>
+  </div>`;
+}
+
 // Combo editor state
 let _ceOpen      = false;
 let _cePadId     = null;
@@ -1578,6 +1626,7 @@ function boardHTML() {
   </div>
   <div class="bd-scene-bar" id="bd-scene-bar"></div>
   <div class="bd-content" id="bd-content">
+    <div id="bd-cue-strip"></div>
     <div class="bd-grid-wrap" id="bd-grid-wrap"></div>
   </div>
   <div class="bd-qa-wrap" id="bd-qa-wrap"></div>
@@ -1623,6 +1672,7 @@ function renderBoardUI() {
 
   renderSceneBar();
   renderPadGrid();
+  renderCueStrip();
   renderQA();
 
   const sName  = document.getElementById('bd-status-name');
@@ -2222,7 +2272,7 @@ async function handleBdSceneSwitch(sceneId) {
   closeSceneOpts();
   closeSceneAdd();
   audioStopAll(0); _onFgStopAll(); _playOrderClear();
-  _comboClearAll();
+  _comboClearAll(); _cueClear();
   document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
   _bdBoard.activeSceneId = sceneId;
   _bdBoard.updated = Date.now();
@@ -4267,6 +4317,7 @@ function settingsHTML() {
   const autoStopMin = localStorage.getItem('sos-auto-stop-min') || '30';
   const masterVol     = localStorage.getItem('sos-master-vol')       ?? '100';
   const enterStopMode = localStorage.getItem('sos-enter-stop-mode')  || 'total';
+  const lpAction      = localStorage.getItem('sos-lp-action')        || 'vol';
   const themes = [
     { id: '',        label: 'DEFAULT' },
     { id: 'verdant', label: 'VERDANT' },
@@ -4385,6 +4436,17 @@ function settingsHTML() {
       </div>
       <div class="sett-hint" style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);padding:2px 0 4px">
         TOTAL = stop all &nbsp;|&nbsp; SERIAL = stop last started (LIFO)
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Long-press (GAME)</label>
+        <div class="sett-btn-group">
+          ${seg('sett-lp-action','act','vol', 'VOL', lpAction==='vol')}
+          ${seg('sett-lp-action','act','cue', 'CUE', lpAction==='cue')}
+          ${seg('sett-lp-action','act','off', 'OFF', lpAction==='off')}
+        </div>
+      </div>
+      <div class="sett-hint" style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);padding:2px 0 4px">
+        VOL = quick volume &nbsp;|&nbsp; CUE = add to queue (TAB fires next)
       </div>
     </div>
 
@@ -4668,6 +4730,10 @@ document.addEventListener('keydown', e => {
       e.preventDefault();
       _handleEnterStop();
     }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      _cueFire();
+    }
   }
 });
 
@@ -4750,15 +4816,17 @@ document.addEventListener('pointercancel', () => {
   if (_dragSlot !== null) { _dragCancel(); }
 });
 
-/* ── LONG-PRESS: QUICK VOLUME ───────────────────────────────── */
+/* ── LONG-PRESS: GAME MODE (quick volume / cue) ─────────────── */
 
 document.addEventListener('pointerdown', e => {
   if (S.screen !== 'board' || S.boardMode !== 'game') return;
   const targetEl = e.target.closest('[data-pad-id][data-pad-slot]')
                 || e.target.closest('[data-pad-id][data-set-pad-slot]');
   if (!targetEl) return;
-  const padId = targetEl.dataset.padId;
-  if (!audioIsPlaying(padId)) return;
+  const padId   = targetEl.dataset.padId;
+  const lpAction = localStorage.getItem('sos-lp-action') || 'vol';
+  if (lpAction === 'off') return;
+  if (lpAction === 'vol' && !audioIsPlaying(padId)) return;
 
   _lpStartX = e.clientX;
   _lpStartY = e.clientY;
@@ -4775,7 +4843,12 @@ document.addEventListener('pointerdown', e => {
     const pad = isSet
       ? _bdSet?.pads.find(p => p.slot === slot)
       : _bdScene?.pads.find(p => p.slot === slot);
-    if (pad) openPadVolSlider(pad, targetEl);
+    if (!pad) return;
+    if (lpAction === 'cue') {
+      _cueAdd(pad.id, slot, isSet);
+    } else {
+      openPadVolSlider(pad, targetEl);
+    }
   }, 500);
 });
 
@@ -5124,10 +5197,23 @@ function handleAction(action, el) {
       break;
     }
 
+    case 'cue-fire':   _cueFire(); break;
+    case 'cue-clear':  _cueClear(); break;
+    case 'cue-remove': {
+      const idx = _cueStack.findIndex(e => e.padId === el.dataset.padId);
+      if (idx !== -1) { _cueStack.splice(idx, 1); renderCueStrip(); }
+      break;
+    }
+
     case 'sett-enter-stop':
       localStorage.setItem('sos-enter-stop-mode', el.dataset.mode);
       document.querySelectorAll('[data-action="sett-enter-stop"]').forEach(b =>
         b.classList.toggle('is-active', b.dataset.mode === el.dataset.mode));
+      break;
+    case 'sett-lp-action':
+      localStorage.setItem('sos-lp-action', el.dataset.act);
+      document.querySelectorAll('[data-action="sett-lp-action"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.act === el.dataset.act));
       break;
 
     // settings — theme + defaults

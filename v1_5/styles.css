@@ -732,6 +732,37 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
   font-family:var(--font-mono);font-size:10px;color:var(--text-mute);
   text-align:center}
 
+/* ── CUE STRIP ──────────────────────────────────────────────── */
+#bd-cue-strip{flex-shrink:0}
+.cue-strip{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 8px;
+  background:var(--deep);border-bottom:1px solid var(--border);
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  font-family:var(--font-ui);font-size:10px;letter-spacing:.06em}
+.cue-label{
+  color:var(--gold-dim);flex-shrink:0;margin-right:2px}
+.cue-item{
+  display:flex;align-items:center;gap:4px;
+  background:var(--surface);border:1px solid var(--border);
+  clip-path:var(--cc);padding:4px 8px;cursor:pointer;
+  flex-shrink:0;max-width:120px;min-height:28px}
+.cue-item.is-next{border-color:var(--gold);color:var(--gold)}
+.cue-item:hover{opacity:.75}
+.cue-idx{color:var(--text-mute);font-size:9px;flex-shrink:0}
+.cue-name{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--text);font-size:10px}
+.cue-item.is-next .cue-name{color:var(--gold)}
+.cue-fire-btn,.cue-clear-btn{
+  flex-shrink:0;background:none;border:1px solid var(--border);
+  color:var(--text-mute);font-family:var(--font-ui);font-size:10px;
+  padding:4px 8px;cursor:pointer;clip-path:var(--cc);
+  letter-spacing:.04em;min-height:28px}
+.cue-fire-btn{border-color:var(--gold);color:var(--gold);margin-left:auto}
+.cue-fire-btn:hover{background:var(--gold);color:var(--night)}
+.cue-clear-btn:hover{border-color:var(--blood);color:var(--blood)}
+
 /* ── IMPORT MODAL ────────────────────────────────────────────── */
 .imp-section{display:flex;flex-direction:column;gap:4px}
 .imp-section-title{
