@@ -1,8 +1,11 @@
 'use strict';
 
-const APP_VERSION = '2.0.1';
+const APP_VERSION = '2.0.2';
 
 const CHANGELOG = [
+  { v: '2.0.2', date: '2026-05-27', items: [
+    'Library: audio preview button on each audio row — click to preview, click again to stop',
+  ]},
   { v: '2.0.1', date: '2026-05-27', items: [
     'Bug fix: Library "In use" / "Unused" filters now correctly scan all scenes and sets for referenced audio hashes',
     'Bug fix: Pad Editor "Save as template" now correctly reads the name input field and hotkey from keycap element',
@@ -773,6 +776,7 @@ function applyAppearance() {
 /** @param {ScreenId} screenId */
 function navigate(screenId) {
   if (_peOpen) closePadEditor();
+  stopLibPreview();
   if (_assigningTemplate && screenId !== 'board') _cancelAssignTemplate();
   if (S.screen === 'board' && screenId !== 'board') {
     audioStopAll(0); _onFgStopAll(); _playOrderClear();
@@ -948,6 +952,8 @@ let _libDeleteCfm   = null;
 let _libBdDeleteCfm = null;
 let _libUploading   = false;
 let _libEntries     = [];
+let _libPreviewHash = null;
+let _libPreviewNode = null;
 
 /** @returns {Promise<void>} */
 async function _libRefresh() {
@@ -1160,10 +1166,39 @@ function audioRowHTML(e) {
     <div class="audio-col-dur">${fmtDur(e.duration)}</div>
     <div class="audio-col-size">${fmtSize(e.size)}</div>
     <div class="audio-col-acts">
+      <button class="act-btn lib-preview-btn" id="lpb-${e.hash}" data-action="lib-preview" data-hash="${e.hash}" title="Preview">&#x25B6;</button>
       <button class="act-btn" data-action="lib-rename" data-hash="${e.hash}" title="Rename">${pi('edit',12,'currentColor')}</button>
       <button class="act-btn danger${isCfm?' is-confirm':''}" data-action="lib-delete" data-hash="${e.hash}" title="Delete">${isCfm?'SURE?':'×'}</button>
     </div>
   </div>`;
+}
+
+function stopLibPreview() {
+  if (_libPreviewNode) { try { _libPreviewNode.stop(); } catch(e){} _libPreviewNode = null; }
+  if (_libPreviewHash) {
+    const btn = document.getElementById('lpb-' + _libPreviewHash);
+    if (btn) { btn.innerHTML = '&#x25B6;'; btn.removeAttribute('style'); }
+    _libPreviewHash = null;
+  }
+}
+
+async function toggleLibPreview(hash) {
+  if (_libPreviewHash === hash) { stopLibPreview(); return; }
+  stopLibPreview();
+  await _initCtx();
+  const entry = await libGet(hash);
+  if (!entry?.buf) { showToast('Audio not found.'); return; }
+  let decoded;
+  try { decoded = await ctx.decodeAudioData(entry.buf.slice(0)); }
+  catch(e) { showToast('Cannot preview this file.'); return; }
+  const node = ctx.createBufferSource();
+  node.buffer = decoded;
+  node.connect(ctx.destination);
+  node.start(0);
+  _libPreviewHash = hash; _libPreviewNode = node;
+  const btn = document.getElementById('lpb-' + hash);
+  if (btn) { btn.innerHTML = '&#x23F8;'; btn.style.color = 'var(--active)'; }
+  node.onended = () => { if (_libPreviewHash === hash) stopLibPreview(); };
 }
 
 function handleLibTab(tab) {
@@ -5659,6 +5694,7 @@ function handleAction(action, el) {
     case 'lib-tab':           handleLibTab(el.dataset.tab); break;
     case 'lib-filter':        handleLibFilter(el.dataset.filter); break;
     case 'lib-folder':        handleLibFolder(el.dataset.folder); break;
+    case 'lib-preview':       toggleLibPreview(el.dataset.hash); break;
     case 'lib-rename':        handleLibRename(el.dataset.hash); break;
     case 'lib-delete':        handleLibDelete(el.dataset.hash); break;
     case 'lib-bd-open':       handleBlOpen(el.dataset.boardId); break;
