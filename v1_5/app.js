@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.35';
+const APP_VERSION = '1.5.36';
 
 const CHANGELOG = [
+  { v: '1.5.36', date: '2026-05-26', items: [
+    'Settings → APPEARANCE: content width (COMPACT/MEDIUM/WIDE/AUTO), font scale, symbol scale, icon scale, icon density',
+    'Content width constrains board grid max-width; font/symbol/icon scale use CSS vars (--font-scale, --sym-scale, --ico-scale)',
+    'Pad Editor: audio scrubber — elapsed time counter ticks during PREVIEW, shows position/duration in toolbar',
+  ]},
   { v: '1.5.35', date: '2026-05-26', items: [
     'Pad Editor: TRIM section — trim start/end sliders crop the active playback region of any single or loop pad',
     'Waveform visualization: trimmed-out regions shown at low opacity; fade zones clamped to active region',
@@ -294,7 +299,7 @@ function pixelIcon(id, size, color) {
     const p = def.d[i].split(' ');
     r += `<rect x="${p[0]}" y="${p[1]}" width="1" height="1" fill="${color}"/>`;
   }
-  return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" shape-rendering="crispEdges" style="display:block">${r}</svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" shape-rendering="crispEdges" style="display:block;transform:scale(var(--sym-scale,1));transform-origin:center">${r}</svg>`;
 }
 
 const pi = pixelIcon;
@@ -696,13 +701,24 @@ function _applyEmbers(on) {
 }
 
 function applyAppearance() {
-  const root  = document.documentElement.style;
-  const padSz    = +(localStorage.getItem('sos-pad-sz')           ?? 80);
-  const padGap   = +(localStorage.getItem('sos-pad-gap')          ?? 6);
-  const labelSc  = +(localStorage.getItem('sos-pad-label-scale')  ?? 1);
+  const root = document.documentElement.style;
+  const padSz      = +(localStorage.getItem('sos-pad-sz')           ?? 80);
+  const padGap     = +(localStorage.getItem('sos-pad-gap')          ?? 6);
+  const labelSc    = +(localStorage.getItem('sos-pad-label-scale')  ?? 1);
+  const fontSc     = +(localStorage.getItem('sos-font-scale')       ?? 1);
+  const symSc      = +(localStorage.getItem('sos-sym-scale')        ?? 1);
+  const icoSc      = +(localStorage.getItem('sos-ico-scale')        ?? 1);
+  const icoDensity = +(localStorage.getItem('sos-ico-density')      ?? 48);
   root.setProperty('--pad-sz',          `${padSz}px`);
   root.setProperty('--pad-gap',         `${padGap}px`);
   root.setProperty('--pad-label-scale', String(labelSc));
+  root.setProperty('--font-scale',      String(fontSc));
+  root.setProperty('--sym-scale',       String(symSc));
+  root.setProperty('--ico-scale',       String(icoSc));
+  root.setProperty('--ico-density',     `${icoDensity}px`);
+  const cxRaw = localStorage.getItem('sos-content-width') || 'auto';
+  const cxMap = { compact: '700px', medium: '1000px', wide: '1400px', auto: '9999px' };
+  root.setProperty('--cx-max', cxMap[cxRaw] || '9999px');
   const shape = localStorage.getItem('sos-pad-shape') || 'square';
   document.body.classList.toggle('pad-ci', shape === 'circle');
 }
@@ -1662,6 +1678,8 @@ let _peCaptureKey    = false;
 let _peDeleteCfm     = false;
 let _pePickerOpen    = false;   // audio-from-lib picker
 let _peTrackPickerOpen = false; // playlist-add picker
+let _peScrubRaf      = null;
+let _peScrubT0       = 0;
 
 // Drag-to-reorder state (SETUP mode)
 let _dragSlot     = null;
@@ -4016,6 +4034,7 @@ function closePadEditor() {
     document.removeEventListener('keydown', _peHandleKeyCapture);
     _peCaptureKey = false;
   }
+  _peScrubStop();
   closePeAudioPicker();
   closePeTrackPicker();
   _peOpen        = false;
@@ -4069,6 +4088,7 @@ function _renderPadEditor() {
     </div>
     <div class="pe-toolbar-actions">
       <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-preview" id="pe-preview-btn">▶ PREVIEW</button>
+      <span id="pe-scrub-time" class="pe-scrub-time"></span>
       <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-save-template" title="Save as template">◈ TEMPLATE</button>
       <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="pe-save">✦ SAVE</button>
     </div>
@@ -4449,6 +4469,27 @@ function handlePeSaveTemplate() {
   showToast(`Template saved: "${name}"`);
 }
 
+function _peScrubStart(entry, ts, te) {
+  _peScrubStop();
+  _peScrubT0 = Date.now();
+  const dur = te > 0 ? (te - ts) : ((entry?.duration || 0) - ts);
+  const span = document.getElementById('pe-scrub-time');
+  if (!span) return;
+  function tick() {
+    if (!span.isConnected) { _peScrubRaf = null; return; }
+    const elapsed = ts + (Date.now() - _peScrubT0) / 1000;
+    span.textContent = `${elapsed.toFixed(1)}s / ${Math.max(0, dur).toFixed(1)}s`;
+    _peScrubRaf = requestAnimationFrame(tick);
+  }
+  _peScrubRaf = requestAnimationFrame(tick);
+}
+
+function _peScrubStop() {
+  if (_peScrubRaf !== null) { cancelAnimationFrame(_peScrubRaf); _peScrubRaf = null; }
+  const span = document.getElementById('pe-scrub-time');
+  if (span) span.textContent = '';
+}
+
 function handlePePreview() {
   const pad = _peEditPad;
   if (!pad) return;
@@ -4456,6 +4497,7 @@ function handlePePreview() {
   if (audioIsPlaying(pad.id)) {
     audioStop(pad.id, { fade: +(document.getElementById('pe-fade-out')?.value || 0) });
     if (btn) btn.textContent = '▶ PREVIEW';
+    _peScrubStop();
   } else if (pad.hash) {
     const vol = +(document.getElementById('pe-volume')?.value      ?? 80);
     const fi  = +(document.getElementById('pe-fade-in')?.value     || 0);
@@ -4464,6 +4506,7 @@ function handlePePreview() {
     const te  = +(document.getElementById('pe-trim-end')?.value    || 0);
     audioPlay(pad.id, pad.hash, { type: pad.type || 'single', volume: vol, fadeIn: fi, fadeOut: fo, trimStart: ts, trimEnd: te });
     if (btn) btn.textContent = '■ STOP';
+    _peScrubStart(_peLibEntry, ts, te);
   }
 }
 
@@ -4636,6 +4679,11 @@ function settingsHTML() {
   const padGap        = localStorage.getItem('sos-pad-gap')          ?? '6';
   const padLabelSc    = localStorage.getItem('sos-pad-label-scale')  ?? '1';
   const padShape      = localStorage.getItem('sos-pad-shape')        || 'square';
+  const contentWidth  = localStorage.getItem('sos-content-width')    || 'auto';
+  const fontSc        = localStorage.getItem('sos-font-scale')       ?? '1';
+  const symSc         = localStorage.getItem('sos-sym-scale')        ?? '1';
+  const icoSc         = localStorage.getItem('sos-ico-scale')        ?? '1';
+  const icoDensity    = localStorage.getItem('sos-ico-density')      ?? '48';
   const visAura       = localStorage.getItem('sos-aura')            !== '0';
   const visBreathing  = localStorage.getItem('sos-breathing')       === '1';
   const visHearth     = localStorage.getItem('sos-hearth')          !== '0';
@@ -4693,6 +4741,44 @@ function settingsHTML() {
         <div class="sett-btn-group">
           ${seg('sett-pad-shape','shape','square','SQUARE', padShape==='square')}
           ${seg('sett-pad-shape','shape','circle','CIRCLE', padShape==='circle')}
+        </div>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Content width</label>
+        <div class="sett-btn-group">
+          ${seg('sett-content-width','cw','compact','COMPACT', contentWidth==='compact')}
+          ${seg('sett-content-width','cw','medium', 'MEDIUM',  contentWidth==='medium')}
+          ${seg('sett-content-width','cw','wide',   'WIDE',    contentWidth==='wide')}
+          ${seg('sett-content-width','cw','auto',   'AUTO',    contentWidth==='auto')}
+        </div>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Font scale</label>
+        <input type="range" id="sett-font-sc" class="sett-vol-slider"
+               min="0.75" max="1.5" step="0.05" value="${escAttr(fontSc)}" style="flex:1;min-width:60px"
+               oninput="document.getElementById('sett-font-sc-val').textContent=(+this.value).toFixed(2)+'×'">
+        <span class="sett-unit" id="sett-font-sc-val" style="min-width:32px;text-align:right">${(+fontSc).toFixed(2)}×</span>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Symbol scale</label>
+        <input type="range" id="sett-sym-sc" class="sett-vol-slider"
+               min="0.75" max="1.5" step="0.05" value="${escAttr(symSc)}" style="flex:1;min-width:60px"
+               oninput="document.getElementById('sett-sym-sc-val').textContent=(+this.value).toFixed(2)+'×'">
+        <span class="sett-unit" id="sett-sym-sc-val" style="min-width:32px;text-align:right">${(+symSc).toFixed(2)}×</span>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Icon scale</label>
+        <input type="range" id="sett-ico-sc" class="sett-vol-slider"
+               min="0.5" max="2.0" step="0.1" value="${escAttr(icoSc)}" style="flex:1;min-width:60px"
+               oninput="document.getElementById('sett-ico-sc-val').textContent=(+this.value).toFixed(1)+'×'">
+        <span class="sett-unit" id="sett-ico-sc-val" style="min-width:32px;text-align:right">${(+icoSc).toFixed(1)}×</span>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Icon density</label>
+        <div class="sett-btn-group">
+          ${seg('sett-ico-density','den','32', 'DENSE',  icoDensity==='32')}
+          ${seg('sett-ico-density','den','48', 'NORMAL', icoDensity==='48')}
+          ${seg('sett-ico-density','den','64', 'LOOSE',  icoDensity==='64')}
         </div>
       </div>
       <div class="sett-actions">
@@ -5674,16 +5760,36 @@ function handleAction(action, el) {
       document.querySelectorAll('[data-action="sett-pad-shape"]').forEach(b =>
         b.classList.toggle('is-active', b.dataset.shape === el.dataset.shape));
       break;
+    case 'sett-content-width':
+      document.querySelectorAll('[data-action="sett-content-width"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.cw === el.dataset.cw));
+      break;
+    case 'sett-ico-density':
+      document.querySelectorAll('[data-action="sett-ico-density"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.den === el.dataset.den));
+      break;
     case 'sett-appearance-save': {
-      const sz  = Math.max(60, Math.min(140, +(document.getElementById('sett-pad-sz')?.value ?? 80)));
-      const gap = Math.max(0,  Math.min(16,  +(document.getElementById('sett-pad-gap')?.value ?? 6)));
-      const lsc = Math.max(.6, Math.min(1.6, +(document.getElementById('sett-pad-label-sc')?.value ?? 1)));
+      const sz     = Math.max(60,   Math.min(140,  +(document.getElementById('sett-pad-sz')?.value       ?? 80)));
+      const gap    = Math.max(0,    Math.min(16,   +(document.getElementById('sett-pad-gap')?.value      ?? 6)));
+      const lsc    = Math.max(.6,   Math.min(1.6,  +(document.getElementById('sett-pad-label-sc')?.value ?? 1)));
+      const fontSc = Math.max(.75,  Math.min(1.5,  +(document.getElementById('sett-font-sc')?.value      ?? 1)));
+      const symSc  = Math.max(.75,  Math.min(1.5,  +(document.getElementById('sett-sym-sc')?.value       ?? 1)));
+      const icoSc  = Math.max(.5,   Math.min(2.0,  +(document.getElementById('sett-ico-sc')?.value       ?? 1)));
       const shapeBtn = document.querySelector('[data-action="sett-pad-shape"].is-active');
-      const shape = shapeBtn?.dataset.shape || 'square';
+      const shape    = shapeBtn?.dataset.shape || 'square';
+      const cwBtn    = document.querySelector('[data-action="sett-content-width"].is-active');
+      const cw       = cwBtn?.dataset.cw || 'auto';
+      const denBtn   = document.querySelector('[data-action="sett-ico-density"].is-active');
+      const den      = +(denBtn?.dataset.den || '48');
       localStorage.setItem('sos-pad-sz',          String(sz));
       localStorage.setItem('sos-pad-gap',         String(gap));
       localStorage.setItem('sos-pad-label-scale', lsc.toFixed(1));
       localStorage.setItem('sos-pad-shape',       shape);
+      localStorage.setItem('sos-content-width',   cw);
+      localStorage.setItem('sos-font-scale',      fontSc.toFixed(2));
+      localStorage.setItem('sos-sym-scale',       symSc.toFixed(2));
+      localStorage.setItem('sos-ico-scale',       icoSc.toFixed(1));
+      localStorage.setItem('sos-ico-density',     String(den));
       applyAppearance();
       showToast('Appearance applied.');
       break;
@@ -5922,4 +6028,11 @@ document.addEventListener('audio:ended', e => {
   if (_fgPlayIds.has(padId)) _onFgEnd(padId);
   const el = document.querySelector(`[data-pad-id="${CSS.escape(padId)}"]`);
   el?.classList.remove('is-playing');
+
+  // If the pad editor preview just ended naturally, reset the preview button + scrubber
+  if (_peOpen && _peEditPad?.id === padId) {
+    const btn = document.getElementById('pe-preview-btn');
+    if (btn) btn.textContent = '▶ PREVIEW';
+    _peScrubStop();
+  }
 });

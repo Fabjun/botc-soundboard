@@ -31,6 +31,7 @@
   --cc:polygon(5px 0%,calc(100% - 5px) 0%,100% 5px,100% calc(100% - 5px),calc(100% - 5px) 100%,5px 100%,0% calc(100% - 5px),0% 5px);
   /* appearance */
   --pad-sz:80px; --pad-gap:6px; --pad-label-scale:1;
+  --cx-max:9999px; --font-scale:1; --sym-scale:1; --ico-scale:1; --ico-density:48px;
 }
 
 /* ── THEMES ──────────────────────────────────────────────────── */
@@ -453,7 +454,7 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
 .bd-scene-add:hover{opacity:.9}
 
 /* board content + grid */
-.bd-content{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.bd-content{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column;max-width:var(--cx-max,9999px);margin-left:auto;margin-right:auto}
 .bd-grid-wrap{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:none;padding:8px}
 .bd-grid{
   display:grid;grid-template-columns:repeat(var(--bd-cols,4),1fr);
@@ -478,7 +479,7 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
 .pad.is-playing .pad-name{color:var(--mode-game)}
 .pad-wave{opacity:.75;flex-shrink:0}
 .pad-name{
-  font-family:var(--font-ui);font-size:calc(11px * var(--pad-label-scale,1));color:var(--text);
+  font-family:var(--font-ui);font-size:calc(11px * var(--pad-label-scale,1) * var(--font-scale,1));color:var(--text);
   text-align:center;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;width:100%;letter-spacing:0;line-height:1.2}
 .pad-hotkey{
@@ -859,10 +860,10 @@ body.pad-ci .pad-hotkey{top:4px;right:4px;font-size:8px}
 .sett-row{
   display:flex;align-items:center;gap:10px;min-height:36px}
 .sett-label{
-  font-family:var(--font-ui);font-size:13px;color:var(--text-dim);
+  font-family:var(--font-ui);font-size:calc(13px * var(--font-scale,1));color:var(--text-dim);
   letter-spacing:.06em;flex:1}
 .sett-unit{
-  font-family:var(--font-mono);font-size:11px;color:var(--text-mute)}
+  font-family:var(--font-mono);font-size:calc(11px * var(--font-scale,1));color:var(--text-mute)}
 .sett-input{width:60px;text-align:right}
 .sett-actions{display:flex;justify-content:flex-end;margin-top:4px}
 .sett-theme-picker{
@@ -979,6 +980,7 @@ body.pad-ci .pad-hotkey{top:4px;right:4px;font-size:8px}
 .pad-icon{
   display:flex;align-items:center;justify-content:center;
   flex:1;min-height:0;padding:4px 0}
+.pad-icon>svg{transform:scale(var(--ico-scale,1));transform-origin:center}
 .pad-icon-preview{
   display:flex;align-items:center;justify-content:center;
   min-width:28px;min-height:28px}
@@ -1010,7 +1012,7 @@ body.pad-ci .pad-hotkey{top:4px;right:4px;font-size:8px}
   padding:5px 8px;outline:none;flex-shrink:0;max-width:140px}
 .ip-grid{
   flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(48px,1fr));
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--ico-density,48px),1fr));
   gap:4px;padding:12px}
 .ip-cell{
   aspect-ratio:1;display:flex;align-items:center;justify-content:center;
@@ -1110,7 +1112,9 @@ body.pad-ci .pad-hotkey{top:4px;right:4px;font-size:8px}
   font-family:var(--font-mono);font-size:10px;color:var(--text-mute);
   letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
 .pe-name-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.pe-toolbar-actions{display:flex;gap:5px;flex-shrink:0}
+.pe-toolbar-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.pe-scrub-time{font-family:var(--font-mono);font-size:11px;color:var(--mode-setup);
+  min-width:88px;text-align:right;letter-spacing:.04em}
 
 .pe-body{
   display:grid;grid-template-columns:280px 1fr 296px;
@@ -1243,5 +1247,5 @@ body.pad-ci .pad-hotkey{top:4px;right:4px;font-size:8px}
 .lib-ip-wrap{
   flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .lib-ip-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(48px,1fr));
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--ico-density,48px),1fr));
   gap:4px;padding:12px}
