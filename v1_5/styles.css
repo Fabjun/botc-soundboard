@@ -1301,6 +1301,27 @@ body.pad-ci .pad-hotkey{top:4px;right:4px;font-size:8px}
   background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
 .lib-ip-wrap{
   flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* ── ONBOARDING ──────────────────────────────────────────────── */
+.onboard-overlay{
+  position:fixed;inset:0;z-index:950;background:rgba(5,5,15,.88);
+  display:flex;align-items:center;justify-content:center;padding:24px}
+.onboard-modal{
+  width:min(480px,92vw);background:var(--surface);border:1px solid var(--border);
+  box-shadow:0 8px 48px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:0}
+.onboard-slide{padding:32px 28px;min-height:200px;display:flex;flex-direction:column;gap:16px}
+.onboard-title{
+  font-family:var(--font-ui);font-size:18px;color:var(--gold);letter-spacing:.06em}
+.onboard-body{
+  font-family:var(--font-mono);font-size:13px;color:var(--text);line-height:1.7}
+.onboard-nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-top:1px solid var(--border-soft);gap:16px}
+.onboard-dots{display:flex;gap:8px;align-items:center}
+.onboard-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--border);
+  transition:background .15s}
+.onboard-dot.is-active{background:var(--gold)}
+
 /* ── COMMAND PALETTE ─────────────────────────────────────────── */
 .cp-overlay{
   position:fixed;inset:0;z-index:900;background:rgba(5,5,15,.75);

@@ -1,8 +1,12 @@
 'use strict';
 
-const APP_VERSION = '2.0.10';
+const APP_VERSION = '2.0.11';
 
 const CHANGELOG = [
+  { v: '2.0.11', date: '2026-05-27', items: [
+    'First-launch onboarding: 3 slides (Welcome, Three Modes, Get Started) shown on first visit',
+    'Stored in sos-onboarded localStorage key; "Get Started" button marks as complete',
+  ]},
   { v: '2.0.10', date: '2026-05-27', items: [
     'Command palette: Ctrl+K / ⌘K opens search overlay with pads, boards, and built-in actions',
     'Arrow up/down to navigate, Enter to run, Escape to close',
@@ -6402,6 +6406,8 @@ function handleAction(action, el) {
     case 'sett-sw-snd-clear':  deleteSwitchSound(); break;
     case 'sett-autobackup':    toggleAutoBackup(); break;
     case 'settings-reset-all': doResetAllData(); break;
+    case 'onboard-next':       _onboardNext(); break;
+    case 'onboard-prev':       _onboardPrev(); break;
     case 'km-close':           closeKeymap(); break;
     case 'sett-help-key-clear':
       localStorage.removeItem('sos-help-key-code');
@@ -6473,6 +6479,79 @@ function _migrateFromV1() {
   localStorage.setItem('sos-migrated', '1');
 }
 
+/* ── ONBOARDING ──────────────────────────────────────────────── */
+
+const _ONBOARD_SLIDES = [
+  {
+    title: 'Soundboard of Storytelling',
+    body: `Welcome! This app lets you play sound effects during Blood on the Clocktower — and any other tabletop game.<br><br>
+           Let us show you how it works.`,
+    btn: 'NEXT →',
+  },
+  {
+    title: 'Three Modes',
+    body: `<strong style="color:var(--mode-setup)">SETUP</strong> — Add sounds to your board, configure pads, organise scenes.<br><br>
+           <strong style="color:var(--mode-game)">GAME</strong> — Play sounds with a tap or hotkey. Combos, loops, playlists.<br><br>
+           <strong style="color:var(--gold)">LIBRARY</strong> — Upload audio, manage your sound collection.`,
+    btn: 'NEXT →',
+  },
+  {
+    title: 'Get Started',
+    body: `<strong>1.</strong> Open <strong>LIBRARY</strong> and tap <strong>UPLOAD AUDIO</strong> to add your sounds.<br><br>
+           <strong>2.</strong> Open <strong>BOARDS</strong> tab and create a new board.<br><br>
+           <strong>3.</strong> Tap an empty pad slot in <strong>SETUP</strong> mode to assign a sound.`,
+    btn: 'GET STARTED',
+    last: true,
+  },
+];
+
+let _onboardSlide = 0;
+
+function showOnboard() {
+  _onboardSlide = 0;
+  const overlay = document.createElement('div');
+  overlay.id = 'onboard-overlay';
+  overlay.className = 'onboard-overlay';
+  overlay.innerHTML = _onboardHTML();
+  document.body.appendChild(overlay);
+}
+
+function _onboardHTML() {
+  const slide = _ONBOARD_SLIDES[_onboardSlide];
+  const dots = _ONBOARD_SLIDES.map((_, i) =>
+    `<span class="onboard-dot${i === _onboardSlide ? ' is-active' : ''}"></span>`
+  ).join('');
+  return `<div class="onboard-modal">
+    <div class="onboard-slide">
+      <div class="onboard-title">${slide.title}</div>
+      <div class="onboard-body">${slide.body}</div>
+    </div>
+    <div class="onboard-nav">
+      ${_onboardSlide > 0 ? `<button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="onboard-prev">← BACK</button>` : '<span></span>'}
+      <div class="onboard-dots">${dots}</div>
+      <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="onboard-next">${slide.btn}</button>
+    </div>
+  </div>`;
+}
+
+function _onboardNext() {
+  if (_onboardSlide >= _ONBOARD_SLIDES.length - 1) {
+    localStorage.setItem('sos-onboarded', '1');
+    document.getElementById('onboard-overlay')?.remove();
+    return;
+  }
+  _onboardSlide++;
+  const overlay = document.getElementById('onboard-overlay');
+  if (overlay) overlay.innerHTML = _onboardHTML();
+}
+
+function _onboardPrev() {
+  if (_onboardSlide <= 0) return;
+  _onboardSlide--;
+  const overlay = document.getElementById('onboard-overlay');
+  if (overlay) overlay.innerHTML = _onboardHTML();
+}
+
 async function init() {
   _migrateFromV1();
   S.theme = localStorage.getItem('sos-theme') || '';
@@ -6492,6 +6571,7 @@ async function init() {
     return;
   }
   renderScreen(S.screen);
+  if (!localStorage.getItem('sos-onboarded')) showOnboard();
   tryRestoreAutoBackup();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
