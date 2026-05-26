@@ -1,23 +1,14 @@
 'use strict';
 
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.0.1';
 
 const CHANGELOG = [
+  { v: '2.0.1', date: '2026-05-27', items: [
+    'Bug fix: Library "In use" / "Unused" filters now correctly scan all scenes and sets for referenced audio hashes',
+    'Bug fix: Pad Editor "Save as template" now correctly reads the name input field and hotkey from keycap element',
+  ]},
   { v: '2.0.0', date: '2026-05-27', items: [
-    'Rename: v1.5 → v2.0',
-    'Bug fix: Library "In use" / "Unused" filter now correctly scans all scenes and sets',
-    'Bug fix: Pad Editor "Save as template" now correctly reads name input and hotkey',
-    'Library: audio preview button on each audio row',
-    'Library: sort controls (newest/oldest/name/modified)',
-    'Library: folder create, rename, delete',
-    'Board: search and filter bar above pad grid',
-    'Board: duplicate board button',
-    'Combo Editor: per-chip volume slider and fade-in field',
-    'Settings: Reset All Data option',
-    'Pad Editor: auto-icon suggestion from pad name',
-    'Command palette (Ctrl+K / Cmd+K)',
-    'First-launch onboarding slides',
-    'Pad Editor: unsaved-changes warning on close',
+    'Version rename: v1.5 → v2.0',
   ]},
   { v: '1.5.37', date: '2026-05-26', items: [
     'Settings → VISUALS: Pad Level Meter — live audio level gradient fill on each playing pad',
@@ -1089,7 +1080,7 @@ async function mountLibrary() {
   else renderAudioList();
 }
 
-function renderAudioList() {
+async function renderAudioList() {
   _libDeleteCfm = null;
   const listEl = document.getElementById('lib-audio-list');
   if (!listEl) return;
@@ -1123,6 +1114,14 @@ function renderAudioList() {
   }
 
   const usedHashes = new Set();
+  if (_libFilter === 'used' || _libFilter === 'unused') {
+    const [allScenes, allSets] = await Promise.all([
+      new Promise(r => { const req = db.transaction('scenes','readonly').objectStore('scenes').getAll(); req.onsuccess = () => r(req.result || []); req.onerror = () => r([]); }),
+      new Promise(r => { const req = db.transaction('sets','readonly').objectStore('sets').getAll(); req.onsuccess = () => r(req.result || []); req.onerror = () => r([]); })
+    ]);
+    for (const scene of allScenes) for (const pad of (scene.pads || [])) for (const h of (pad.files || [])) usedHashes.add(h);
+    for (const set of allSets) for (const pad of (set.pads || [])) for (const h of (pad.files || [])) usedHashes.add(h);
+  }
   const scopeFiltered = _libFilter === 'used'   ? entries.filter(e =>  usedHashes.has(e.hash))
                       : _libFilter === 'unused' ? entries.filter(e => !usedHashes.has(e.hash))
                       : entries;
@@ -4503,12 +4502,12 @@ async function _peClearPad() {
 function handlePeSaveTemplate() {
   const pad = _peEditPad;
   if (!pad) return;
-  const name = document.getElementById('pe-name')?.value?.trim() || pad.name || 'Unnamed';
+  const name = document.getElementById('pe-name-input')?.value?.trim() || pad.name || 'Unnamed';
   const tmpl = {
     id: 'pt_' + Math.random().toString(36).slice(2, 10),
     name,
     type:    document.querySelector('[data-action="pe-type"].is-active')?.dataset.type || pad.type || 'single',
-    hotkey:  document.getElementById('pe-hotkey-input')?.value || pad.hotkey || '',
+    hotkey:  document.getElementById('pe-keycap')?.dataset.hotkey || pad.hotkey || '',
     volume:  +(document.getElementById('pe-volume')?.value  ?? pad.volume  ?? 80),
     fadeIn:    +(document.getElementById('pe-fade-in')?.value    || pad.fadeIn    || 0),
     fadeOut:   +(document.getElementById('pe-fade-out')?.value   || pad.fadeOut   || 0),
