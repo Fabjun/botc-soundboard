@@ -1,8 +1,24 @@
 'use strict';
 
-const APP_VERSION = '1.5.37';
+const APP_VERSION = '2.0.0';
 
 const CHANGELOG = [
+  { v: '2.0.0', date: '2026-05-27', items: [
+    'Rename: v1.5 → v2.0',
+    'Bug fix: Library "In use" / "Unused" filter now correctly scans all scenes and sets',
+    'Bug fix: Pad Editor "Save as template" now correctly reads name input and hotkey',
+    'Library: audio preview button on each audio row',
+    'Library: sort controls (newest/oldest/name/modified)',
+    'Library: folder create, rename, delete',
+    'Board: search and filter bar above pad grid',
+    'Board: duplicate board button',
+    'Combo Editor: per-chip volume slider and fade-in field',
+    'Settings: Reset All Data option',
+    'Pad Editor: auto-icon suggestion from pad name',
+    'Command palette (Ctrl+K / Cmd+K)',
+    'First-launch onboarding slides',
+    'Pad Editor: unsaved-changes warning on close',
+  ]},
   { v: '1.5.37', date: '2026-05-26', items: [
     'Settings → VISUALS: Pad Level Meter — live audio level gradient fill on each playing pad',
     'AnalyserNode (fftSize 256) inserted into audio graph per playing pad; RAF loop updates --pad-level-pct CSS var at ~60fps',

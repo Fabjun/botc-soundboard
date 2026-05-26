@@ -1,5 +1,5 @@
-const VERSION = '1.5.37';
-const CACHE = `sos-v1_5-${VERSION}`;
+const VERSION = '2.0.0';
+const CACHE = `sos-v2_0-${VERSION}`;
 const ASSETS = [
   './index.html',
   './styles.css',
