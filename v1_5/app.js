@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.27';
+const APP_VERSION = '1.5.28';
 
 const CHANGELOG = [
+  { v: '1.5.28', date: '2026-05-26', items: [
+    'Enter Key Stop Mode: Settings → CONTROLS → ENTER STOP — TOTAL (stop all) or SERIAL (LIFO: stop last started)',
+    'SERIAL mode tracks play order across scene pads, set pads, hotkeys, combo pads, and loop pads',
+    'Enter key is now handled in GAME mode when no input is focused',
+  ]},
   { v: '1.5.27', date: '2026-05-26', items: [
     'Quick Rename: 500 ms long-press on an assigned pad in SETUP mode opens a compact rename overlay',
     'Enter = save, Esc = cancel, tap outside box = cancel; movement > 8 px cancels before timer fires',
@@ -629,7 +634,7 @@ function navigate(screenId) {
   if (_peOpen) closePadEditor();
   if (_assigningTemplate && screenId !== 'board') _cancelAssignTemplate();
   if (S.screen === 'board' && screenId !== 'board') {
-    audioStopAll(0); _onFgStopAll();
+    audioStopAll(0); _onFgStopAll(); _playOrderClear();
     _comboClearAll();
     document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
     _releaseWakeLock();
@@ -1506,9 +1511,15 @@ let _ptDeleteCfm = {};           // templateId → true if confirm pending
 const _fgPlayIds = new Set(); // padIds currently playing as foreground (single/playlist)
 function _duckEnabled()  { return localStorage.getItem('sos-duck-enabled') === '1'; }
 function _duckAmt()      { return Math.max(0, Math.min(100, +(localStorage.getItem('sos-duck-amount') ?? '30'))) / 100; }
-function _onFgStart(id)  { _fgPlayIds.add(id); if (_fgPlayIds.size === 1 && _duckEnabled()) audioDuck(_duckAmt()); }
-function _onFgEnd(id)    { _fgPlayIds.delete(id); if (_fgPlayIds.size === 0) audioUnduck(); }
+function _onFgStart(id)  { _fgPlayIds.add(id); _playOrderAdd(id); if (_fgPlayIds.size === 1 && _duckEnabled()) audioDuck(_duckAmt()); }
+function _onFgEnd(id)    { _fgPlayIds.delete(id); _playOrderRemove(id); if (_fgPlayIds.size === 0) audioUnduck(); }
 function _onFgStopAll()  { _fgPlayIds.clear(); audioUnduck(0); }
+
+// Play order tracking for SERIAL Enter-stop mode
+const _playOrder = [];
+function _playOrderAdd(id)    { const i = _playOrder.indexOf(id); if (i !== -1) _playOrder.splice(i, 1); _playOrder.push(id); }
+function _playOrderRemove(id) { const i = _playOrder.indexOf(id); if (i !== -1) _playOrder.splice(i, 1); }
+function _playOrderClear()    { _playOrder.length = 0; }
 
 // Combo editor state
 let _ceOpen      = false;
@@ -1915,6 +1926,7 @@ function _comboStart(pad) {
   if (_comboState[pad.id]) return;
   const state = { stopped: false, bgIds: new Set(), fgIds: new Set(), fgRem: 0, stepIdx: 0, pauseTimer: null };
   _comboState[pad.id] = state;
+  _playOrderAdd(pad.id);
   _comboPlayStep(pad, state, 0);
 }
 
@@ -1985,6 +1997,7 @@ function _comboStop(padId) {
   state.fgIds.forEach(id => audioStop(id, { fade: 0 }));
   state.fgIds.clear();
   delete _comboState[padId];
+  _playOrderRemove(padId);
   const el = document.querySelector(`[data-pad-id="${CSS.escape(padId)}"]`);
   el?.classList.remove('is-playing');
 }
@@ -1997,6 +2010,7 @@ function _comboFinish(padId) {
   state.bgIds.clear();
   state.fgIds.clear();
   delete _comboState[padId];
+  _playOrderRemove(padId);
   const el = document.querySelector(`[data-pad-id="${CSS.escape(padId)}"]`);
   el?.classList.remove('is-playing');
 }
@@ -2008,6 +2022,33 @@ function _comboClearAll() {
     if (state.pauseTimer) clearTimeout(state.pauseTimer);
   }
   for (const k in _comboState) delete _comboState[k];
+}
+
+function _handleEnterStop() {
+  const mode = localStorage.getItem('sos-enter-stop-mode') || 'total';
+  if (mode === 'total') {
+    audioStopAll(0); _onFgStopAll(); _playOrderClear(); _comboClearAll();
+    document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
+    return;
+  }
+  // SERIAL: stop the most recently started pad (LIFO)
+  const allPads = [...(_bdScene?.pads || []), ...(_bdSet?.pads || [])];
+  const ids = [..._playOrder].reverse();
+  for (const padId of ids) {
+    if (_comboState[padId]) {
+      _comboStop(padId);
+      return;
+    }
+    if (audioIsPlaying(padId)) {
+      const pad = allPads.find(p => p.id === padId);
+      audioStop(padId, { fade: pad?.fadeOut || 0 });
+      if (_fgPlayIds.has(padId)) _onFgEnd(padId);
+      else _playOrderRemove(padId);
+      document.querySelector(`[data-pad-id="${CSS.escape(padId)}"]`)?.classList.remove('is-playing');
+      return;
+    }
+    _playOrderRemove(padId);
+  }
 }
 
 /** @returns {string} */
@@ -2180,7 +2221,7 @@ async function handleBdSceneSwitch(sceneId) {
   closePadOpts();
   closeSceneOpts();
   closeSceneAdd();
-  audioStopAll(0); _onFgStopAll();
+  audioStopAll(0); _onFgStopAll(); _playOrderClear();
   _comboClearAll();
   document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
   _bdBoard.activeSceneId = sceneId;
@@ -2316,6 +2357,7 @@ async function handleQaPadTap(slot) {
   if (audioIsPlaying(pad.id)) {
     audioStop(pad.id, { fade: pad.fadeOut || 0 });
     if (_fgPlayIds.has(pad.id)) _onFgEnd(pad.id);
+    else _playOrderRemove(pad.id);
     el?.classList.remove('is-playing');
   } else {
     audioPlay(pad.id, pad.hash, {
@@ -2323,6 +2365,7 @@ async function handleQaPadTap(slot) {
       fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
     });
     if ((pad.type || 'single') !== 'loop') _onFgStart(pad.id);
+    else _playOrderAdd(pad.id);
     el?.classList.add('is-playing');
     _resetAutoStop();
   }
@@ -2685,6 +2728,7 @@ async function handleBdPadTap(slot) {
   if (audioIsPlaying(pad.id)) {
     audioStop(pad.id, { fade: pad.fadeOut || 0 });
     if (_fgPlayIds.has(pad.id)) _onFgEnd(pad.id);
+    else _playOrderRemove(pad.id);
     el?.classList.remove('is-playing');
   } else {
     audioPlay(pad.id, pad.hash, {
@@ -2694,6 +2738,7 @@ async function handleBdPadTap(slot) {
       fadeOut: pad.fadeOut || 0,
     });
     if ((pad.type || 'single') !== 'loop') _onFgStart(pad.id);
+    else _playOrderAdd(pad.id);
     el?.classList.add('is-playing');
     _resetAutoStop();
   }
@@ -4220,7 +4265,8 @@ function settingsHTML() {
   const wakeLock    = localStorage.getItem('sos-wake-lock')     === '1';
   const autoStop    = localStorage.getItem('sos-auto-stop')     === '1';
   const autoStopMin = localStorage.getItem('sos-auto-stop-min') || '30';
-  const masterVol   = localStorage.getItem('sos-master-vol')    ?? '100';
+  const masterVol     = localStorage.getItem('sos-master-vol')       ?? '100';
+  const enterStopMode = localStorage.getItem('sos-enter-stop-mode')  || 'total';
   const themes = [
     { id: '',        label: 'DEFAULT' },
     { id: 'verdant', label: 'VERDANT' },
@@ -4325,6 +4371,20 @@ function settingsHTML() {
       </div>
       <div class="sett-actions">
         <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="sett-defaults-save">SAVE DEFAULTS</button>
+      </div>
+    </div>
+
+    <div class="sett-section">
+      <div class="sett-title">${pi('keyboard', 12, 'var(--gold)')} CONTROLS</div>
+      <div class="sett-row">
+        <label class="sett-label">Enter key stops</label>
+        <div class="sett-btn-group">
+          ${seg('sett-enter-stop','mode','total', 'TOTAL',  enterStopMode==='total')}
+          ${seg('sett-enter-stop','mode','serial','SERIAL', enterStopMode==='serial')}
+        </div>
+      </div>
+      <div class="sett-hint" style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);padding:2px 0 4px">
+        TOTAL = stop all &nbsp;|&nbsp; SERIAL = stop last started (LIFO)
       </div>
     </div>
 
@@ -4590,6 +4650,7 @@ document.addEventListener('keydown', e => {
           if (audioIsPlaying(pad.id)) {
             audioStop(pad.id, { fade: pad.fadeOut || 0 });
             if (_fgPlayIds.has(pad.id)) _onFgEnd(pad.id);
+            else _playOrderRemove(pad.id);
             padEl?.classList.remove('is-playing');
           } else {
             audioPlay(pad.id, pad.hash, {
@@ -4597,10 +4658,15 @@ document.addEventListener('keydown', e => {
               fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
             });
             if ((pad.type || 'single') !== 'loop') _onFgStart(pad.id);
+            else _playOrderAdd(pad.id);
             padEl?.classList.add('is-playing');
           }
         }
       }
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      _handleEnterStop();
     }
   }
 });
@@ -5057,6 +5123,12 @@ function handleAction(action, el) {
       if (!on) audioUnduck(0.3); // restore immediately if disabled while ducked
       break;
     }
+
+    case 'sett-enter-stop':
+      localStorage.setItem('sos-enter-stop-mode', el.dataset.mode);
+      document.querySelectorAll('[data-action="sett-enter-stop"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.mode === el.dataset.mode));
+      break;
 
     // settings — theme + defaults
     case 'sett-theme':
