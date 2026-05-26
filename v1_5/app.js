@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.33';
+const APP_VERSION = '1.5.34';
 
 const CHANGELOG = [
+  { v: '1.5.34', date: '2026-05-26', items: [
+    'Settings → KEYBINDING: capture a custom key to show/hide keymap overlay in GAME mode',
+    'Keymap overlay shows all pads with hotkeys in current scene; density (MINIMAL/NORMAL); auto-hide duration',
+    'ESC closes keymap; help key press toggles show/hide; key capture field in Settings',
+  ]},
   { v: '1.5.33', date: '2026-05-26', items: [
     'Settings → VISUALS: aura (type-color glow on playing pads), breathing (scale pulse on loop pads)',
     'Hearth glow (radial gradient on board), ambient embers (18 floating particles), animations toggle (body.no-anim)',
@@ -3035,6 +3040,52 @@ function closePadVolSlider(save = true) {
   _lpNewVol = null;
 }
 
+/* ── KEYMAP OVERLAY ─────────────────────────────────────────── */
+
+let _kmOpen = false;
+let _kmAutoHideTimer = null;
+
+function showKeymap() {
+  if (_kmOpen) { closeKeymap(); return; }
+  const pads = [...(_bdScene?.pads || []), ...(_bdSet?.pads || [])].filter(p => p.hotkey);
+  if (!pads.length) { showToast('No hotkeys assigned in current scene.'); return; }
+  let overlay = document.getElementById('km-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'km-overlay';
+    overlay.className = 'km-overlay';
+    document.body.appendChild(overlay);
+  }
+  const density = localStorage.getItem('sos-km-density') || 'normal';
+  overlay.innerHTML = `<div class="km-box">
+    <div class="km-header">
+      <span class="km-title">KEYMAP</span>
+      <button class="km-close-btn" data-action="km-close">✕</button>
+    </div>
+    <div class="km-list">
+      ${pads.map(p => `<div class="km-row km-${escAttr(density)}">
+        <span class="km-key">${escHtml(p.hotkey)}</span>
+        <span class="km-name">${escHtml(p.name || '—')}</span>
+      </div>`).join('')}
+    </div>
+  </div>`;
+  overlay.style.display = 'flex';
+  _kmOpen = true;
+  const dur = +(localStorage.getItem('sos-km-duration') ?? 0);
+  if (dur > 0) {
+    clearTimeout(_kmAutoHideTimer);
+    _kmAutoHideTimer = setTimeout(closeKeymap, dur * 1000);
+  }
+}
+
+function closeKeymap() {
+  clearTimeout(_kmAutoHideTimer);
+  _kmAutoHideTimer = null;
+  const overlay = document.getElementById('km-overlay');
+  if (overlay) overlay.style.display = 'none';
+  _kmOpen = false;
+}
+
 /* ── QUICK RENAME (SETUP mode long-press) ───────────────────── */
 
 function openQuickRename(slot, isSet) {
@@ -4524,6 +4575,9 @@ function settingsHTML() {
   const enterStopMode = localStorage.getItem('sos-enter-stop-mode')  || 'total';
   const lpAction      = localStorage.getItem('sos-lp-action')        || 'vol';
   const swSndName     = localStorage.getItem('sos-switch-sound-name') || '';
+  const helpKeyLabel  = localStorage.getItem('sos-help-key-label')   || '';
+  const kmDensity     = localStorage.getItem('sos-km-density')       || 'normal';
+  const kmDuration    = localStorage.getItem('sos-km-duration')      ?? '0';
   const padSz         = localStorage.getItem('sos-pad-sz')           ?? '80';
   const padGap        = localStorage.getItem('sos-pad-gap')          ?? '6';
   const padLabelSc    = localStorage.getItem('sos-pad-label-scale')  ?? '1';
@@ -4743,6 +4797,36 @@ function settingsHTML() {
     </div>
 
     <div class="sett-section">
+      <div class="sett-title">${pi('keyboard', 12, 'var(--gold)')} KEYBINDING</div>
+      <div class="sett-row">
+        <label class="sett-label">Keymap key</label>
+        <input type="text" id="sett-help-key-input" class="audio-name-input sett-input"
+               placeholder="Press a key…" readonly
+               value="${escAttr(helpKeyLabel)}" style="width:80px;text-align:center;cursor:pointer">
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="sett-help-key-clear" style="margin-left:4px;${helpKeyLabel ? '' : 'display:none'}" id="sett-help-key-clear">×</button>
+      </div>
+      <div class="sett-hint" style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);padding:2px 0 4px">
+        Key to show/hide keymap overlay in GAME mode
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Keymap density</label>
+        <div class="sett-btn-group">
+          ${seg('sett-km-density','d','minimal','MINIMAL', kmDensity==='minimal')}
+          ${seg('sett-km-density','d','normal', 'NORMAL',  kmDensity==='normal')}
+        </div>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Auto-hide (s)</label>
+        <input class="audio-name-input sett-input" id="sett-km-duration" type="number"
+               min="0" max="30" value="${escAttr(kmDuration)}" style="width:60px;text-align:right">
+        <span class="sett-unit">s (0 = keep open)</span>
+      </div>
+      <div class="sett-actions">
+        <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="sett-km-save">SAVE</button>
+      </div>
+    </div>
+
+    <div class="sett-section">
       <div class="sett-title">${pi('rune', 12, 'var(--gold)')} DATA</div>
       ${hasFileSystemAccess() ? `
       <div class="sett-row" style="flex-wrap:wrap;gap:6px">
@@ -4932,6 +5016,24 @@ function mountSettings() {
       if (padLabelVal) padLabelVal.textContent = (+padLabelSlider.value).toFixed(1) + '×';
     };
   }
+  const helpKeyInput = document.getElementById('sett-help-key-input');
+  if (helpKeyInput) {
+    helpKeyInput.addEventListener('click', () => {
+      helpKeyInput.value = 'Press a key…';
+      helpKeyInput.focus();
+    });
+    helpKeyInput.addEventListener('keydown', e => {
+      e.preventDefault();
+      if (e.key === 'Escape') { helpKeyInput.value = localStorage.getItem('sos-help-key-label') || ''; helpKeyInput.blur(); return; }
+      const label = e.key === ' ' ? 'Space' : e.key;
+      localStorage.setItem('sos-help-key-code', e.code);
+      localStorage.setItem('sos-help-key-label', label);
+      helpKeyInput.value = label;
+      const clearBtn = document.getElementById('sett-help-key-clear');
+      if (clearBtn) clearBtn.style.display = '';
+      helpKeyInput.blur();
+    });
+  }
 }
 
 /* ── STUB SCREEN ────────────────────────────────────────────── */
@@ -4992,6 +5094,7 @@ document.addEventListener('keydown', e => {
     if (_peOpen) { e.preventDefault(); handlePeSave(); return; }
   }
   if (e.key === 'Escape') {
+    if (_kmOpen)               { closeKeymap(); return; }
     if (_qrOpen)               { closeQuickRename(false); return; }
     if (_peTrackPickerOpen)    { closePeTrackPicker(); return; }
     if (_pePickerOpen)         { closePeAudioPicker(); return; }
@@ -5066,6 +5169,11 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Tab') {
       e.preventDefault();
       _cueFire();
+    }
+    const helpCode = localStorage.getItem('sos-help-key-code');
+    if (helpCode && e.code === helpCode) {
+      e.preventDefault();
+      showKeymap();
     }
   }
 });
@@ -5590,6 +5698,24 @@ function handleAction(action, el) {
     case 'sett-sw-snd-upload': uploadSwitchSound(); break;
     case 'sett-sw-snd-clear':  deleteSwitchSound(); break;
     case 'sett-autobackup':    toggleAutoBackup(); break;
+    case 'km-close':           closeKeymap(); break;
+    case 'sett-help-key-clear':
+      localStorage.removeItem('sos-help-key-code');
+      localStorage.removeItem('sos-help-key-label');
+      { const inp = document.getElementById('sett-help-key-input'); if (inp) inp.value = ''; }
+      el.style.display = 'none';
+      break;
+    case 'sett-km-density':
+      localStorage.setItem('sos-km-density', el.dataset.d);
+      document.querySelectorAll('[data-action="sett-km-density"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.d === el.dataset.d));
+      break;
+    case 'sett-km-save': {
+      const dur = Math.max(0, Math.min(30, +(document.getElementById('sett-km-duration')?.value ?? 0)));
+      localStorage.setItem('sos-km-duration', String(dur));
+      showToast('Keybinding settings saved.');
+      break;
+    }
 
     // settings — theme + defaults
     case 'sett-theme':

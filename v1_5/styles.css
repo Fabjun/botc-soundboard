@@ -800,6 +800,39 @@ body.pad-ci .pad-hotkey{top:4px;right:4px;font-size:8px}
 .cue-fire-btn:hover{background:var(--gold);color:var(--night)}
 .cue-clear-btn:hover{border-color:var(--blood);color:var(--blood)}
 
+/* ── KEYMAP OVERLAY ──────────────────────────────────────────── */
+.km-overlay{
+  position:fixed;inset:0;z-index:650;
+  background:rgba(0,0,0,.65);
+  display:flex;align-items:center;justify-content:center;
+  overscroll-behavior:none}
+.km-box{
+  background:var(--surface);border:1px solid var(--border-strong);
+  clip-path:var(--cc);padding:12px;
+  max-width:280px;width:90vw;max-height:80vh;
+  display:flex;flex-direction:column;gap:0;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);overflow:hidden}
+.km-header{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:8px}
+.km-title{
+  font-family:var(--font-ui);font-size:12px;color:var(--gold);
+  letter-spacing:.1em}
+.km-close-btn{
+  background:none;border:none;color:var(--text-mute);cursor:pointer;
+  font-size:14px;padding:2px 4px}
+.km-list{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.km-row{
+  display:grid;grid-template-columns:44px 1fr;gap:8px;
+  padding:4px 2px;border-bottom:1px solid var(--border-soft)}
+.km-minimal{grid-template-columns:44px 1fr}
+.km-key{
+  font-family:var(--font-ui);font-size:13px;color:var(--mode-game);
+  text-align:center}
+.km-name{
+  font-family:var(--font-mono);font-size:12px;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 /* ── IMPORT MODAL ────────────────────────────────────────────── */
 .imp-section{display:flex;flex-direction:column;gap:4px}
 .imp-section-title{
