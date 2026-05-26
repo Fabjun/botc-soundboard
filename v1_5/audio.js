@@ -12,8 +12,11 @@ const _libBufLru = [];
 let _libBufBytes = 0;
 const _libBufLoading = {};
 
-const srcs  = {};  // padId → AudioBufferSourceNode
-const gains = {};  // padId → GainNode
+const srcs      = {};  // padId → AudioBufferSourceNode
+const gains     = {};  // padId → GainNode (per-pad volume)
+const duckGains = {};  // padId → GainNode (duck gain, loop pads only)
+const _loopPadIds = new Set();
+let _duckTarget = 1.0; // current duck level applied to new loop pads
 
 function _bufDecodedBytes(buf) {
   return buf ? buf.length * buf.numberOfChannels * 4 : 0;
@@ -123,8 +126,18 @@ async function audioPlay(padId, hash, opts = {}) {
   const vol = Math.max(0, Math.min(1, volume / 100));
   const g = ctx.createGain();
   fadeInGain(g, vol, fadeIn);
-  g.connect(masterGain || ctx.destination);
   gains[padId] = g;
+
+  if (type === 'loop') {
+    const dg = ctx.createGain();
+    dg.gain.setValueAtTime(_duckTarget, ctx.currentTime);
+    dg.connect(masterGain || ctx.destination);
+    duckGains[padId] = dg;
+    _loopPadIds.add(padId);
+    g.connect(dg);
+  } else {
+    g.connect(masterGain || ctx.destination);
+  }
 
   const s = ctx.createBufferSource();
   s.buffer = buf;
@@ -153,6 +166,9 @@ function audioStop(padId, opts = {}) {
   if (!s) return;
 
   const fade = opts.immediate ? 0 : (opts.fade || 0);
+
+  _loopPadIds.delete(padId);
+  delete duckGains[padId];
 
   if (fade > 0 && g) {
     g.gain.cancelScheduledValues(ctx.currentTime);
@@ -198,4 +214,38 @@ function setPadVolume(padId, v) {
 /** @returns {string[]} */
 function audioGetPlayingIds() {
   return Object.keys(srcs);
+}
+
+/**
+ * Ramp all playing loop pads to a ducked gain level.
+ * New loop pads started while ducking is active inherit the same level.
+ * @param {number} amount  0–1 target gain
+ * @param {number} [ramp]  seconds
+ */
+function audioDuck(amount, ramp = 0.3) {
+  _duckTarget = Math.max(0, Math.min(1, amount));
+  if (!ctx) return;
+  for (const id of _loopPadIds) {
+    const dg = duckGains[id];
+    if (!dg) continue;
+    dg.gain.cancelScheduledValues(ctx.currentTime);
+    dg.gain.setValueAtTime(dg.gain.value, ctx.currentTime);
+    dg.gain.linearRampToValueAtTime(_duckTarget, ctx.currentTime + ramp);
+  }
+}
+
+/**
+ * Restore all playing loop pads to full gain.
+ * @param {number} [ramp]  seconds (0 = immediate)
+ */
+function audioUnduck(ramp = 0.3) {
+  _duckTarget = 1.0;
+  if (!ctx) return;
+  for (const id of _loopPadIds) {
+    const dg = duckGains[id];
+    if (!dg) continue;
+    dg.gain.cancelScheduledValues(ctx.currentTime);
+    dg.gain.setValueAtTime(dg.gain.value, ctx.currentTime);
+    dg.gain.linearRampToValueAtTime(1.0, ctx.currentTime + ramp);
+  }
 }

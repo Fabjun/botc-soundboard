@@ -1,8 +1,14 @@
 'use strict';
 
-const APP_VERSION = '1.5.24';
+const APP_VERSION = '1.5.25';
 
 const CHANGELOG = [
+  { v: '1.5.25', date: '2026-05-26', items: [
+    'Audio ducking: LOOP pads automatically reduce volume when a SINGLE or PLAYLIST pad plays',
+    'Duck amount configurable in Settings → DUCKING (0–100%, default 30%)',
+    'Duck ramps in/out over 0.3 s; immediate restore when ducking disabled; respects multiple concurrent fg pads',
+    'Ducking uses a dedicated gain node per loop pad, independent of per-pad volume',
+  ]},
   { v: '1.5.24', date: '2026-05-26', items: [
     'V1 backup import: detect and auto-convert V1 backups (numeric version, no sos field)',
     'Mode mapping: once→single, loop→loop, list→playlist, combo→combo',
@@ -611,7 +617,7 @@ function applyTheme(name) {
 function navigate(screenId) {
   if (_peOpen) closePadEditor();
   if (S.screen === 'board' && screenId !== 'board') {
-    audioStopAll(0);
+    audioStopAll(0); _onFgStopAll();
     _comboClearAll();
     document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
     _releaseWakeLock();
@@ -650,7 +656,7 @@ function _resetAutoStop() {
   if (!_autoStopEnabled()) return;
   _autoStopTimer = setTimeout(() => {
     _autoStopTimer = null;
-    audioStopAll(0);
+    audioStopAll(0); _onFgStopAll();
     document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
     showToast('Auto-stop — all audio stopped.');
   }, _autoStopMs());
@@ -1347,6 +1353,14 @@ let _lpNewVol = null;
 /** @type {Object.<string,{stopped:boolean,bgIds:Set<string>,fgIds:Set<string>,fgRem:number,stepIdx:number,pauseTimer:any}>} */
 const _comboState = {};
 
+// Ducking state
+const _fgPlayIds = new Set(); // padIds currently playing as foreground (single/playlist)
+function _duckEnabled()  { return localStorage.getItem('sos-duck-enabled') === '1'; }
+function _duckAmt()      { return Math.max(0, Math.min(100, +(localStorage.getItem('sos-duck-amount') ?? '30'))) / 100; }
+function _onFgStart(id)  { _fgPlayIds.add(id); if (_fgPlayIds.size === 1 && _duckEnabled()) audioDuck(_duckAmt()); }
+function _onFgEnd(id)    { _fgPlayIds.delete(id); if (_fgPlayIds.size === 0) audioUnduck(); }
+function _onFgStopAll()  { _fgPlayIds.clear(); audioUnduck(0); }
+
 // Combo editor state
 let _ceOpen      = false;
 let _cePadId     = null;
@@ -2017,7 +2031,7 @@ async function handleBdSceneSwitch(sceneId) {
   closePadOpts();
   closeSceneOpts();
   closeSceneAdd();
-  audioStopAll(0);
+  audioStopAll(0); _onFgStopAll();
   _comboClearAll();
   document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
   _bdBoard.activeSceneId = sceneId;
@@ -2129,6 +2143,7 @@ async function handleQaPadTap(slot) {
     if (audioIsPlaying(pad.id)) {
       delete _plState[pad.id];
       audioStop(pad.id, { fade: pad.fadeOut || 0 });
+      if (_fgPlayIds.has(pad.id)) _onFgEnd(pad.id);
       el?.classList.remove('is-playing');
     } else {
       if (!_plState[pad.id]) _plState[pad.id] = _plInit(pad);
@@ -2138,6 +2153,7 @@ async function handleQaPadTap(slot) {
         type: 'single', volume: pad.volume ?? 80,
         fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
       });
+      _onFgStart(pad.id);
       el?.classList.add('is-playing');
       _resetAutoStop();
     }
@@ -2146,12 +2162,14 @@ async function handleQaPadTap(slot) {
   if (!pad.hash) return;
   if (audioIsPlaying(pad.id)) {
     audioStop(pad.id, { fade: pad.fadeOut || 0 });
+    if (_fgPlayIds.has(pad.id)) _onFgEnd(pad.id);
     el?.classList.remove('is-playing');
   } else {
     audioPlay(pad.id, pad.hash, {
       type: pad.type || 'single', volume: pad.volume ?? 80,
       fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
     });
+    if ((pad.type || 'single') !== 'loop') _onFgStart(pad.id);
     el?.classList.add('is-playing');
     _resetAutoStop();
   }
@@ -2490,6 +2508,7 @@ async function handleBdPadTap(slot) {
     if (audioIsPlaying(pad.id)) {
       delete _plState[pad.id]; // reset position before audioStop so audio:ended won't auto-advance
       audioStop(pad.id, { fade: pad.fadeOut || 0 });
+      if (_fgPlayIds.has(pad.id)) _onFgEnd(pad.id);
       el?.classList.remove('is-playing');
     } else {
       if (!_plState[pad.id]) _plState[pad.id] = _plInit(pad);
@@ -2499,6 +2518,7 @@ async function handleBdPadTap(slot) {
         type: 'single', volume: pad.volume ?? 80,
         fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
       });
+      _onFgStart(pad.id);
       el?.classList.add('is-playing');
       _resetAutoStop();
     }
@@ -2507,6 +2527,7 @@ async function handleBdPadTap(slot) {
   if (!pad.hash) return;
   if (audioIsPlaying(pad.id)) {
     audioStop(pad.id, { fade: pad.fadeOut || 0 });
+    if (_fgPlayIds.has(pad.id)) _onFgEnd(pad.id);
     el?.classList.remove('is-playing');
   } else {
     audioPlay(pad.id, pad.hash, {
@@ -2515,6 +2536,7 @@ async function handleBdPadTap(slot) {
       fadeIn:  pad.fadeIn  || 0,
       fadeOut: pad.fadeOut || 0,
     });
+    if ((pad.type || 'single') !== 'loop') _onFgStart(pad.id);
     el?.classList.add('is-playing');
     _resetAutoStop();
   }
@@ -3948,9 +3970,11 @@ function handlePeTrackPick(hash, name) {
 
 /** @returns {string} */
 function settingsHTML() {
-  const theme       = S.theme || '';
-  const defVol      = localStorage.getItem('sos-def-volume')    ?? '80';
-  const defFadeIn   = localStorage.getItem('sos-def-fadein')    ?? '0';
+  const theme        = S.theme || '';
+  const defVol       = localStorage.getItem('sos-def-volume')    ?? '80';
+  const defFadeIn    = localStorage.getItem('sos-def-fadein')    ?? '0';
+  const duckEnabled  = localStorage.getItem('sos-duck-enabled')  === '1';
+  const duckAmount   = localStorage.getItem('sos-duck-amount')   ?? '30';
   const defFadeOut  = localStorage.getItem('sos-def-fadeout')   ?? '0';
   const startMode   = localStorage.getItem('sos-start-mode')    || 'setup';
   const wakeLock    = localStorage.getItem('sos-wake-lock')     === '1';
@@ -4022,6 +4046,23 @@ function settingsHTML() {
         <span class="sett-unit">min</span>
         <button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-left:8px"
                 data-action="sett-auto-stop-save">SET</button>
+      </div>
+    </div>
+
+    <div class="sett-section">
+      <div class="sett-title">${pi('audio', 12, 'var(--gold)')} DUCKING</div>
+      <div class="sett-row">
+        <label class="sett-label">Duck loops when playing</label>
+        <div class="sett-btn-group">
+          ${seg('sett-duck-toggle','val','1','ON',   duckEnabled)}
+          ${seg('sett-duck-toggle','val','0','OFF', !duckEnabled)}
+        </div>
+      </div>
+      <div class="sett-row" id="sett-duck-amount-row" style="${duckEnabled ? '' : 'opacity:0.4;pointer-events:none'}">
+        <label class="sett-label">Duck to</label>
+        <input type="range" id="sett-duck-amount" class="sett-vol-slider"
+               min="0" max="100" value="${escAttr(duckAmount)}" style="flex:1;min-width:60px">
+        <span class="sett-unit" id="sett-duck-amount-val" style="min-width:32px;text-align:right">${duckAmount}%</span>
       </div>
     </div>
 
@@ -4186,6 +4227,16 @@ function mountSettings() {
       setMasterVolume(v);
     };
   }
+  const duckSlider = document.getElementById('sett-duck-amount');
+  const duckValEl  = document.getElementById('sett-duck-amount-val');
+  if (duckSlider) {
+    duckSlider.oninput = () => {
+      const v = +duckSlider.value;
+      if (duckValEl) duckValEl.textContent = v + '%';
+      localStorage.setItem('sos-duck-amount', String(v));
+      if (_duckEnabled() && _fgPlayIds.size > 0) audioDuck(v / 100, 0.1);
+    };
+  }
 }
 
 /* ── STUB SCREEN ────────────────────────────────────────────── */
@@ -4282,24 +4333,28 @@ document.addEventListener('keydown', e => {
           if (audioIsPlaying(pad.id)) {
             delete _plState[pad.id];
             audioStop(pad.id, { fade: pad.fadeOut || 0 });
+            if (_fgPlayIds.has(pad.id)) _onFgEnd(pad.id);
             padEl?.classList.remove('is-playing');
           } else {
             if (!_plState[pad.id]) _plState[pad.id] = _plInit(pad);
             const hash = _plCurrentHash(pad);
             if (hash) {
               audioPlay(pad.id, hash, { type: 'single', volume: pad.volume ?? 80, fadeIn: pad.fadeIn || 0 });
+              _onFgStart(pad.id);
               padEl?.classList.add('is-playing');
             }
           }
         } else if (pad.hash) {
           if (audioIsPlaying(pad.id)) {
             audioStop(pad.id, { fade: pad.fadeOut || 0 });
+            if (_fgPlayIds.has(pad.id)) _onFgEnd(pad.id);
             padEl?.classList.remove('is-playing');
           } else {
             audioPlay(pad.id, pad.hash, {
               type: pad.type || 'single', volume: pad.volume ?? 80,
               fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
             });
+            if ((pad.type || 'single') !== 'loop') _onFgStart(pad.id);
             padEl?.classList.add('is-playing');
           }
         }
@@ -4582,7 +4637,7 @@ function handleAction(action, el) {
     case 'bd-set-add-confirm':   handleSetAddConfirm(); break;
     case 'bd-set-pad-tap':       handleQaPadTap(+el.dataset.setPadSlot); break;
     case 'bd-pad-tap':        handleBdPadTap(+el.dataset.padSlot); break;
-    case 'bd-stop-all':       audioStopAll(0); document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing')); break;
+    case 'bd-stop-all':       audioStopAll(0); _onFgStopAll(); document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing')); break;
     case 'bd-rename-board':   handleBdRenameBoard(); break;
 
     // pad picker
@@ -4712,6 +4767,17 @@ function handleAction(action, el) {
       localStorage.setItem('sos-auto-stop-min', String(min));
       if (_autoStopEnabled() && S.screen === 'board' && S.boardMode === 'game') _resetAutoStop();
       showToast(`Auto-stop: ${min} min`);
+      break;
+    }
+
+    case 'sett-duck-toggle': {
+      const on = el.dataset.val === '1';
+      localStorage.setItem('sos-duck-enabled', on ? '1' : '0');
+      document.querySelectorAll('[data-action="sett-duck-toggle"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.val === el.dataset.val));
+      const row = document.getElementById('sett-duck-amount-row');
+      if (row) { row.style.opacity = on ? '' : '0.4'; row.style.pointerEvents = on ? '' : 'none'; }
+      if (!on) audioUnduck(0.3); // restore immediately if disabled while ducked
       break;
     }
 
@@ -4855,9 +4921,11 @@ document.addEventListener('audio:ended', e => {
         type: 'single', volume: pad.volume ?? 80,
         fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
       });
+      // _fgPlayIds already contains padId from the previous track; keep it
       return; // keep is-playing class
     }
   }
+  if (_fgPlayIds.has(padId)) _onFgEnd(padId);
   const el = document.querySelector(`[data-pad-id="${CSS.escape(padId)}"]`);
   el?.classList.remove('is-playing');
 });
