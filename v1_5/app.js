@@ -1,8 +1,16 @@
 'use strict';
 
-const APP_VERSION = '1.5.21';
+const APP_VERSION = '1.5.22';
 
 const CHANGELOG = [
+  { v: '1.5.22', date: '2026-05-26', items: [
+    'Combo pads: type COMBO ◆ — ordered list of steps, each step plays audio chips in parallel',
+    'Per-chip: volume, fade-in, loop (background) toggle; per-step: pause duration + action (NONE/STOP-ALL/FADE-ALL)',
+    'Combo editor overlay: add/remove steps and chips, reorder not required — chips and steps are sequential',
+    'Combo pads tap to start / tap again to stop; is-playing badge while running',
+    'Background (loop) chips keep playing across subsequent steps until combo ends or STOP-ALL action',
+    'Hotkeys work for combo pads same as all other types',
+  ]},
   { v: '1.5.21', date: '2026-05-26', items: [
     'Pad icons: assign any of 1,476 pixel-art icons to a pad in SETUP mode (VISUAL section in pad opts)',
     'Icon picker: searchable by name, filterable by 15 categories, full-screen overlay',
@@ -586,6 +594,7 @@ function applyTheme(name) {
 function navigate(screenId) {
   if (S.screen === 'board' && screenId !== 'board') {
     audioStopAll(0);
+    _comboClearAll();
     document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
     _releaseWakeLock();
     _cancelAutoStop();
@@ -1316,6 +1325,19 @@ let _lpSlot   = null;
 let _lpIsSet  = false;
 let _lpNewVol = null;
 
+// Combo pad runtime state
+/** @type {Object.<string,{stopped:boolean,bgIds:Set<string>,fgIds:Set<string>,fgRem:number,stepIdx:number,pauseTimer:any}>} */
+const _comboState = {};
+
+// Combo editor state
+let _ceOpen      = false;
+let _cePadId     = null;
+let _ceIsSet     = false;
+let _ceSteps     = [];    // [{chips:[{name,hash,vol,fadeIn,loop}], dur:number, action:null|'stop-all'|'fade-all'}]
+let _ceSavedSteps = null; // deep copy saved on editor open, restored on BACK
+let _ceCpOpen    = false;
+let _ceCpStepIdx = null;
+
 // Drag-to-reorder state (SETUP mode)
 let _dragSlot     = null;
 let _dragIsSet    = false;
@@ -1445,16 +1467,22 @@ function renderPadGrid() {
 
 /** @param {Object} pad @returns {string} */
 function padCellHTML(pad) {
-  const playing    = audioIsPlaying(pad.id);
+  const isCombo    = pad.type === 'combo';
+  const playing    = isCombo ? !!_comboState[pad.id] : audioIsPlaying(pad.id);
   const isLoop     = pad.type === 'loop';
   const isPlaylist = pad.type === 'playlist';
-  const accentVar  = isLoop ? 'var(--pad-loop)' : isPlaylist ? 'var(--pad-playlist)' : 'var(--pad-single)';
+  const accentVar  = isLoop     ? 'var(--pad-loop)'
+                   : isPlaylist ? 'var(--pad-playlist)'
+                   : isCombo    ? 'var(--pad-combo)'
+                   : 'var(--pad-single)';
+  const waveHash   = isCombo ? (pad.steps?.[0]?.chips?.[0]?.hash || null) : pad.hash;
   const iconHtml   = pad.iconId && typeof padIconSvg === 'function'
     ? `<div class="pad-icon">${padIconSvg(pad.iconId, 32, accentVar)}</div>`
-    : `<div class="pad-wave">${_waveMiniFromHash(pad.hash)}</div>`;
-  return `<div class="pad is-assigned${playing ? ' is-playing' : ''}${isLoop ? ' is-loop' : ''}${isPlaylist ? ' is-playlist' : ''}" data-pad-slot="${pad.slot}" data-pad-id="${escAttr(pad.id)}" data-action="bd-pad-tap">
+    : `<div class="pad-wave">${_waveMiniFromHash(waveHash)}</div>`;
+  return `<div class="pad is-assigned${playing ? ' is-playing' : ''}${isLoop ? ' is-loop' : ''}${isPlaylist ? ' is-playlist' : ''}${isCombo ? ' is-combo' : ''}" data-pad-slot="${pad.slot}" data-pad-id="${escAttr(pad.id)}" data-action="bd-pad-tap">
     ${isLoop     ? `<span class="pad-loop-badge">↻</span>` : ''}
     ${isPlaylist ? `<span class="pad-loop-badge pad-pl-badge">☰</span>` : ''}
+    ${isCombo    ? `<span class="pad-loop-badge pad-combo-badge">◆</span>` : ''}
     ${iconHtml}
     <div class="pad-name">${escHtml(pad.name || '—')}</div>
     ${pad.hotkey ? `<span class="pad-hotkey">${escHtml(pad.hotkey)}</span>` : ''}
@@ -1520,7 +1548,7 @@ function renderSetStrip() {
 
 /** @param {Object} pad @returns {string} */
 function setpadCellHTML(pad) {
-  const playing = audioIsPlaying(pad.id);
+  const playing = pad.type === 'combo' ? !!_comboState[pad.id] : audioIsPlaying(pad.id);
   return `<div class="set-pad is-assigned${playing ? ' is-playing' : ''}" data-set-pad-slot="${pad.slot}" data-pad-id="${escAttr(pad.id)}" data-action="bd-set-pad-tap">
     <div class="set-pad-name">${escHtml(pad.name || '—')}</div>
   </div>`;
@@ -1688,6 +1716,108 @@ function _findPadById(padId) {
       || null;
 }
 
+/* ── COMBO PLAYBACK ──────────────────────────────────────────── */
+
+/** @param {Object} pad */
+function _comboStart(pad) {
+  if (_comboState[pad.id]) return;
+  const state = { stopped: false, bgIds: new Set(), fgIds: new Set(), fgRem: 0, stepIdx: 0, pauseTimer: null };
+  _comboState[pad.id] = state;
+  _comboPlayStep(pad, state, 0);
+}
+
+/**
+ * @param {Object} pad
+ * @param {Object} state
+ * @param {number} stepIdx
+ */
+function _comboPlayStep(pad, state, stepIdx) {
+  if (state.stopped) return;
+  const steps = pad.steps || [];
+  if (stepIdx >= steps.length) { _comboFinish(pad.id); return; }
+
+  const step = steps[stepIdx];
+  state.stepIdx = stepIdx;
+
+  // Apply step action before starting chips
+  if (step.action === 'stop-all') {
+    state.bgIds.forEach(id => audioStop(id, { fade: 0 }));
+    state.bgIds.clear();
+    audioStopAll(0);
+  } else if (step.action === 'fade-all') {
+    state.bgIds.forEach(id => audioStop(id, { fade: 1 }));
+    state.bgIds.clear();
+    audioStopAll(1);
+  }
+
+  const chips   = step.chips || [];
+  const bgChips = chips.filter(c =>  c.loop);
+  const fgChips = chips.filter(c => !c.loop);
+
+  // Start background (loop) chips
+  bgChips.forEach((chip, i) => {
+    const subId = `${pad.id}:bg:${stepIdx}:${i}`;
+    state.bgIds.add(subId);
+    audioPlay(subId, chip.hash, { type: 'loop', volume: chip.vol ?? 80, fadeIn: chip.fadeIn || 0 });
+  });
+
+  // Start foreground chips
+  state.fgRem = fgChips.length;
+  if (fgChips.length === 0) {
+    const dur = (step.dur || 0) * 1000;
+    if (dur > 0) {
+      state.pauseTimer = setTimeout(() => {
+        state.pauseTimer = null;
+        if (!state.stopped) _comboPlayStep(pad, state, stepIdx + 1);
+      }, dur);
+    } else {
+      _comboPlayStep(pad, state, stepIdx + 1);
+    }
+    return;
+  }
+  fgChips.forEach((chip, i) => {
+    const subId = `${pad.id}:${stepIdx}:${i}`;
+    state.fgIds.add(subId);
+    audioPlay(subId, chip.hash, { type: 'single', volume: chip.vol ?? 80, fadeIn: chip.fadeIn || 0 });
+  });
+}
+
+/** @param {string} padId */
+function _comboStop(padId) {
+  const state = _comboState[padId];
+  if (!state) return;
+  state.stopped = true;
+  if (state.pauseTimer) { clearTimeout(state.pauseTimer); state.pauseTimer = null; }
+  state.bgIds.forEach(id => audioStop(id, { fade: 0.5 }));
+  state.bgIds.clear();
+  state.fgIds.forEach(id => audioStop(id, { fade: 0 }));
+  state.fgIds.clear();
+  delete _comboState[padId];
+  const el = document.querySelector(`[data-pad-id="${CSS.escape(padId)}"]`);
+  el?.classList.remove('is-playing');
+}
+
+/** @param {string} padId */
+function _comboFinish(padId) {
+  const state = _comboState[padId];
+  if (!state) return;
+  state.bgIds.forEach(id => audioStop(id, { fade: 0.5 }));
+  state.bgIds.clear();
+  state.fgIds.clear();
+  delete _comboState[padId];
+  const el = document.querySelector(`[data-pad-id="${CSS.escape(padId)}"]`);
+  el?.classList.remove('is-playing');
+}
+
+/** Clear all running combos (call when leaving board or switching scenes) */
+function _comboClearAll() {
+  for (const padId of Object.keys(_comboState)) {
+    const state = _comboState[padId];
+    if (state.pauseTimer) clearTimeout(state.pauseTimer);
+  }
+  for (const k in _comboState) delete _comboState[k];
+}
+
 /** @returns {string} */
 function _renderPlaylistTracksHTML() {
   if (!_editingPlaylistFiles.length) {
@@ -1715,6 +1845,9 @@ function _padOptsHTML(pad) {
   const vol     = pad.volume ?? 80;
   const shuffle = !!pad.shuffle;
   const isList  = t === 'playlist';
+  const isCombo = t === 'combo';
+  const nSteps  = _ceSteps.length;
+  const nChips  = _ceSteps.reduce((n, s) => n + (s.chips || []).length, 0);
   return `<div class="pad-opts" id="pad-opts">
     <div class="pad-opts-title">${escHtml(pad.name || '—')}</div>
     <div class="pad-opts-row">
@@ -1727,6 +1860,7 @@ function _padOptsHTML(pad) {
         <button class="pad-type-btn${t === 'single'   ? ' is-active' : ''}" data-action="bd-opts-type" data-type="single">SINGLE</button>
         <button class="pad-type-btn${t === 'loop'     ? ' is-active' : ''}" data-action="bd-opts-type" data-type="loop">LOOP ↻</button>
         <button class="pad-type-btn${t === 'playlist' ? ' is-active' : ''}" data-action="bd-opts-type" data-type="playlist">LIST ☰</button>
+        <button class="pad-type-btn${t === 'combo'    ? ' is-active' : ''}" data-action="bd-opts-type" data-type="combo">COMBO ◆</button>
       </div>
     </div>
     <div class="pad-opts-row">
@@ -1749,6 +1883,13 @@ function _padOptsHTML(pad) {
       <div class="pl-tracks" id="pl-tracks">${_renderPlaylistTracksHTML()}</div>
       <button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-top:4px" data-action="bd-opts-pl-add">+ ADD TRACK</button>
     </div>
+    <div class="pad-opts-section" id="combo-section"${isCombo ? '' : ' style="display:none"'}>
+      <div class="pad-opts-row">
+        <span class="pad-opts-label">Steps</span>
+        <span id="combo-step-info" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim)">${nSteps} step${nSteps !== 1 ? 's' : ''}, ${nChips} chip${nChips !== 1 ? 's' : ''}</span>
+      </div>
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" style="width:100%;margin-top:4px" data-action="bd-opts-combo-edit">EDIT COMBO STEPS</button>
+    </div>
     <div class="pad-opts-section">
       <div class="pad-opts-row">
         <span class="pad-opts-label">Icon</span>
@@ -1758,7 +1899,7 @@ function _padOptsHTML(pad) {
       </div>
     </div>
     <div class="pad-opts-actions">
-      <button class="sb-btn sb-btn-sm sb-btn-ghost" id="pad-opts-change-btn" data-action="bd-opts-change"${isList ? ' style="display:none"' : ''}>Change Audio</button>
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" id="pad-opts-change-btn" data-action="bd-opts-change"${(isList || isCombo) ? ' style="display:none"' : ''}>Change Audio</button>
       <button class="sb-btn sb-btn-sm sb-btn-danger" data-action="bd-opts-clear">Clear</button>
       <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="bd-opts-save">Save</button>
     </div>
@@ -1773,6 +1914,7 @@ function openPadOpts(slot) {
   _bdOptsSlot = slot;
   _editingPlaylistFiles = (pad.files || []).map(f => ({ ...f }));
   _editingIconId = pad.iconId || null;
+  _ceSteps = (pad.steps || []).map(s => ({ chips: (s.chips || []).map(c => ({ ...c })), dur: s.dur || 0, action: s.action || null }));
   document.getElementById('bd-content')?.insertAdjacentHTML('beforeend', _padOptsHTML(pad));
   document.getElementById('pad-opts-name')?.focus();
 }
@@ -1796,6 +1938,10 @@ async function handlePadOptsSave() {
     const base = { ...p, name, hotkey, type, volume };
     if (_editingIconId) base.iconId = _editingIconId;
     else delete base.iconId;
+    if (type === 'combo') {
+      base.steps = _ceSteps.map(s => ({ chips: (s.chips || []).map(c => ({ ...c })), dur: s.dur || 0, action: s.action || null }));
+      return base;
+    }
     if (!isList) return base;
     base.files   = files;
     base.shuffle = shuffle;
@@ -1843,6 +1989,7 @@ async function handleBdSceneSwitch(sceneId) {
   closeSceneOpts();
   closeSceneAdd();
   audioStopAll(0);
+  _comboClearAll();
   document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
   _bdBoard.activeSceneId = sceneId;
   _bdBoard.updated = Date.now();
@@ -1923,6 +2070,7 @@ function openSetPadOpts(slot) {
   _bdSetOptsSlot = slot;
   _editingPlaylistFiles = (pad.files || []).map(f => ({ ...f }));
   _editingIconId = pad.iconId || null;
+  _ceSteps = (pad.steps || []).map(s => ({ chips: (s.chips || []).map(c => ({ ...c })), dur: s.dur || 0, action: s.action || null }));
   document.getElementById('bd-content')?.insertAdjacentHTML('beforeend', _padOptsHTML(pad));
   document.getElementById('pad-opts-name')?.focus();
 }
@@ -1936,6 +2084,17 @@ async function handleQaPadTap(slot) {
   }
   if (!pad) return;
   const el = document.querySelector(`[data-pad-id="${CSS.escape(pad.id)}"]`);
+  if (pad.type === 'combo') {
+    if (_comboState[pad.id]) {
+      _comboStop(pad.id);
+    } else {
+      if (!pad.steps?.length) { showToast('No steps configured — edit combo steps first.'); return; }
+      _comboStart(pad);
+      el?.classList.add('is-playing');
+      _resetAutoStop();
+    }
+    return;
+  }
   if (pad.type === 'playlist') {
     if (!pad.files?.length) return;
     if (audioIsPlaying(pad.id)) {
@@ -2286,6 +2445,17 @@ async function handleBdPadTap(slot) {
   // GAME mode
   if (!pad) return;
   const el = document.querySelector(`[data-pad-id="${CSS.escape(pad.id)}"]`);
+  if (pad.type === 'combo') {
+    if (_comboState[pad.id]) {
+      _comboStop(pad.id);
+    } else {
+      if (!pad.steps?.length) { showToast('No steps configured — edit combo steps first.'); return; }
+      _comboStart(pad);
+      el?.classList.add('is-playing');
+      _resetAutoStop();
+    }
+    return;
+  }
   if (pad.type === 'playlist') {
     if (!pad.files?.length) return;
     if (audioIsPlaying(pad.id)) {
@@ -2840,6 +3010,225 @@ function handleIconSelect(iconId) {
   }
 }
 
+/* ── COMBO EDITOR ────────────────────────────────────────────── */
+
+/**
+ * @param {string} padId
+ * @param {boolean} isSet
+ */
+function openComboEditor(padId, isSet) {
+  if (_ceOpen) return;
+  _ceOpen  = true;
+  _cePadId = padId;
+  _ceIsSet = isSet;
+  // _ceSteps was already initialized in openPadOpts / openSetPadOpts
+  // Save a deep copy for BACK (discard)
+  _ceSavedSteps = _ceSteps.map(s => ({ chips: (s.chips || []).map(c => ({ ...c })), dur: s.dur || 0, action: s.action || null }));
+  _renderComboEditor();
+}
+
+function closeComboEditor() {
+  _ceOpen       = false;
+  _cePadId      = null;
+  _ceSavedSteps = null;
+  document.getElementById('combo-editor')?.remove();
+}
+
+function handleCeBack() {
+  // Restore _ceSteps to the saved copy (discard edits)
+  if (_ceSavedSteps) _ceSteps = _ceSavedSteps;
+  _ceSavedSteps = null;
+  closeComboEditor();
+  // Update step-info span in pad opts if open
+  _ceUpdateStepInfo();
+}
+
+function handleCeSave() {
+  // Read pause-duration values from DOM before closing
+  document.querySelectorAll('.ce-dur-input').forEach(input => {
+    const si = +input.dataset.step;
+    if (_ceSteps[si]) _ceSteps[si].dur = Math.max(0, +input.value || 0);
+  });
+  _ceSavedSteps = null;
+  closeComboEditor();
+  _ceUpdateStepInfo();
+}
+
+function _ceUpdateStepInfo() {
+  const el = document.getElementById('combo-step-info');
+  if (!el) return;
+  const n = _ceSteps.length;
+  const c = _ceSteps.reduce((acc, s) => acc + (s.chips || []).length, 0);
+  el.textContent = `${n} step${n !== 1 ? 's' : ''}, ${c} chip${c !== 1 ? 's' : ''}`;
+}
+
+function _renderComboEditor() {
+  document.getElementById('combo-editor')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div class="combo-editor" id="combo-editor">
+    <div class="ce-top-bar">
+      <button class="ip-back" data-action="ce-back">← BACK</button>
+      <span class="ce-title">COMBO STEPS</span>
+      <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="ce-save">SAVE</button>
+    </div>
+    <div class="ce-body" id="ce-body">
+      ${_ceSteps.map((step, si) => _ceStepHTML(step, si)).join('')}
+      ${!_ceSteps.length ? '<p class="lib-empty" style="margin:24px auto">No steps yet. Tap + ADD STEP below.</p>' : ''}
+    </div>
+    <div class="ce-footer">
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" style="width:100%" data-action="ce-add-step">+ ADD STEP</button>
+    </div>
+  </div>`);
+}
+
+/** @param {{chips:Array, dur:number, action:string|null}} step @param {number} si @returns {string} */
+function _ceStepHTML(step, si) {
+  const actions = [
+    { val: null,         label: 'NONE'     },
+    { val: 'stop-all',  label: 'STOP ALL' },
+    { val: 'fade-all',  label: 'FADE ALL' },
+  ];
+  const actionBtns = actions.map(a =>
+    `<button class="pad-type-btn${(step.action === a.val || (!step.action && a.val === null)) ? ' is-active' : ''}" data-action="ce-step-action" data-step="${si}" data-act="${a.val === null ? '' : a.val}">${a.label}</button>`
+  ).join('');
+
+  const chipsHTML = (step.chips || []).map((chip, ci) => `
+    <div class="ce-chip">
+      <span class="ce-chip-name">${escHtml(chip.name || '—')}</span>
+      <span class="ce-chip-vol">${chip.vol ?? 80}%</span>
+      <button class="pad-type-btn ce-loop-btn${chip.loop ? ' is-active' : ''}" data-action="ce-chip-loop" data-step="${si}" data-chip="${ci}" title="Loop (background)">↻</button>
+      <button class="act-btn" data-action="ce-chip-remove" data-step="${si}" data-chip="${ci}">×</button>
+    </div>`).join('');
+
+  return `<div class="ce-step" data-step="${si}">
+    <div class="ce-step-header">
+      <span class="ce-step-num">STEP ${si + 1}</span>
+      <div class="ce-step-acts">
+        <div class="pad-type-picker ce-action-picker">${actionBtns}</div>
+        <button class="act-btn danger" data-action="ce-delete-step" data-step="${si}">×</button>
+      </div>
+    </div>
+    <div class="ce-chips" id="ce-chips-${si}">
+      ${chipsHTML}
+    </div>
+    <div class="ce-step-footer">
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="ce-add-chip" data-step="${si}">+ ADD CHIP</button>
+      <div class="ce-dur-row">
+        <span class="pad-opts-label" style="font-size:12px">PAUSE</span>
+        <input class="audio-name-input ce-dur-input" type="number" min="0" max="60" step="0.5"
+               value="${step.dur || 0}" style="width:52px;text-align:right" data-step="${si}">
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-mute)">s</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function handleCeAddStep() {
+  _ceSteps.push({ chips: [], dur: 0, action: null });
+  _renderComboEditor();
+}
+
+/** @param {number} si */
+function handleCeDeleteStep(si) {
+  _ceSteps.splice(si, 1);
+  _renderComboEditor();
+}
+
+/**
+ * @param {number} si
+ * @param {number} ci
+ */
+function handleCeChipRemove(si, ci) {
+  if (_ceSteps[si]) _ceSteps[si].chips.splice(ci, 1);
+  // Re-render just the chips container
+  const el = document.getElementById(`ce-chips-${si}`);
+  if (el) {
+    const chipsHTML = (_ceSteps[si]?.chips || []).map((chip, ci2) => `
+      <div class="ce-chip">
+        <span class="ce-chip-name">${escHtml(chip.name || '—')}</span>
+        <span class="ce-chip-vol">${chip.vol ?? 80}%</span>
+        <button class="pad-type-btn ce-loop-btn${chip.loop ? ' is-active' : ''}" data-action="ce-chip-loop" data-step="${si}" data-chip="${ci2}" title="Loop">↻</button>
+        <button class="act-btn" data-action="ce-chip-remove" data-step="${si}" data-chip="${ci2}">×</button>
+      </div>`).join('');
+    el.innerHTML = chipsHTML;
+  }
+}
+
+/**
+ * @param {number} si
+ * @param {number} ci
+ */
+function handleCeChipLoop(si, ci) {
+  const chip = _ceSteps[si]?.chips[ci];
+  if (!chip) return;
+  chip.loop = !chip.loop;
+  const btn = document.querySelector(`[data-action="ce-chip-loop"][data-step="${si}"][data-chip="${ci}"]`);
+  if (btn) btn.classList.toggle('is-active', !!chip.loop);
+}
+
+/**
+ * @param {number} si
+ * @param {string|null} act
+ */
+function handleCeStepAction(si, act) {
+  if (!_ceSteps[si]) return;
+  _ceSteps[si].action = act || null;
+  // Update button states in that step's action picker
+  document.querySelectorAll(`[data-action="ce-step-action"][data-step="${si}"]`).forEach(btn => {
+    const btnAct = btn.dataset.act || null;
+    btn.classList.toggle('is-active', btnAct === (act || null));
+  });
+}
+
+/** @param {number} si */
+function openCeChipPicker(si) {
+  if (_ceCpOpen) return;
+  _ceCpOpen    = true;
+  _ceCpStepIdx = si;
+  const sorted = _libEntries.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  document.body.insertAdjacentHTML('beforeend', `<div class="combo-editor" id="ce-chip-picker">
+    <div class="ce-top-bar">
+      <button class="ip-back" data-action="ce-cp-back">← BACK</button>
+      <span class="ce-title">ADD CHIP — STEP ${si + 1}</span>
+    </div>
+    <div class="pad-picker-list" id="ce-cp-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
+      ${sorted.map(e => `<div class="pad-picker-item" data-action="ce-cp-pick" data-hash="${e.hash}" data-name="${escAttr(e.name)}">
+        <div class="pad-picker-wave">${_waveMini(e.peaks)}</div>
+        <span class="pad-picker-item-name">${escHtml(e.name)}</span>
+        <span class="pad-picker-item-dur">${fmtDur(e.duration)}</span>
+      </div>`).join('')}
+      ${!sorted.length ? '<p class="lib-empty">No audio in library yet.</p>' : ''}
+    </div>
+  </div>`);
+}
+
+function closeCeChipPicker() {
+  _ceCpOpen    = false;
+  _ceCpStepIdx = null;
+  document.getElementById('ce-chip-picker')?.remove();
+}
+
+/**
+ * @param {string} hash
+ * @param {string} name
+ */
+function handleCeCpPick(hash, name) {
+  const si = _ceCpStepIdx;
+  closeCeChipPicker();
+  if (si === null || !_ceSteps[si]) return;
+  _ceSteps[si].chips.push({ name, hash, vol: 80, fadeIn: 0, loop: false });
+  // Re-render just this step's chip list
+  const el = document.getElementById(`ce-chips-${si}`);
+  if (el) {
+    el.innerHTML = _ceSteps[si].chips.map((chip, ci) => `
+      <div class="ce-chip">
+        <span class="ce-chip-name">${escHtml(chip.name || '—')}</span>
+        <span class="ce-chip-vol">${chip.vol ?? 80}%</span>
+        <button class="pad-type-btn ce-loop-btn${chip.loop ? ' is-active' : ''}" data-action="ce-chip-loop" data-step="${si}" data-chip="${ci}" title="Loop">↻</button>
+        <button class="act-btn" data-action="ce-chip-remove" data-step="${si}" data-chip="${ci}">×</button>
+      </div>`).join('');
+  }
+}
+
 /* ── SCREEN: SETTINGS ───────────────────────────────────────── */
 
 /** @returns {string} */
@@ -3139,6 +3528,8 @@ bus.on('theme', applyTheme);
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    if (_ceCpOpen)             { closeCeChipPicker(); return; }
+    if (_ceOpen)               { handleCeBack(); return; }
     if (_importModalOpen)      { closeImportModal(); return; }
     if (_clOpen)               { closeChangelog(); return; }
     if (_bdPickerSlot !== null || _bdPickerMode === 'playlist-add') { closePadPicker(); return; }
@@ -3158,7 +3549,14 @@ document.addEventListener('keydown', e => {
       if (pad) {
         e.preventDefault();
         const padEl = document.querySelector(`[data-pad-id="${CSS.escape(pad.id)}"]`);
-        if (pad.type === 'playlist') {
+        if (pad.type === 'combo') {
+          if (_comboState[pad.id]) {
+            _comboStop(pad.id);
+          } else if (pad.steps?.length) {
+            _comboStart(pad);
+            padEl?.classList.add('is-playing');
+          }
+        } else if (pad.type === 'playlist') {
           if (!pad.files?.length) return;
           if (audioIsPlaying(pad.id)) {
             delete _plState[pad.id];
@@ -3309,8 +3707,12 @@ document.addEventListener('click', e => {
   // close import modal on backdrop click
   if (_importModalOpen && !e.target.closest('#import-modal')) { closeImportModal(); return; }
 
-  // icon picker is full-screen — no backdrop click needed; ip-back handles close
-  if (_ipOpen) return;
+  // Full-screen overlays: handle their actions, skip all outside-click-close logic
+  if (_ipOpen || _ceOpen || _ceCpOpen) {
+    const actEl = e.target.closest('[data-action]');
+    if (actEl) handleAction(actEl.dataset.action, actEl);
+    return;
+  }
 
   // close changelog on backdrop click
   if (_clOpen && !e.target.closest('#cl-modal')) { closeChangelog(); return; }
@@ -3471,13 +3873,18 @@ function handleAction(action, el) {
     case 'bd-opts-clear':     handlePadOptsClear(); break;
     case 'bd-opts-change':    handlePadOptsChange(); break;
     case 'bd-opts-type': {
-      document.querySelectorAll('.pad-type-btn').forEach(b =>
-        b.classList.toggle('is-active', b.dataset.type === el.dataset.type));
-      const isList = el.dataset.type === 'playlist';
-      const plSec  = document.getElementById('pl-section');
+      const type    = el.dataset.type;
+      document.querySelectorAll('.pad-type-btn[data-type]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.type === type));
+      const isList  = type === 'playlist';
+      const isCombo = type === 'combo';
+      const plSec   = document.getElementById('pl-section');
       if (plSec) plSec.style.display = isList ? '' : 'none';
-      const chBtn  = document.getElementById('pad-opts-change-btn');
-      if (chBtn) chBtn.style.display = isList ? 'none' : '';
+      const comboSec = document.getElementById('combo-section');
+      if (comboSec) comboSec.style.display = isCombo ? '' : 'none';
+      const chBtn   = document.getElementById('pad-opts-change-btn');
+      if (chBtn) chBtn.style.display = (isList || isCombo) ? 'none' : '';
+      if (isCombo && !_ceSteps.length) _ceSteps = [];
       break;
     }
     case 'bd-opts-shuffle':
@@ -3501,6 +3908,25 @@ function handleAction(action, el) {
     }
     case 'ip-back':    closeIconPicker(); break;
     case 'ip-select':  handleIconSelect(el.dataset.iconId); break;
+
+    // combo editor
+    case 'bd-opts-combo-edit': {
+      const slot  = _bdOptsSlot !== null ? _bdOptsSlot : _bdSetOptsSlot;
+      const isSet = _bdSetOptsSlot !== null;
+      const pad   = isSet ? _bdSet?.pads.find(p => p.slot === slot) : _bdScene?.pads.find(p => p.slot === slot);
+      if (pad) openComboEditor(pad.id, isSet);
+      break;
+    }
+    case 'ce-back':          handleCeBack(); break;
+    case 'ce-save':          handleCeSave(); break;
+    case 'ce-add-step':      handleCeAddStep(); break;
+    case 'ce-delete-step':   handleCeDeleteStep(+el.dataset.step); break;
+    case 'ce-add-chip':      openCeChipPicker(+el.dataset.step); break;
+    case 'ce-chip-remove':   handleCeChipRemove(+el.dataset.step, +el.dataset.chip); break;
+    case 'ce-chip-loop':     handleCeChipLoop(+el.dataset.step, +el.dataset.chip); break;
+    case 'ce-step-action':   handleCeStepAction(+el.dataset.step, el.dataset.act || null); break;
+    case 'ce-cp-back':       closeCeChipPicker(); break;
+    case 'ce-cp-pick':       handleCeCpPick(el.dataset.hash, el.dataset.name); break;
 
     // settings — board + session
     case 'sett-start-mode':
@@ -3634,9 +4060,37 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// When audio ends naturally: advance playlist or remove is-playing
+// When audio ends naturally: handle combo fg chips, advance playlist, or remove is-playing
 document.addEventListener('audio:ended', e => {
   const padId = e.detail.padId;
+
+  // Combo sub-pad: id contains ':'
+  if (padId.includes(':')) {
+    if (padId.includes(':bg:')) return; // bg/loop chips won't end naturally; ignore if they do
+    // Foreground chip ended — extract parent combo padId
+    const comboPadId = padId.slice(0, padId.indexOf(':'));
+    const state = _comboState[comboPadId];
+    if (!state || state.stopped) return;
+    state.fgIds.delete(padId);
+    state.fgRem = Math.max(0, state.fgRem - 1);
+    if (state.fgRem === 0) {
+      const pad = _findPadById(comboPadId);
+      if (!pad) { _comboFinish(comboPadId); return; }
+      const step = (pad.steps || [])[state.stepIdx];
+      const dur  = (step?.dur || 0) * 1000;
+      if (dur > 0) {
+        state.pauseTimer = setTimeout(() => {
+          state.pauseTimer = null;
+          if (!state.stopped) _comboPlayStep(pad, state, state.stepIdx + 1);
+        }, dur);
+      } else {
+        _comboPlayStep(pad, state, state.stepIdx + 1);
+      }
+    }
+    return;
+  }
+
+  // Regular pad: playlist advance or remove is-playing
   const pad = _findPadById(padId);
   if (pad?.type === 'playlist' && pad.files?.length && _plState[padId]) {
     _plAdvance(padId, pad.files.length);

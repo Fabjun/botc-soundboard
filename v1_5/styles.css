@@ -889,6 +889,62 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
   font-family:var(--font-mono);font-size:12px;color:var(--text-mute);
   padding:24px;text-align:center;grid-column:1/-1}
 
+/* ── COMBO PAD BADGE ─────────────────────────────────────────── */
+.pad-combo-badge{
+  background:var(--pad-combo);color:var(--night)}
+
+/* ── COMBO EDITOR OVERLAY ────────────────────────────────────── */
+.combo-editor{
+  position:fixed;inset:0;z-index:700;
+  background:var(--deep);
+  display:flex;flex-direction:column;
+  overscroll-behavior:none}
+.ce-top-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 12px;background:var(--surface);
+  border-bottom:1px solid var(--border);flex-shrink:0}
+.ce-title{
+  flex:1;font-family:var(--font-ui);font-size:15px;
+  color:var(--text-dim);letter-spacing:.04em;text-align:center}
+.ce-body{
+  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:8px 12px;display:flex;flex-direction:column;gap:8px}
+.ce-footer{
+  padding:10px 12px;background:var(--surface);
+  border-top:1px solid var(--border);flex-shrink:0}
+.ce-step{
+  background:var(--surface);border:1px solid var(--border);
+  display:flex;flex-direction:column;gap:0}
+.ce-step-header{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-bottom:1px solid var(--border-soft);
+  background:var(--raised)}
+.ce-step-num{
+  font-family:var(--font-ui);font-size:13px;color:var(--gold);
+  flex-shrink:0;letter-spacing:.04em}
+.ce-step-acts{
+  flex:1;display:flex;align-items:center;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.ce-action-picker{gap:3px}
+.ce-action-picker .pad-type-btn{font-size:10px;padding:3px 6px}
+.ce-chips{
+  padding:8px 10px;display:flex;flex-direction:column;gap:4px;
+  min-height:28px}
+.ce-chip{
+  display:flex;align-items:center;gap:6px;
+  padding:4px 6px;background:var(--raised);border:1px solid var(--border-soft)}
+.ce-chip-name{
+  flex:1;font-family:var(--font-mono);font-size:12px;
+  color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ce-chip-vol{
+  font-family:var(--font-mono);font-size:11px;color:var(--text-mute);
+  flex-shrink:0;min-width:32px;text-align:right}
+.ce-loop-btn{font-size:13px;padding:2px 6px}
+.ce-step-footer{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-top:1px solid var(--border-soft)}
+.ce-dur-row{
+  display:flex;align-items:center;gap:4px;margin-left:auto;flex-shrink:0}
+
 /* ── LIBRARY ICONS TAB ───────────────────────────────────────── */
 .lib-icons-top{
   display:flex;gap:8px;padding:10px 12px;
