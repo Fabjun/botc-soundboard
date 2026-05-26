@@ -1,8 +1,18 @@
 'use strict';
 
-const APP_VERSION = '1.5.22';
+const APP_VERSION = '1.5.23';
 
 const CHANGELOG = [
+  { v: '1.5.23', date: '2026-05-26', items: [
+    'PAD EDITOR: full-screen 3-column editor replaces the bottom-sheet for configured pads in SETUP mode',
+    'LEFT: identity (name, hotkey capture), behavior (SOLO/LOOP/LIST/COMBO mode cards), visual (icon)',
+    'CENTER: sound section with file chip + waveform visualization, playlist tracks for LIST, combo steps for COMBO',
+    'RIGHT: volume slider, fade in slider (0–30 s), fade out slider (0–30 s) with live waveform update',
+    'Per-pad fade in/out now editable in the inspector (was previously global-defaults-only)',
+    'Toolbar: mini pad preview, live name display, PREVIEW toggle, CANCEL, SAVE (Ctrl+S), DELETE with confirm',
+    'FROM LIB and ADD TRACK use dedicated sub-overlays (same z-level as editor)',
+    'ESC closes sub-overlays first, then editor; navigate away also closes editor',
+  ]},
   { v: '1.5.22', date: '2026-05-26', items: [
     'Combo pads: type COMBO ◆ — ordered list of steps, each step plays audio chips in parallel',
     'Per-chip: volume, fade-in, loop (background) toggle; per-step: pause duration + action (NONE/STOP-ALL/FADE-ALL)',
@@ -592,6 +602,7 @@ function applyTheme(name) {
 
 /** @param {ScreenId} screenId */
 function navigate(screenId) {
+  if (_peOpen) closePadEditor();
   if (S.screen === 'board' && screenId !== 'board') {
     audioStopAll(0);
     _comboClearAll();
@@ -1338,6 +1349,17 @@ let _ceSavedSteps = null; // deep copy saved on editor open, restored on BACK
 let _ceCpOpen    = false;
 let _ceCpStepIdx = null;
 
+// Pad editor state
+let _peOpen          = false;
+let _pePadSlot       = null;
+let _peIsSet         = false;
+let _peEditPad       = null;
+let _peLibEntry      = null;
+let _peCaptureKey    = false;
+let _peDeleteCfm     = false;
+let _pePickerOpen    = false;   // audio-from-lib picker
+let _peTrackPickerOpen = false; // playlist-add picker
+
 // Drag-to-reorder state (SETUP mode)
 let _dragSlot     = null;
 let _dragIsSet    = false;
@@ -2078,7 +2100,7 @@ function openSetPadOpts(slot) {
 async function handleQaPadTap(slot) {
   const pad = _bdSet?.pads.find(p => p.slot === slot);
   if (S.boardMode === 'setup') {
-    if (pad) openSetPadOpts(slot);
+    if (pad) openPadEditor(slot, true);
     else openSetPadPicker(slot);
     return;
   }
@@ -2438,7 +2460,7 @@ async function handleBdMode(mode) {
 async function handleBdPadTap(slot) {
   const pad = _bdScene?.pads.find(p => p.slot === slot);
   if (S.boardMode === 'setup') {
-    if (pad) openPadOpts(slot);
+    if (pad) openPadEditor(slot, false);
     else openPadPicker(slot);
     return;
   }
@@ -3000,10 +3022,21 @@ function closeIconPicker() {
 }
 
 function handleIconSelect(iconId) {
+  _editingIconId = iconId;
   if (_ipCtx === 'pad-opts') {
-    _editingIconId = iconId;
     const preview = document.getElementById('pad-icon-preview');
     if (preview && typeof padIconSvg === 'function') preview.innerHTML = padIconSvg(iconId, 24, 'var(--gold)');
+    closeIconPicker();
+  } else if (_ipCtx === 'pad-editor') {
+    const slot0 = document.getElementById('pe-icon-slot-0');
+    if (slot0 && typeof padIconSvg === 'function') {
+      slot0.classList.add('has-icon');
+      slot0.innerHTML = padIconSvg(iconId, 20, 'var(--pad-loop)');
+    }
+    if (!document.getElementById('pe-icon-clear-btn')) {
+      document.querySelector('[data-action="pe-icon-change"].sb-btn')
+        ?.insertAdjacentHTML('afterend', `<button class="sb-btn sb-btn-sm sb-btn-ghost" style="width:100%;margin-top:4px" id="pe-icon-clear-btn" data-action="pe-icon-clear">✕ REMOVE ICON</button>`);
+    }
     closeIconPicker();
   } else if (_ipCtx === 'library') {
     closeIconPicker();
@@ -3227,6 +3260,565 @@ function handleCeCpPick(hash, name) {
         <button class="act-btn" data-action="ce-chip-remove" data-step="${si}" data-chip="${ci}">×</button>
       </div>`).join('');
   }
+}
+
+/* ── PAD EDITOR ──────────────────────────────────────────────── */
+
+/**
+ * @param {number} slot  pad slot index
+ * @param {boolean} isSet  true = set pad, false = scene pad
+ */
+function openPadEditor(slot, isSet) {
+  closePadPicker();
+  closePadOpts();
+  closePadEditor();
+  const pads = isSet ? _bdSet?.pads : _bdScene?.pads;
+  const pad  = pads?.find(p => p.slot === slot);
+  if (!pad) { isSet ? openSetPadPicker(slot) : openPadPicker(slot); return; }
+  _peOpen    = true;
+  _pePadSlot = slot;
+  _peIsSet   = isSet;
+  _peEditPad = { ...pad };
+  _peLibEntry = _libEntries.find(e => e.hash === pad.hash) || null;
+  _editingPlaylistFiles = (pad.files || []).map(f => ({ ...f }));
+  _editingIconId = pad.iconId || null;
+  _ceSteps = (pad.steps || []).map(s => ({
+    chips: (s.chips || []).map(c => ({ ...c })),
+    dur: s.dur || 0,
+    action: s.action || null,
+  }));
+  document.body.insertAdjacentHTML('beforeend', _renderPadEditor());
+  document.getElementById('pe-name-input')?.focus();
+}
+
+function closePadEditor() {
+  if (_peCaptureKey) {
+    document.removeEventListener('keydown', _peHandleKeyCapture);
+    _peCaptureKey = false;
+  }
+  closePeAudioPicker();
+  closePeTrackPicker();
+  _peOpen        = false;
+  _pePadSlot     = null;
+  _peEditPad     = null;
+  _peLibEntry    = null;
+  _peDeleteCfm   = false;
+  document.getElementById('pad-editor')?.remove();
+}
+
+/** @returns {string} */
+function _renderPadEditor() {
+  const pad  = _peEditPad;
+  const t    = pad.type || 'single';
+  const vol  = pad.volume ?? 80;
+  const fi   = pad.fadeIn  || 0;
+  const fo   = pad.fadeOut || 0;
+  const name = pad.name || '—';
+  const key  = pad.hotkey || '';
+  const slot = _pePadSlot;
+  const entry = _peLibEntry;
+  const typeColor = t === 'loop' ? 'var(--pad-loop)' : t === 'playlist' ? 'var(--pad-playlist)' : t === 'combo' ? 'var(--pad-combo)' : 'var(--pad-single)';
+  const typeLbl   = t === 'single' ? 'SOLO' : t === 'loop' ? 'LOOP' : t === 'playlist' ? 'LIST' : 'COMBO';
+
+  return `<div class="pe-overlay" id="pad-editor">
+
+  <div class="pe-topbar">
+    <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-cancel" style="gap:6px">← BACK</button>
+    <div class="pe-topbar-title">PAD EDITOR · ${escHtml(_bdBoard?.name || '')}</div>
+    <div class="pe-topbar-badge"><div class="pe-mode-badge">SETUP</div></div>
+  </div>
+
+  <div class="pe-toolbar">
+    <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-cancel">← CANCEL</button>
+    <div class="pe-toolbar-sep"></div>
+    <div class="pe-mini-pad">
+      <div style="position:absolute;top:0;bottom:0;left:0;width:3px;background:${typeColor}"></div>
+      ${_editingIconId && typeof padIconSvg === 'function' ? `<div style="padding:2px">${padIconSvg(_editingIconId, 22, typeColor)}</div>` : `<div style="font-family:var(--font-ui);font-size:9px;color:${typeColor};margin-top:2px">${typeLbl}</div>`}
+      <div style="font-family:var(--font-ui);font-size:9px;color:${typeColor};letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:56px;width:100%;text-align:center">${escHtml(pad.name || '—')}</div>
+    </div>
+    <div class="pe-name-strip">
+      <div class="pe-name-meta">EDITING ${_peIsSet ? 'SET' : 'SCENE'}-PAD · POSITION ${slot + 1}</div>
+      <div class="pe-name-row">
+        <span id="pe-toolbar-name" style="font-family:var(--font-ui);font-size:17px;color:var(--text);letter-spacing:.04em">${escHtml(name)}</span>
+        ${key ? `<span style="font-family:var(--font-mono);font-size:11px;padding:1px 5px;background:var(--sunk);border:1px solid var(--border-soft);color:var(--text-dim)">${escHtml(key)}</span>` : ''}
+        <span style="font-family:var(--font-mono);font-size:11px;padding:1px 5px;background:var(--sunk);border:1px solid var(--border-soft);color:${typeColor}">${typeLbl}</span>
+        ${entry ? `<span style="font-family:var(--font-mono);font-size:11px;color:var(--text-mute)">· ${fmtDur(entry.duration)} · ${fmtSize(entry.size)}</span>` : ''}
+      </div>
+    </div>
+    <div class="pe-toolbar-actions">
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-preview" id="pe-preview-btn">▶ PREVIEW</button>
+      <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="pe-save">✦ SAVE</button>
+    </div>
+    <div class="pe-toolbar-sep"></div>
+    <button class="sb-btn sb-btn-sm sb-btn-danger${_peDeleteCfm ? ' is-confirm' : ''}" id="pe-delete-btn" data-action="pe-delete">${_peDeleteCfm ? 'CONFIRM' : '⚠ DELETE'}</button>
+  </div>
+
+  <div class="pe-body">
+
+    <aside class="pe-left">
+      <div class="pe-phdr active">▸ IDENTITY</div>
+      <div class="pe-sec">
+        <div class="pe-field">
+          <div class="pe-field-lbl">
+            <span class="pe-lbl">NAME</span>
+            <span class="pe-hint">shown on pad · searchable</span>
+          </div>
+          <input class="audio-name-input" id="pe-name-input" type="text" value="${escAttr(name)}"
+            oninput="document.getElementById('pe-toolbar-name').textContent=this.value||'—'" style="font-size:14px">
+        </div>
+        <div class="pe-field">
+          <div class="pe-field-lbl">
+            <span class="pe-lbl">HOTKEY</span>
+            <span class="pe-hint">supports numpad</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="pe-keycap-wrap">
+              <div class="pe-keycap-shd"></div>
+              <div class="pe-keycap${key ? ' is-active' : ''}" id="pe-keycap" data-hotkey="${escAttr(key)}">${escHtml(key || '—')}</div>
+            </div>
+            <button class="sb-btn sb-btn-sm sb-btn-ghost" id="pe-capture-btn" data-action="pe-key-capture" style="padding:3px 8px">CAPTURE</button>
+            <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-key-clear" style="padding:3px 8px">CLEAR</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pe-phdr">▸ BEHAVIOR</div>
+      <div class="pe-sec">
+        <div class="pe-field">
+          <span class="pe-lbl" style="margin-bottom:6px">MODE</span>
+          <div class="pe-modes" id="pe-modes">${_peModeCardsHTML(t)}</div>
+          <div id="pe-mode-hint" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:8px">${_peModeHint(t)}</div>
+        </div>
+        <div id="pe-shuffle-row" style="margin-top:8px;${t === 'playlist' ? '' : 'display:none'}">
+          <span class="pe-lbl" style="display:block;margin-bottom:6px">SHUFFLE</span>
+          <div class="pad-type-picker">
+            <button class="pad-type-btn${pad.shuffle ? ' is-active' : ''}" data-action="pe-shuffle" data-shuffle="1">ON</button>
+            <button class="pad-type-btn${!pad.shuffle ? ' is-active' : ''}" data-action="pe-shuffle" data-shuffle="0">OFF</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pe-phdr">▸ VISUAL</div>
+      <div class="pe-sec">
+        <div class="pe-icon-slots" id="pe-icon-slots">
+          <div class="pe-icon-slot${_editingIconId ? ' has-icon' : ''}" id="pe-icon-slot-0" data-action="pe-icon-change" title="Change icon">
+            ${_editingIconId && typeof padIconSvg === 'function' ? padIconSvg(_editingIconId, 20, 'var(--pad-loop)') : '<span style="font-size:13px">+</span>'}
+          </div>
+          <div class="pe-icon-slot" style="opacity:.3;cursor:default"></div>
+          <div class="pe-icon-slot" style="opacity:.3;cursor:default"></div>
+          <div class="pe-icon-slot" style="opacity:.3;cursor:default"></div>
+        </div>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" style="width:100%" data-action="pe-icon-change">BROWSE ICON LIBRARY</button>
+        ${_editingIconId ? `<button class="sb-btn sb-btn-sm sb-btn-ghost" style="width:100%;margin-top:4px" id="pe-icon-clear-btn" data-action="pe-icon-clear">✕ REMOVE ICON</button>` : ''}
+      </div>
+    </aside>
+
+    <main class="pe-center" id="pe-center">
+      ${_peCenterHTML(pad, entry)}
+    </main>
+
+    <aside class="pe-right">
+      <div class="pe-phdr active">▸ AUDIO</div>
+      <div class="pe-insp-sec">
+        <div class="pe-param">
+          <div class="pe-param-row">
+            <span class="pe-lbl">VOLUME</span>
+            <span class="pe-lbl" id="pe-vol-val" style="color:var(--text);font-family:var(--font-mono)">${vol}</span>
+          </div>
+          <input class="pe-range" type="range" id="pe-volume" min="0" max="100" step="1" value="${vol}"
+            oninput="document.getElementById('pe-vol-val').textContent=this.value">
+        </div>
+      </div>
+      <div class="pe-phdr">▸ FADE</div>
+      <div class="pe-insp-sec">
+        <div class="pe-param">
+          <div class="pe-param-row">
+            <span class="pe-lbl">FADE IN</span>
+            <span class="pe-lbl" id="pe-fi-val" style="color:var(--text);font-family:var(--font-mono)">${_peFadeLbl(fi)}</span>
+          </div>
+          <input class="pe-range" type="range" id="pe-fade-in" min="0" max="30" step="0.5" value="${fi}"
+            oninput="document.getElementById('pe-fi-val').textContent=_peFadeLbl(+this.value);_peUpdateWave()">
+        </div>
+        <div class="pe-param">
+          <div class="pe-param-row">
+            <span class="pe-lbl">FADE OUT</span>
+            <span class="pe-lbl" id="pe-fo-val" style="color:var(--text);font-family:var(--font-mono)">${_peFadeLbl(fo)}</span>
+          </div>
+          <input class="pe-range" type="range" id="pe-fade-out" min="0" max="30" step="0.5" value="${fo}"
+            oninput="document.getElementById('pe-fo-val').textContent=_peFadeLbl(+this.value);_peUpdateWave()">
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <div class="pe-status">
+    <span class="pe-status-sep" style="color:var(--mode-setup)">EDIT · ${t.toUpperCase()} PAD</span>
+    <span class="pe-status-sep">${escHtml(_bdBoard?.name || '')} · position ${slot + 1}</span>
+    <span style="margin-left:auto;display:flex;gap:14px">
+      <span>ESC cancel</span>
+      <span>Ctrl+S save</span>
+    </span>
+  </div>
+</div>`;
+}
+
+/** @param {string} t  pad type */
+function _peModeCardsHTML(t) {
+  return [
+    { id: 'single',   lbl: 'SOLO',  sub: 'once',      color: 'var(--pad-single)',   icon: '▶' },
+    { id: 'loop',     lbl: 'LOOP',  sub: '∞',          color: 'var(--pad-loop)',     icon: '↻' },
+    { id: 'playlist', lbl: 'LIST',  sub: 'N tracks',   color: 'var(--pad-playlist)', icon: '☰' },
+    { id: 'combo',    lbl: 'COMBO', sub: 'sequence',   color: 'var(--pad-combo)',    icon: '◆' },
+  ].map(m => `<div class="pe-mode-card${t === m.id ? ' is-active' : ''}" data-action="pe-type" data-type="${m.id}">
+    <div class="pe-mode-card-icon" style="color:${m.color}">${m.icon}</div>
+    <div class="pe-mode-card-name" style="${t === m.id ? `color:${m.color}` : ''}">${m.lbl}</div>
+    <div class="pe-mode-card-sub">${m.sub}</div>
+  </div>`).join('');
+}
+
+/** @param {string} t */
+function _peModeHint(t) {
+  return t === 'single'   ? '// Plays once · stops on its own.'
+       : t === 'loop'     ? '// Loops continuously until stopped.'
+       : t === 'playlist' ? '// Plays tracks in order. Shuffle optional.'
+                          : '// Executes steps in sequence.';
+}
+
+/** @param {number} s  seconds */
+function _peFadeLbl(s) {
+  if (!s) return 'off';
+  return s < 1 ? `${Math.round(s * 10) / 10}s` : `${+s.toFixed(1)}s`;
+}
+
+/**
+ * @param {object} pad
+ * @param {object|null} entry
+ * @returns {string}
+ */
+function _peCenterHTML(pad, entry) {
+  const t       = pad.type || 'single';
+  const isList  = t === 'playlist';
+  const isCombo = t === 'combo';
+
+  const secHdr = label => `<div class="pe-sec-hdr">
+    <span style="font-family:var(--font-ui);font-size:11px;letter-spacing:.18em">${label}</span>
+    <div class="pe-sec-hdr-line"></div>
+  </div>`;
+
+  const typeColor = t === 'loop' ? 'var(--pad-loop)' : t === 'playlist' ? 'var(--pad-playlist)' : t === 'combo' ? 'var(--pad-combo)' : 'var(--pad-single)';
+
+  const fileChip = entry
+    ? `<div class="pe-file-chip" id="pe-file-chip" style="border-left-color:${typeColor}">
+        <div class="pe-file-info">
+          <div class="pe-file-name">${escHtml(entry.name)}</div>
+          <div class="pe-file-meta">${fmtDur(entry.duration)} · ${fmtSize(entry.size)}</div>
+        </div>
+        <div class="pe-file-acts">
+          <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-audio-from-lib">FROM LIB</button>
+          <button class="sb-btn sb-btn-sm sb-btn-danger" style="padding:3px 10px" data-action="pe-audio-unlink">UNLINK</button>
+        </div>
+      </div>`
+    : `<div class="pe-file-chip no-file" id="pe-file-chip">
+        <div class="pe-file-info">
+          <div class="pe-file-name" style="color:var(--text-mute)">no audio linked</div>
+        </div>
+        <div class="pe-file-acts">
+          <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-audio-from-lib">FROM LIB</button>
+        </div>
+      </div>`;
+
+  if (isCombo) {
+    const nSteps = _ceSteps.length;
+    const nChips = _ceSteps.reduce((n, s) => n + (s.chips || []).length, 0);
+    return `${secHdr('COMBO SEQUENCE')}
+      <div class="pe-combo-area">
+        <div class="pe-combo-info" id="combo-step-info">${nSteps} step${nSteps !== 1 ? 's' : ''}, ${nChips} chip${nChips !== 1 ? 's' : ''}</div>
+        <button class="sb-btn sb-btn-sm sb-btn-ghost" style="width:100%" data-action="bd-opts-combo-edit">EDIT COMBO STEPS ▸</button>
+      </div>`;
+  }
+
+  if (isList) {
+    return `${secHdr('PLAYLIST TRACKS')}
+      <div id="pl-tracks">${_renderPlaylistTracksHTML()}</div>
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" style="margin-top:6px" data-action="bd-opts-pl-add">+ ADD TRACK</button>`;
+  }
+
+  // SOLO / LOOP
+  const statsHTML = entry ? `<div class="pe-stats">
+    <div><div class="pe-stat-lbl">DURATION</div><div class="pe-stat-val">${fmtDur(entry.duration)}</div></div>
+    <div><div class="pe-stat-lbl">FILE SIZE</div><div class="pe-stat-val">${fmtSize(entry.size)}</div></div>
+    <div><div class="pe-stat-lbl">PEAK</div><div class="pe-stat-val">—</div></div>
+    <div><div class="pe-stat-lbl">RMS</div><div class="pe-stat-val">—</div></div>
+  </div>` : '';
+
+  return `${secHdr('SOUND')}
+    ${fileChip}
+    <div class="pe-wave-wrap" id="pe-wave-wrap">${_peWaveHTML(entry, pad.fadeIn || 0, pad.fadeOut || 0)}</div>
+    ${statsHTML}`;
+}
+
+/**
+ * @param {object|null} entry
+ * @param {number} fi  fadeIn seconds
+ * @param {number} fo  fadeOut seconds
+ * @returns {string}
+ */
+function _peWaveHTML(entry, fi, fo) {
+  const peaks = entry?.peaks;
+  if (!peaks?.length) return `<div class="pe-wave-empty">— no audio —</div>`;
+  const dur  = entry?.duration || 0;
+  const N    = peaks.length;
+  const fiBars = dur > 0 ? Math.round(N * Math.min(fi, dur) / dur) : 0;
+  const foBars = dur > 0 ? Math.round(N * Math.min(fo, dur) / dur) : 0;
+  const bars = peaks.map((v, i) => {
+    const h   = Math.max(4, Math.round(v * 100));
+    const cls = i < fiBars ? ' fi' : i >= N - foBars ? ' fo' : '';
+    return `<div class="pe-wave-bar${cls}" style="height:${h}%"></div>`;
+  }).join('');
+  return `<div class="pe-wave-bars">${bars}</div>`;
+}
+
+function _peUpdateWave() {
+  const wrap = document.getElementById('pe-wave-wrap');
+  if (!wrap) return;
+  const fi = +(document.getElementById('pe-fade-in')?.value || 0);
+  const fo = +(document.getElementById('pe-fade-out')?.value || 0);
+  wrap.innerHTML = _peWaveHTML(_peLibEntry, fi, fo);
+}
+
+function handlePeCancel() {
+  if (_peEditPad) audioStop(_peEditPad.id, { fade: 0 });
+  closePadEditor();
+}
+
+async function handlePeSave() {
+  if (!_peEditPad) return;
+  const name    = (document.getElementById('pe-name-input')?.value || '').trim();
+  const keycap  = document.getElementById('pe-keycap');
+  const hotkey  = keycap?.dataset.hotkey || '';
+  const type    = document.querySelector('.pe-mode-card.is-active')?.dataset.type || _peEditPad.type || 'single';
+  const volume  = Math.max(0, Math.min(100, +(document.getElementById('pe-volume')?.value ?? 80)));
+  const fadeIn  = Math.max(0, +(document.getElementById('pe-fade-in')?.value || 0));
+  const fadeOut = Math.max(0, +(document.getElementById('pe-fade-out')?.value || 0));
+  const isList  = type === 'playlist';
+  const shuffle = isList ? document.querySelector('[data-action="pe-shuffle"].is-active')?.dataset.shuffle === '1' : undefined;
+  const files   = isList ? _editingPlaylistFiles.map(f => ({ hash: f.hash, name: f.name })) : undefined;
+
+  function _applyPad(p) {
+    const base = { ...p, name, hotkey, type, volume, fadeIn, fadeOut };
+    if (_editingIconId) base.iconId = _editingIconId; else delete base.iconId;
+    if (type === 'combo') {
+      base.steps = _ceSteps.map(s => ({ chips: (s.chips || []).map(c => ({ ...c })), dur: s.dur || 0, action: s.action || null }));
+      delete base.files; delete base.shuffle;
+      return base;
+    }
+    if (!isList) { delete base.files; delete base.shuffle; return base; }
+    base.files   = files;
+    base.shuffle = shuffle;
+    base.hash    = files?.length ? files[0].hash : (p.hash || null);
+    return base;
+  }
+
+  const slot  = _pePadSlot;
+  const isSet = _peIsSet;
+  closePadEditor();
+  if (!isSet && _bdScene) {
+    _bdScene.pads = _bdScene.pads.map(p => p.slot === slot ? _applyPad(p) : p);
+    await scenePut(_bdScene); renderPadGrid();
+  } else if (isSet && _bdSet) {
+    _bdSet.pads = _bdSet.pads.map(p => p.slot === slot ? _applyPad(p) : p);
+    await setPut(_bdSet); renderSetStrip();
+  }
+}
+
+function handlePeDelete() {
+  if (!_peDeleteCfm) {
+    _peDeleteCfm = true;
+    const btn = document.getElementById('pe-delete-btn');
+    if (btn) btn.textContent = 'CONFIRM';
+    setTimeout(() => {
+      _peDeleteCfm = false;
+      const b = document.getElementById('pe-delete-btn');
+      if (b) b.textContent = '⚠ DELETE';
+    }, 3000);
+    return;
+  }
+  _peClearPad();
+}
+
+async function _peClearPad() {
+  const slot  = _pePadSlot;
+  const isSet = _peIsSet;
+  if (_peEditPad) audioStop(_peEditPad.id, { fade: 0 });
+  closePadEditor();
+  if (!isSet && _bdScene) {
+    _bdScene.pads = _bdScene.pads.filter(p => p.slot !== slot);
+    await scenePut(_bdScene); renderPadGrid();
+  } else if (isSet && _bdSet) {
+    _bdSet.pads = _bdSet.pads.filter(p => p.slot !== slot);
+    await setPut(_bdSet); renderSetStrip();
+  }
+}
+
+function handlePePreview() {
+  const pad = _peEditPad;
+  if (!pad) return;
+  const btn = document.getElementById('pe-preview-btn');
+  if (audioIsPlaying(pad.id)) {
+    audioStop(pad.id, { fade: +(document.getElementById('pe-fade-out')?.value || 0) });
+    if (btn) btn.textContent = '▶ PREVIEW';
+  } else if (pad.hash) {
+    const vol = +(document.getElementById('pe-volume')?.value ?? 80);
+    const fi  = +(document.getElementById('pe-fade-in')?.value  || 0);
+    const fo  = +(document.getElementById('pe-fade-out')?.value || 0);
+    audioPlay(pad.id, pad.hash, { type: pad.type || 'single', volume: vol, fadeIn: fi, fadeOut: fo });
+    if (btn) btn.textContent = '■ STOP';
+  }
+}
+
+function handlePeStartCapture() {
+  if (_peCaptureKey) return;
+  _peCaptureKey = true;
+  const keycap = document.getElementById('pe-keycap');
+  const btn    = document.getElementById('pe-capture-btn');
+  if (keycap) { keycap.classList.add('capturing'); keycap.textContent = '...'; }
+  if (btn)    btn.textContent = 'CAPTURING';
+  document.addEventListener('keydown', _peHandleKeyCapture, { once: true });
+}
+
+function _peHandleKeyCapture(e) {
+  _peCaptureKey = false;
+  const keycap = document.getElementById('pe-keycap');
+  const btn    = document.getElementById('pe-capture-btn');
+  if (keycap) keycap.classList.remove('capturing');
+  if (btn)    btn.textContent = 'CAPTURE';
+  if (e.key === 'Escape') {
+    const prev = _peEditPad?.hotkey || '';
+    if (keycap) {
+      keycap.classList.toggle('is-active', !!prev);
+      keycap.dataset.hotkey = prev;
+      keycap.textContent    = prev || '—';
+    }
+    return;
+  }
+  e.preventDefault();
+  const key = e.code || e.key;
+  if (keycap) {
+    keycap.dataset.hotkey = key;
+    keycap.classList.add('is-active');
+    keycap.textContent = key;
+  }
+}
+
+function handlePeKeyClear() {
+  const keycap = document.getElementById('pe-keycap');
+  if (keycap) {
+    keycap.classList.remove('is-active');
+    keycap.dataset.hotkey = '';
+    keycap.textContent    = '—';
+  }
+}
+
+function handlePeTypeChange(type) {
+  if (!_peEditPad) return;
+  _peEditPad.type = type;
+  // Update mode cards
+  document.querySelectorAll('.pe-mode-card').forEach(c =>
+    c.classList.toggle('is-active', c.dataset.type === type));
+  const typeColor = type === 'loop' ? 'var(--pad-loop)' : type === 'playlist' ? 'var(--pad-playlist)' : type === 'combo' ? 'var(--pad-combo)' : 'var(--pad-single)';
+  document.querySelectorAll('.pe-mode-card.is-active .pe-mode-card-name').forEach(el => el.style.color = typeColor);
+  const hint = document.getElementById('pe-mode-hint');
+  if (hint) hint.textContent = _peModeHint(type);
+  // Show/hide shuffle row
+  const shuffleRow = document.getElementById('pe-shuffle-row');
+  if (shuffleRow) shuffleRow.style.display = type === 'playlist' ? '' : 'none';
+  // Re-render center panel
+  const center = document.getElementById('pe-center');
+  if (center) center.innerHTML = _peCenterHTML(_peEditPad, _peLibEntry);
+  // Update toolbar type badge
+  const typeLbl = type === 'single' ? 'SOLO' : type === 'loop' ? 'LOOP' : type === 'playlist' ? 'LIST' : 'COMBO';
+  document.querySelector('.pe-name-row .pe-mode-badge-inline, .pe-name-row [data-typelbl]')?.remove();
+}
+
+// Audio picker sub-overlay (FROM LIB)
+function openPeAudioPicker() {
+  if (_pePickerOpen) return;
+  _pePickerOpen = true;
+  const sorted = _libEntries.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  document.body.insertAdjacentHTML('beforeend', `<div class="combo-editor" id="pe-audio-picker">
+    <div class="ce-top-bar">
+      <button class="ip-back" data-action="pe-ap-back">← BACK</button>
+      <span class="ce-title">SELECT AUDIO</span>
+    </div>
+    <div class="pad-picker-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
+      ${sorted.map(e => `<div class="pad-picker-item" data-action="pe-ap-pick" data-hash="${e.hash}" data-name="${escAttr(e.name)}">
+        <div class="pad-picker-wave">${_waveMini(e.peaks)}</div>
+        <span class="pad-picker-item-name">${escHtml(e.name)}</span>
+        <span class="pad-picker-item-dur">${fmtDur(e.duration)}</span>
+      </div>`).join('')}
+      ${!sorted.length ? '<p class="lib-empty">No audio in library yet.</p>' : ''}
+    </div>
+  </div>`);
+}
+
+function closePeAudioPicker() {
+  _pePickerOpen = false;
+  document.getElementById('pe-audio-picker')?.remove();
+}
+
+function handlePeAudioPick(hash, name) {
+  closePeAudioPicker();
+  if (!_peEditPad) return;
+  _peEditPad.hash = hash;
+  _peLibEntry = _libEntries.find(e => e.hash === hash) || null;
+  const center = document.getElementById('pe-center');
+  if (center) center.innerHTML = _peCenterHTML(_peEditPad, _peLibEntry);
+  // Update toolbar meta
+  const entry = _peLibEntry;
+  const metaEl = document.querySelector('#pad-editor .pe-name-row span:last-child');
+  // Re-render toolbar name row is complex; just update wave
+  _peUpdateWave();
+}
+
+function handlePeAudioUnlink() {
+  if (!_peEditPad) return;
+  _peEditPad.hash = null;
+  _peLibEntry = null;
+  const center = document.getElementById('pe-center');
+  if (center) center.innerHTML = _peCenterHTML(_peEditPad, null);
+}
+
+// Playlist track picker sub-overlay
+function openPeTrackPicker() {
+  if (_peTrackPickerOpen) return;
+  _peTrackPickerOpen = true;
+  const sorted = _libEntries.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  document.body.insertAdjacentHTML('beforeend', `<div class="combo-editor" id="pe-track-picker">
+    <div class="ce-top-bar">
+      <button class="ip-back" data-action="pe-tp-back">← BACK</button>
+      <span class="ce-title">ADD TRACK</span>
+    </div>
+    <div class="pad-picker-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
+      ${sorted.map(e => `<div class="pad-picker-item" data-action="pe-tp-pick" data-hash="${e.hash}" data-name="${escAttr(e.name)}">
+        <div class="pad-picker-wave">${_waveMini(e.peaks)}</div>
+        <span class="pad-picker-item-name">${escHtml(e.name)}</span>
+        <span class="pad-picker-item-dur">${fmtDur(e.duration)}</span>
+      </div>`).join('')}
+      ${!sorted.length ? '<p class="lib-empty">No audio in library yet.</p>' : ''}
+    </div>
+  </div>`);
+}
+
+function closePeTrackPicker() {
+  _peTrackPickerOpen = false;
+  document.getElementById('pe-track-picker')?.remove();
+}
+
+function handlePeTrackPick(hash, name) {
+  closePeTrackPicker();
+  _editingPlaylistFiles.push({ hash, name });
+  _renderPlaylistTracks();
 }
 
 /* ── SCREEN: SETTINGS ───────────────────────────────────────── */
@@ -3527,9 +4119,15 @@ bus.on('theme', applyTheme);
 /* ── EVENT DELEGATION ───────────────────────────────────────── */
 
 document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    if (_peOpen) { e.preventDefault(); handlePeSave(); return; }
+  }
   if (e.key === 'Escape') {
+    if (_peTrackPickerOpen)    { closePeTrackPicker(); return; }
+    if (_pePickerOpen)         { closePeAudioPicker(); return; }
     if (_ceCpOpen)             { closeCeChipPicker(); return; }
     if (_ceOpen)               { handleCeBack(); return; }
+    if (_peOpen)               { handlePeCancel(); return; }
     if (_importModalOpen)      { closeImportModal(); return; }
     if (_clOpen)               { closeChangelog(); return; }
     if (_bdPickerSlot !== null || _bdPickerMode === 'playlist-add') { closePadPicker(); return; }
@@ -3708,7 +4306,7 @@ document.addEventListener('click', e => {
   if (_importModalOpen && !e.target.closest('#import-modal')) { closeImportModal(); return; }
 
   // Full-screen overlays: handle their actions, skip all outside-click-close logic
-  if (_ipOpen || _ceOpen || _ceCpOpen) {
+  if (_ipOpen || _ceOpen || _ceCpOpen || _peOpen || _pePickerOpen || _peTrackPickerOpen) {
     const actEl = e.target.closest('[data-action]');
     if (actEl) handleAction(actEl.dataset.action, actEl);
     return;
@@ -3891,14 +4489,14 @@ function handleAction(action, el) {
       document.querySelectorAll('[data-action="bd-opts-shuffle"]').forEach(b =>
         b.classList.toggle('is-active', b.dataset.shuffle === el.dataset.shuffle));
       break;
-    case 'bd-opts-pl-add':   openPlaylistTrackPicker(); break;
+    case 'bd-opts-pl-add':   _peOpen ? openPeTrackPicker() : openPlaylistTrackPicker(); break;
     case 'bd-opts-pl-remove': {
       const idx = +el.dataset.idx;
       _editingPlaylistFiles.splice(idx, 1);
       _renderPlaylistTracks();
       break;
     }
-    case 'bd-opts-icon-pick': openIconPicker('pad-opts'); break;
+    case 'bd-opts-icon-pick': openIconPicker(_peOpen ? 'pad-editor' : 'pad-opts'); break;
     case 'bd-opts-icon-clear': {
       _editingIconId = null;
       const preview = document.getElementById('pad-icon-preview');
@@ -3909,12 +4507,46 @@ function handleAction(action, el) {
     case 'ip-back':    closeIconPicker(); break;
     case 'ip-select':  handleIconSelect(el.dataset.iconId); break;
 
+    // pad editor
+    case 'pe-cancel':        handlePeCancel(); break;
+    case 'pe-save':          handlePeSave(); break;
+    case 'pe-delete':        handlePeDelete(); break;
+    case 'pe-preview':       handlePePreview(); break;
+    case 'pe-key-capture':   handlePeStartCapture(); break;
+    case 'pe-key-clear':     handlePeKeyClear(); break;
+    case 'pe-type':          handlePeTypeChange(el.dataset.type); break;
+    case 'pe-shuffle':
+      document.querySelectorAll('[data-action="pe-shuffle"]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.shuffle === el.dataset.shuffle));
+      break;
+    case 'pe-icon-change':   openIconPicker('pad-editor'); break;
+    case 'pe-icon-clear': {
+      _editingIconId = null;
+      const slot0 = document.getElementById('pe-icon-slot-0');
+      if (slot0) { slot0.classList.remove('has-icon'); slot0.innerHTML = '<span style="font-size:13px">+</span>'; }
+      document.getElementById('pe-icon-clear-btn')?.remove();
+      break;
+    }
+    case 'pe-audio-from-lib': openPeAudioPicker(); break;
+    case 'pe-audio-unlink':   handlePeAudioUnlink(); break;
+    case 'pe-ap-back':        closePeAudioPicker(); break;
+    case 'pe-ap-pick':        handlePeAudioPick(el.dataset.hash, el.dataset.name); break;
+    case 'pe-tp-back':        closePeTrackPicker(); break;
+    case 'pe-tp-pick':        handlePeTrackPick(el.dataset.hash, el.dataset.name); break;
+
     // combo editor
     case 'bd-opts-combo-edit': {
-      const slot  = _bdOptsSlot !== null ? _bdOptsSlot : _bdSetOptsSlot;
-      const isSet = _bdSetOptsSlot !== null;
-      const pad   = isSet ? _bdSet?.pads.find(p => p.slot === slot) : _bdScene?.pads.find(p => p.slot === slot);
-      if (pad) openComboEditor(pad.id, isSet);
+      let padId, isSet;
+      if (_peOpen && _peEditPad) {
+        padId = _peEditPad.id;
+        isSet = _peIsSet;
+      } else {
+        const slot = _bdOptsSlot !== null ? _bdOptsSlot : _bdSetOptsSlot;
+        isSet = _bdSetOptsSlot !== null;
+        const pad  = isSet ? _bdSet?.pads.find(p => p.slot === slot) : _bdScene?.pads.find(p => p.slot === slot);
+        padId = pad?.id;
+      }
+      if (padId) openComboEditor(padId, isSet);
       break;
     }
     case 'ce-back':          handleCeBack(); break;
