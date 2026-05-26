@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '2.0.8';
+const APP_VERSION = '2.0.9';
 
 const CHANGELOG = [
+  { v: '2.0.9', date: '2026-05-27', items: [
+    'Pad Editor: auto-icon suggestion from pad name — scores PAD_ICONS by word match (id=+3, substring=+2, label=+1), threshold ≥2',
+    'German/English synonym table for BotC-relevant terms (Mord→skull, Geist→ghost, etc.)',
+    'Results memoized in _autoIconCache; only applied when pad has no existing icon',
+  ]},
   { v: '2.0.8', date: '2026-05-27', items: [
     'Settings → DATA: RESET ALL DATA button with 2-tap confirm (5s window) — deletes IDB and localStorage then reloads',
   ]},
@@ -4307,6 +4312,64 @@ function handleCeCpPick(hash, name) {
   }
 }
 
+/* ── AUTO ICON ───────────────────────────────────────────────── */
+
+const _autoIconCache = {};
+const _AUTO_SYNONYMS = {
+  // German → English
+  'mord':'skull','tod':'skull','geist':'ghost','gespenst':'ghost','fluch':'curse',
+  'nacht':'moon','feuer':'fire','wasser':'water','blut':'blood','gift':'poison',
+  'schwert':'sword','bogen':'bow','schild':'shield','krone':'crown','konig':'king',
+  'konigin':'queen','engel':'angel','teufel':'devil','drachen':'dragon','wolf':'wolf',
+  'schatten':'shadow','licht':'light','sonne':'sun','mond':'moon','stern':'star',
+  'monster':'monster','hexe':'witch','zauber':'magic','rune':'rune','nebel':'fog',
+  'sturm':'storm','donner':'thunder','rauch':'smoke','pflanze':'plant','baum':'tree',
+  'herz':'heart','auge':'eye','hand':'hand','kopf':'skull','gold':'gold',
+  'silber':'silver','stein':'stone','burg':'castle','turm':'tower','dunkel':'dark',
+  'laut':'loud','stille':'silent','schrei':'scream','musik':'music','trommel':'drum',
+  'glocke':'bell','flote':'flute','pfeife':'whistle',
+  // BotC roles (German names) → icons
+  'alchemist':'alchemy','baron':'crown','dreamer':'moon','empath':'heart',
+  'ermittler':'search','exorzist':'cross','fluckser':'luck','forscher':'search',
+  'genusstrinker':'bottle','gesandter':'scroll','golem':'golem','gremlin':'gremlin',
+  'imp':'devil','kurtisan':'rose','leibwachter':'shield','mutter':'star','orakel':'eye',
+  'paladin':'shield','pfarrer':'cross','philosoph':'scroll','rabe':'raven',
+  'savant':'book','schafrichter':'axe','schneider':'scissors','schrumpfer':'small',
+  'seher':'eye','slayer':'sword','tinterer':'ink','traumweberin':'moon',
+  'undertaker':'skull','vergifterin':'poison','voodoo':'skull','washerwoman':'water',
+  'witch':'witch','wizard':'magic',
+};
+
+function _autoIconFromName(name) {
+  if (typeof PAD_ICONS === 'undefined' || !name) return null;
+  const cacheKey = name.toLowerCase().trim();
+  if (_autoIconCache[cacheKey] !== undefined) return _autoIconCache[cacheKey];
+
+  const rawWords = cacheKey.replace(/[^a-z0-9À-ž\s]/g, ' ').split(/\s+/).filter(Boolean);
+  const words = [...new Set([
+    ...rawWords,
+    ...rawWords.map(w => _AUTO_SYNONYMS[w]).filter(Boolean),
+  ])];
+
+  if (!words.length) { _autoIconCache[cacheKey] = null; return null; }
+
+  let bestId = null, bestScore = 0;
+  for (const icon of PAD_ICONS) {
+    const idWords = icon.id.replace(/^px-/, '').split('-');
+    const labelWords = icon.label.toLowerCase().split(/\s+/);
+    let score = 0;
+    for (const w of words) {
+      if (idWords.includes(w)) score += 3;
+      else if (idWords.some(iw => iw.includes(w) || w.includes(iw))) score += 2;
+      if (labelWords.includes(w)) score += 1;
+    }
+    if (score > bestScore) { bestScore = score; bestId = icon.id; }
+  }
+  const result = bestScore >= 2 ? bestId : null;
+  _autoIconCache[cacheKey] = result;
+  return result;
+}
+
 /* ── PAD EDITOR ──────────────────────────────────────────────── */
 
 /**
@@ -4326,7 +4389,7 @@ function openPadEditor(slot, isSet) {
   _peEditPad = { ...pad };
   _peLibEntry = _libEntries.find(e => e.hash === pad.hash) || null;
   _editingPlaylistFiles = (pad.files || []).map(f => ({ ...f }));
-  _editingIconId = pad.iconId || null;
+  _editingIconId = pad.iconId || _autoIconFromName(pad.name) || null;
   _ceSteps = (pad.steps || []).map(s => ({
     chips: (s.chips || []).map(c => ({ ...c })),
     dur: s.dur || 0,
