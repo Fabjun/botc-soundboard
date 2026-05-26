@@ -1,8 +1,12 @@
 'use strict';
 
-const APP_VERSION = '2.0.6';
+const APP_VERSION = '2.0.7';
 
 const CHANGELOG = [
+  { v: '2.0.7', date: '2026-05-27', items: [
+    'Combo Editor: per-chip volume slider (range, live label) and fade-in field (number, ms)',
+    '_ceSetChipVol() / _ceSetChipFade() update _ceSteps directly via oninput handlers',
+  ]},
   { v: '2.0.6', date: '2026-05-27', items: [
     'Library BOARDS tab: DUP button to duplicate a board (deep clone of scenes, sets, and all pads with new IDs)',
   ]},
@@ -4077,6 +4081,16 @@ function closeComboEditor() {
   document.getElementById('combo-editor')?.remove();
 }
 
+function _ceSetChipVol(si, ci, v) {
+  if (_ceSteps[si]?.chips[ci]) _ceSteps[si].chips[ci].vol = v;
+  const lbl = document.getElementById(`ce-vl-${si}-${ci}`);
+  if (lbl) lbl.textContent = v + '%';
+}
+
+function _ceSetChipFade(si, ci, v) {
+  if (_ceSteps[si]?.chips[ci]) _ceSteps[si].chips[ci].fadeIn = Math.max(0, v);
+}
+
 function handleCeBack() {
   // Restore _ceSteps to the saved copy (discard edits)
   if (_ceSavedSteps) _ceSteps = _ceSavedSteps;
@@ -4137,7 +4151,13 @@ function _ceStepHTML(step, si) {
   const chipsHTML = (step.chips || []).map((chip, ci) => `
     <div class="ce-chip">
       <span class="ce-chip-name">${escHtml(chip.name || '—')}</span>
-      <span class="ce-chip-vol">${chip.vol ?? 80}%</span>
+      <input class="ce-chip-vol-inp" type="range" min="0" max="100"
+             value="${chip.vol ?? 80}" title="Volume"
+             oninput="_ceSetChipVol(${si},${ci},+this.value)">
+      <span class="ce-chip-vol-lbl" id="ce-vl-${si}-${ci}">${chip.vol ?? 80}%</span>
+      <input class="audio-name-input ce-chip-fade-inp" type="number" min="0" max="10000" step="100"
+             value="${chip.fadeIn ?? 0}" title="Fade in (ms)"
+             oninput="_ceSetChipFade(${si},${ci},+this.value)" placeholder="fade ms">
       <button class="pad-type-btn ce-loop-btn${chip.loop ? ' is-active' : ''}" data-action="ce-chip-loop" data-step="${si}" data-chip="${ci}" title="Loop (background)">↻</button>
       <button class="act-btn" data-action="ce-chip-remove" data-step="${si}" data-chip="${ci}">×</button>
     </div>`).join('');
@@ -4188,7 +4208,13 @@ function handleCeChipRemove(si, ci) {
     const chipsHTML = (_ceSteps[si]?.chips || []).map((chip, ci2) => `
       <div class="ce-chip">
         <span class="ce-chip-name">${escHtml(chip.name || '—')}</span>
-        <span class="ce-chip-vol">${chip.vol ?? 80}%</span>
+        <input class="ce-chip-vol-inp" type="range" min="0" max="100"
+               value="${chip.vol ?? 80}" title="Volume"
+               oninput="_ceSetChipVol(${si},${ci2},+this.value)">
+        <span class="ce-chip-vol-lbl" id="ce-vl-${si}-${ci2}">${chip.vol ?? 80}%</span>
+        <input class="audio-name-input ce-chip-fade-inp" type="number" min="0" max="10000" step="100"
+               value="${chip.fadeIn ?? 0}" title="Fade in (ms)"
+               oninput="_ceSetChipFade(${si},${ci2},+this.value)" placeholder="fade ms">
         <button class="pad-type-btn ce-loop-btn${chip.loop ? ' is-active' : ''}" data-action="ce-chip-loop" data-step="${si}" data-chip="${ci2}" title="Loop">↻</button>
         <button class="act-btn" data-action="ce-chip-remove" data-step="${si}" data-chip="${ci2}">×</button>
       </div>`).join('');
@@ -4265,7 +4291,13 @@ function handleCeCpPick(hash, name) {
     el.innerHTML = _ceSteps[si].chips.map((chip, ci) => `
       <div class="ce-chip">
         <span class="ce-chip-name">${escHtml(chip.name || '—')}</span>
-        <span class="ce-chip-vol">${chip.vol ?? 80}%</span>
+        <input class="ce-chip-vol-inp" type="range" min="0" max="100"
+               value="${chip.vol ?? 80}" title="Volume"
+               oninput="_ceSetChipVol(${si},${ci},+this.value)">
+        <span class="ce-chip-vol-lbl" id="ce-vl-${si}-${ci}">${chip.vol ?? 80}%</span>
+        <input class="audio-name-input ce-chip-fade-inp" type="number" min="0" max="10000" step="100"
+               value="${chip.fadeIn ?? 0}" title="Fade in (ms)"
+               oninput="_ceSetChipFade(${si},${ci},+this.value)" placeholder="fade ms">
         <button class="pad-type-btn ce-loop-btn${chip.loop ? ' is-active' : ''}" data-action="ce-chip-loop" data-step="${si}" data-chip="${ci}" title="Loop">↻</button>
         <button class="act-btn" data-action="ce-chip-remove" data-step="${si}" data-chip="${ci}">×</button>
       </div>`).join('');
