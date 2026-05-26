@@ -304,6 +304,7 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
 .act-btn:hover{border-color:var(--border);color:var(--text)}
 .act-btn.danger:hover{border-color:var(--blood);color:var(--blood-bright)}
 .act-btn.danger.is-confirm{border-color:var(--blood-bright);color:var(--text-strong);background:var(--blood-soft);width:52px}
+.lib-bd-dup-btn{width:auto;padding:0 6px;font-size:10px;letter-spacing:.05em}
 
 /* search bar */
 .search-bar{

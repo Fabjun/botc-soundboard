@@ -1,8 +1,11 @@
 'use strict';
 
-const APP_VERSION = '2.0.5';
+const APP_VERSION = '2.0.6';
 
 const CHANGELOG = [
+  { v: '2.0.6', date: '2026-05-27', items: [
+    'Library BOARDS tab: DUP button to duplicate a board (deep clone of scenes, sets, and all pads with new IDs)',
+  ]},
   { v: '2.0.5', date: '2026-05-27', items: [
     'Board: search and filter bar above pad grid — search by name, filter by type, sort A-Z/Z-A',
     'Filter state resets when navigating to a new board',
@@ -1507,10 +1510,54 @@ async function renderBoardsTab() {
       </div>
       <div class="lib-bd-acts">
         <button class="sb-btn sb-btn-sm${isActive ? ' sb-btn-filled' : ' sb-btn-ghost'}" data-action="lib-bd-open" data-board-id="${b.id}">OPEN</button>
+        <button class="act-btn lib-bd-dup-btn" data-action="lib-bd-dup" data-board-id="${b.id}" title="Duplicate board">DUP</button>
         <button class="act-btn danger${isCfm ? ' is-confirm' : ''}" data-action="lib-bd-delete" data-board-id="${b.id}" title="Delete board">${isCfm ? 'SURE?' : '×'}</button>
       </div>
     </div>`;
   }).join('');
+}
+
+async function duplicateBoard(boardId) {
+  const orig = await boardGet(boardId);
+  if (!orig) return;
+
+  const newBoard = structuredClone(orig);
+  newBoard.id      = crypto.randomUUID();
+  newBoard.name    = (orig.name || 'Board') + ' (Kopie)';
+  newBoard.created = Date.now();
+  newBoard.updated = Date.now();
+
+  const newScenes = [];
+  for (const ref of (orig.scenes || [])) {
+    const scene = await sceneGet(ref.id);
+    if (!scene) continue;
+    const cloned = structuredClone(scene);
+    cloned.id = crypto.randomUUID();
+    cloned.boardId = newBoard.id;
+    cloned.pads = (cloned.pads || []).map(p => ({ ...p, id: 'p_' + crypto.randomUUID().slice(0, 8) }));
+    await scenePut(cloned);
+    newScenes.push({ id: cloned.id, name: ref.name });
+    if (orig.activeSceneId === ref.id) newBoard.activeSceneId = cloned.id;
+  }
+  newBoard.scenes = newScenes;
+
+  const newSets = [];
+  for (const ref of (orig.sets || [])) {
+    const set = await setGet(ref.id);
+    if (!set) continue;
+    const cloned = structuredClone(set);
+    cloned.id = crypto.randomUUID();
+    cloned.boardId = newBoard.id;
+    cloned.pads = (cloned.pads || []).map(p => ({ ...p, id: 'p_' + crypto.randomUUID().slice(0, 8) }));
+    await setPut(cloned);
+    newSets.push({ id: cloned.id, name: ref.name });
+    if (orig.activeSetId === ref.id) newBoard.activeSetId = cloned.id;
+  }
+  newBoard.sets = newSets;
+
+  await boardPut(newBoard);
+  renderBoardsTab();
+  showToast(`Board duplicated: "${newBoard.name}"`);
 }
 
 async function handleLibBdDelete(boardId) {
@@ -5837,6 +5884,7 @@ function handleAction(action, el) {
     case 'lib-rename':        handleLibRename(el.dataset.hash); break;
     case 'lib-delete':        handleLibDelete(el.dataset.hash); break;
     case 'lib-bd-open':       handleBlOpen(el.dataset.boardId); break;
+    case 'lib-bd-dup':        duplicateBoard(el.dataset.boardId); break;
     case 'lib-bd-delete':     handleLibBdDelete(el.dataset.boardId); break;
     case 'lib-pt-assign':     handleLibPtAssign(el.dataset.ptId); break;
     case 'lib-pt-delete':     handleLibPtDelete(el.dataset.ptId); break;
