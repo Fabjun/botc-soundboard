@@ -323,11 +323,13 @@ input[type=file]{display:none}
   .screen{transition:margin-left .25s ease,width .25s ease}
   body.sidebar-open .screen.active{margin-left:min(220px,75vw);width:calc(100% - min(220px,75vw))}
 }
-/* Desktop (≥900px): pin sidebar for screens that have one, hide hamburger */
+/* Desktop (≥900px): pin sidebar for screens that have one; hamburger visible on sidebar screens */
 @media(min-width:900px){
-  #sidebar-btn{display:none!important}
   body:not(.dt-nosidebar) #sidebar{transform:translateX(0)!important;transition:none!important}
   body:not(.dt-nosidebar) .screen.active{margin-left:min(220px,75vw)!important;width:calc(100% - min(220px,75vw))!important}
+  body.dt-sb-collapsed #sidebar{transform:translateX(-100%)!important;transition:none!important}
+  body.dt-sb-collapsed .screen.active{margin-left:0!important;width:100%!important}
+  body:not(.dt-nosidebar) #sidebar-btn{display:block!important}
 }
 /* Status bar — shown at bottom of board screen on desktop */
 #sp-bar{display:none;flex-shrink:0;height:22px;align-items:center;overflow:hidden;background:var(--deep);border-top:1px solid var(--border-soft);font-family:var(--ff-label);font-size:calc(10px * var(--font-scale));letter-spacing:.06em;color:var(--text-mute);position:relative;z-index:2}
@@ -1071,7 +1073,7 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 .su-spark{color:var(--gold);font-size:calc(16px * var(--sym-scale));opacity:.85;flex-shrink:0;line-height:1}
 </style>
 </head>
-<body>
+<body class="dt-nosidebar">
 
 <!-- SHARED TOP BAR — configured per-screen by updateTopBar() -->
 <div class="p-hdr" id="p-hdr" style="display:none">
@@ -1112,7 +1114,7 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
       <h1>Soundboard of Storytelling</h1>
       <span class="su-spark">✦</span>
     </div>
-    <p class="sub">A tool for Game-Masters<br>and other creative Creatures</p>
+    <p class="sub">a tool for Game-Masters<br>and other creative Creatures</p>
     <button class="unlock-btn" onclick="unlock()">TAP TO START</button>
   </div>
 </div>
@@ -2416,8 +2418,12 @@ body:not(.theme-modern) .cp{clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 6p
 
 <script src="icons.js"></script>
 <script>
-const APP_VERSION = 178;
+const APP_VERSION = 179;
 const CHANGELOG=[
+  {v:179,date:'2026-05-26',items:[
+    "Sidebar fix: <body class='dt-nosidebar'> prevents pin CSS from firing on intro screen before show() is called; sidebar is now collapsible on desktop — hamburger button (☰) visible on Library and Board screens; clicking it toggles body.dt-sb-collapsed (persisted via localStorage 'sb-collapsed'); CSS: body.dt-sb-collapsed overrides the pin rule via source-order specificity (same selector weight, later rule wins)",
+    "Menu flame fix: targetCold always 0 (warm) at init — the main menu is only reachable in SETUP mode so the mode-linked freeze left it permanently static; removed the applyModeVisuals() call that re-froze it; both intro and menu flames now show the warm dancing animation"
+  ]},
   {v:178,date:'2026-05-26',items:[
     "Fix: IDB version conflict — open 'botc' at schema version 2 (matching v1.5) so both apps share the same database without VersionError; onupgradeneeded creates scenes/sets stores if absent (v1.5 schema); old app ignores them"
   ]},
@@ -3227,8 +3233,16 @@ function renderSidebarContent(screenId){
   return hasContent;
 }
 function _updateSidebarPin(hasSidebar){
-  if(hasSidebar) renderSidebarContent(cur);
-  else document.getElementById('sidebar-btn').style.display='none';
+  const btn=document.getElementById('sidebar-btn');
+  if(hasSidebar){
+    renderSidebarContent(cur);
+    const coll=localStorage.getItem('sb-collapsed')==='1';
+    document.body.classList.toggle('dt-sb-collapsed',coll);
+    btn.style.display='';
+  } else {
+    document.body.classList.remove('dt-sb-collapsed');
+    btn.style.display='none';
+  }
 }
 // ── GROUP ICONS ──
 const _GRP_D_CLOSED="M1 2h7v1H1zM1 3h1v1H1zM7 3h7v1H7zM1 4h1v1H1zM3 4h4v1H3zM13 4h2v1H13zM1 5h1v1H1zM3 5h1v1H3zM6 5h7v1H6zM14 5h1v1H14zM1 6h1v1H1zM3 6h5v1H3zM14 6h1v1H14zM1 7h1v1H1zM14 7h1v1H14zM1 8h1v1H1zM14 8h1v1H14zM1 9h1v1H1zM14 9h1v1H14zM1 10h1v1H1zM14 10h1v1H14zM1 11h1v1H1zM14 11h1v1H14zM1 12h1v1H1zM14 12h1v1H14zM1 13h14v1H1z";
@@ -3489,7 +3503,14 @@ window.addEventListener('resize',()=>{
 });
 function openSidebar(){ if(!renderSidebarContent(cur)) return; document.getElementById('sidebar').classList.add('open'); document.body.classList.add('sidebar-open'); }
 function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.body.classList.remove('sidebar-open'); }
-function toggleSidebar(){ document.getElementById('sidebar').classList.contains('open')?closeSidebar():openSidebar(); }
+function toggleSidebar(){
+  if(window.innerWidth>=900&&!document.body.classList.contains('dt-nosidebar')){
+    const coll=document.body.classList.toggle('dt-sb-collapsed');
+    localStorage.setItem('sb-collapsed',coll?'1':'0');
+    return;
+  }
+  document.getElementById('sidebar').classList.contains('open')?closeSidebar():openSidebar();
+}
 
 // ── BOARDS ──
 function loadBoardsMeta(){
@@ -4717,7 +4738,7 @@ function _drawFlame(s){
 function _initFlames(){
   const ic=document.getElementById('flame-intro'),mc=document.getElementById('flame-menu');
   if(ic) _flameIntroState=_makeFlame(ic,7,true);
-  if(mc){_flameMenuState=_makeFlame(mc,5,false);_flameMenuState.targetCold=locked?0:1;}
+  if(mc){_flameMenuState=_makeFlame(mc,5,false);_flameMenuState.targetCold=0;}
 }
 
 // ── Pixel Icon System ─────────────────────────────────────────────
@@ -6361,7 +6382,6 @@ function applyModeVisuals(){
   document.body.classList.toggle('mode-edit',!locked);
   document.body.classList.toggle('mode-play',locked);
   if(cur==='sp') _applyScreenAccent('mode');
-  if(_flameMenuState) _flameSetMode(_flameMenuState,locked);
   _updSpBar();
 }
 function applyStartMode(){
