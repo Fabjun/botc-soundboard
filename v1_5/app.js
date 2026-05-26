@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.36';
+const APP_VERSION = '1.5.37';
 
 const CHANGELOG = [
+  { v: '1.5.37', date: '2026-05-26', items: [
+    'Settings → VISUALS: Pad Level Meter — live audio level gradient fill on each playing pad',
+    'AnalyserNode (fftSize 256) inserted into audio graph per playing pad; RAF loop updates --pad-level-pct CSS var at ~60fps',
+    'Fill color follows pad type accent (single=gold, loop=teal, playlist=purple, combo=orange); respects clip-path + circle shape',
+  ]},
   { v: '1.5.36', date: '2026-05-26', items: [
     'Settings → APPEARANCE: content width (COMPACT/MEDIUM/WIDE/AUTO), font scale, symbol scale, icon scale, icon density',
     'Content width constrains board grid max-width; font/symbol/icon scale use CSS vars (--font-scale, --sym-scale, --ico-scale)',
@@ -671,13 +676,16 @@ function applyTheme(name) {
 
 function applyVisuals() {
   const cl = document.body.classList;
-  cl.toggle('aura-on',     localStorage.getItem('sos-aura')       !== '0');
-  cl.toggle('breathing-on',localStorage.getItem('sos-breathing')  === '1');
-  cl.toggle('hearth-on',   localStorage.getItem('sos-hearth')     !== '0');
-  cl.toggle('no-anim',     localStorage.getItem('sos-no-anim')    === '1');
-  const embersOn = localStorage.getItem('sos-embers') === '1';
-  cl.toggle('embers-on', embersOn);
+  cl.toggle('aura-on',       localStorage.getItem('sos-aura')          !== '0');
+  cl.toggle('breathing-on',  localStorage.getItem('sos-breathing')     === '1');
+  cl.toggle('hearth-on',     localStorage.getItem('sos-hearth')        !== '0');
+  cl.toggle('no-anim',       localStorage.getItem('sos-no-anim')       === '1');
+  const embersOn  = localStorage.getItem('sos-embers')       === '1';
+  const levelOn   = localStorage.getItem('sos-pad-level-vis') === '1';
+  cl.toggle('embers-on',     embersOn);
+  cl.toggle('pad-level-vis', levelOn);
   _applyEmbers(embersOn);
+  if (levelOn) _levelLoopStart(); else _levelLoopStop();
 }
 
 let _embersCreated = false;
@@ -698,6 +706,38 @@ function _applyEmbers(on) {
     el.style.cssText = `left:${(Math.random()*90+5).toFixed(1)}%;bottom:${(Math.random()*40).toFixed(1)}%;--ember-x:${x}px;--ember-dur:${(3+Math.random()*3).toFixed(1)}s;--ember-delay:-${(Math.random()*4).toFixed(1)}s`;
     container.appendChild(el);
   }
+}
+
+/* ── PAD LEVEL METER ─────────────────────────────────────────── */
+
+let _levelRaf = null;
+
+function _levelTick() {
+  if (!document.body.classList.contains('pad-level-vis')) {
+    document.querySelectorAll('.pad[data-pad-id]').forEach(el => el.style.removeProperty('--pad-level-pct'));
+    _levelRaf = null;
+    return;
+  }
+  const playing = new Set(audioGetPlayingIds());
+  document.querySelectorAll('.pad[data-pad-id]').forEach(el => {
+    const id = el.dataset.padId;
+    if (playing.has(id)) {
+      el.style.setProperty('--pad-level-pct', `${Math.round(audioGetLevel(id) * 100)}%`);
+    } else {
+      el.style.removeProperty('--pad-level-pct');
+    }
+  });
+  _levelRaf = requestAnimationFrame(_levelTick);
+}
+
+function _levelLoopStart() {
+  if (_levelRaf !== null) return;
+  _levelRaf = requestAnimationFrame(_levelTick);
+}
+
+function _levelLoopStop() {
+  if (_levelRaf !== null) { cancelAnimationFrame(_levelRaf); _levelRaf = null; }
+  document.querySelectorAll('.pad[data-pad-id]').forEach(el => el.style.removeProperty('--pad-level-pct'));
 }
 
 function applyAppearance() {
@@ -4689,6 +4729,7 @@ function settingsHTML() {
   const visHearth     = localStorage.getItem('sos-hearth')          !== '0';
   const visEmbers     = localStorage.getItem('sos-embers')          === '1';
   const visNoAnim     = localStorage.getItem('sos-no-anim')         === '1';
+  const visLevelMeter = localStorage.getItem('sos-pad-level-vis')   === '1';
   const themes = [
     { id: '',        label: 'DEFAULT' },
     { id: 'verdant', label: 'VERDANT' },
@@ -4821,6 +4862,13 @@ function settingsHTML() {
         <div class="sett-btn-group">
           ${seg('sett-vis','key','no-anim-0','ON',  !visNoAnim)}
           ${seg('sett-vis','key','no-anim-1','OFF', visNoAnim)}
+        </div>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Pad level meter</label>
+        <div class="sett-btn-group">
+          ${seg('sett-vis','key','pad-level-1','ON',  visLevelMeter)}
+          ${seg('sett-vis','key','pad-level-0','OFF', !visLevelMeter)}
         </div>
       </div>
     </div>
@@ -5742,7 +5790,7 @@ function handleAction(action, el) {
       const lastDash = k.lastIndexOf('-');
       const feature  = k.slice(0, lastDash);
       const val      = k.slice(lastDash + 1);
-      const storageMap = { aura:'sos-aura', breathing:'sos-breathing', hearth:'sos-hearth', embers:'sos-embers', 'no-anim':'sos-no-anim' };
+      const storageMap = { aura:'sos-aura', breathing:'sos-breathing', hearth:'sos-hearth', embers:'sos-embers', 'no-anim':'sos-no-anim', 'pad-level':'sos-pad-level-vis' };
       const storageKey = storageMap[feature];
       if (storageKey) localStorage.setItem(storageKey, val);
       document.querySelectorAll('[data-action="sett-vis"]').forEach(b => {

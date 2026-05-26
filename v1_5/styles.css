@@ -763,6 +763,18 @@ body.hearth-on #bd-content::before{
 body.no-anim *,body.no-anim *::before,body.no-anim *::after{
   animation:none!important;transition:none!important}
 
+/* ── PAD LEVEL METER ─────────────────────────────────────────── */
+body.pad-level-vis .pad.is-playing::before{
+  content:'';position:absolute;bottom:0;left:0;right:0;
+  height:var(--pad-level-pct,0%);pointer-events:none;z-index:0;
+  background:rgba(212,178,92,.22)}
+body.pad-level-vis .pad.is-loop.is-playing::before{
+  background:rgba(109,181,184,.22)}
+body.pad-level-vis .pad.is-playlist.is-playing::before{
+  background:rgba(157,127,199,.22)}
+body.pad-level-vis .pad.is-combo.is-playing::before{
+  background:rgba(209,139,74,.22)}
+
 /* ── APPEARANCE OVERRIDES ────────────────────────────────────── */
 body.pad-ci .pad{
   border-radius:50%;clip-path:none;aspect-ratio:1;

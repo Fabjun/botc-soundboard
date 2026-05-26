@@ -15,6 +15,8 @@ const _libBufLoading = {};
 const srcs      = {};  // padId → AudioBufferSourceNode
 const gains     = {};  // padId → GainNode (per-pad volume)
 const duckGains = {};  // padId → GainNode (duck gain, loop pads only)
+const analysers = {};  // padId → AnalyserNode (level metering)
+const _analyserBufs = {}; // padId → Uint8Array (reused per-frame)
 const _loopPadIds = new Set();
 let _duckTarget = 1.0; // current duck level applied to new loop pads
 
@@ -129,15 +131,23 @@ async function audioPlay(padId, hash, opts = {}) {
   fadeInGain(g, vol, fadeIn);
   gains[padId] = g;
 
+  const an = ctx.createAnalyser();
+  an.fftSize = 256;
+  an.smoothingTimeConstant = 0.6;
+  analysers[padId] = an;
+  _analyserBufs[padId] = new Uint8Array(an.frequencyBinCount);
+
   if (type === 'loop') {
     const dg = ctx.createGain();
     dg.gain.setValueAtTime(_duckTarget, ctx.currentTime);
     dg.connect(masterGain || ctx.destination);
     duckGains[padId] = dg;
     _loopPadIds.add(padId);
-    g.connect(dg);
+    g.connect(an);
+    an.connect(dg);
   } else {
-    g.connect(masterGain || ctx.destination);
+    g.connect(an);
+    an.connect(masterGain || ctx.destination);
   }
 
   const s = ctx.createBufferSource();
@@ -181,6 +191,10 @@ function audioStop(padId, opts = {}) {
 
   _loopPadIds.delete(padId);
   delete duckGains[padId];
+
+  try { analysers[padId]?.disconnect(); } catch (_) {}
+  delete analysers[padId];
+  delete _analyserBufs[padId];
 
   if (fade > 0 && g) {
     g.gain.cancelScheduledValues(ctx.currentTime);
@@ -260,6 +274,24 @@ function audioUnduck(ramp = 0.3) {
     dg.gain.setValueAtTime(dg.gain.value, ctx.currentTime);
     dg.gain.linearRampToValueAtTime(1.0, ctx.currentTime + ramp);
   }
+}
+
+/* ── LEVEL METERING ─────────────────────────────────────────── */
+
+/**
+ * Returns perceived loudness 0–1 for a playing pad.
+ * Uses frequency-domain average; multiplied to make typical audio visible.
+ * @param {string} padId
+ * @returns {number} 0–1
+ */
+function audioGetLevel(padId) {
+  const an  = analysers[padId];
+  const buf = _analyserBufs[padId];
+  if (!an || !buf) return 0;
+  an.getByteFrequencyData(buf);
+  let sum = 0;
+  for (let i = 0; i < buf.length; i++) sum += buf[i];
+  return Math.min(1, (sum / (buf.length * 255)) * 3.5);
 }
 
 /* ── SWITCH SOUND ───────────────────────────────────────────── */
