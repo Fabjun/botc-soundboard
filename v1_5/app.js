@@ -1,8 +1,12 @@
 'use strict';
 
-const APP_VERSION = '2.0.4';
+const APP_VERSION = '2.0.5';
 
 const CHANGELOG = [
+  { v: '2.0.5', date: '2026-05-27', items: [
+    'Board: search and filter bar above pad grid — search by name, filter by type, sort A-Z/Z-A',
+    'Filter state resets when navigating to a new board',
+  ]},
   { v: '2.0.4', date: '2026-05-27', items: [
     'Library: folder create, rename, delete — rename/delete buttons on each folder facet row',
     'Folder delete: 2-tap confirm (first tap shows toast, second tap executes)',
@@ -1716,6 +1720,9 @@ async function handleBlDelete(id) {
 let _bdBoard        = null;
 let _bdScene        = null;
 let _bdSet          = null;
+let _bdSearch       = '';
+let _bdTypeFilter   = 'all';
+let _bdSort         = 'default';
 let _bdPickerSlot   = null;  // scene pad picker slot
 let _bdSetPickerSlot = null; // set pad picker slot
 let _bdOptsSlot     = null;  // scene pad opts slot
@@ -1888,6 +1895,22 @@ function boardHTML() {
   <div class="bd-scene-bar" id="bd-scene-bar"></div>
   <div class="bd-content" id="bd-content">
     <div id="bd-cue-strip"></div>
+    <div class="bd-filter-bar" id="bd-filter-bar">
+      <input id="bd-search-input" class="bd-search-input" type="text" placeholder="Search pads…"
+             value="${escAttr(_bdSearch)}" data-action="bd-search-input">
+      <select class="bd-filter-sel" id="bd-type-filter" data-action="bd-type-change">
+        <option value="all"${_bdTypeFilter==='all'?' selected':''}>All</option>
+        <option value="single"${_bdTypeFilter==='single'?' selected':''}>Single</option>
+        <option value="loop"${_bdTypeFilter==='loop'?' selected':''}>Loop</option>
+        <option value="playlist"${_bdTypeFilter==='playlist'?' selected':''}>Playlist</option>
+        <option value="combo"${_bdTypeFilter==='combo'?' selected':''}>Combo</option>
+      </select>
+      <select class="bd-filter-sel" id="bd-sort-sel" data-action="bd-sort-change">
+        <option value="default"${_bdSort==='default'?' selected':''}>Default</option>
+        <option value="az"${_bdSort==='az'?' selected':''}>A→Z</option>
+        <option value="za"${_bdSort==='za'?' selected':''}>Z→A</option>
+      </select>
+    </div>
     <div class="bd-grid-wrap" id="bd-grid-wrap"></div>
   </div>
   <div class="bd-qa-wrap" id="bd-qa-wrap"></div>
@@ -1901,6 +1924,7 @@ function boardHTML() {
 
 async function mountBoard() {
   if (!S.boardId) return;
+  _bdSearch = ''; _bdTypeFilter = 'all'; _bdSort = 'default';
   _bdBoard = await boardGet(S.boardId);
   if (!_bdBoard) { navigate('board-list'); return; }
 
@@ -1978,6 +2002,38 @@ function renderPadGrid() {
   }
   html += '</div>';
   el.innerHTML = html;
+  applyPadFilter();
+}
+
+function applyPadFilter() {
+  const q = _bdSearch.toLowerCase().trim();
+  const grid = document.querySelector('.bd-grid');
+  if (!grid) return;
+  const pads = [...grid.querySelectorAll('.pad.is-assigned')];
+
+  if (_bdSort !== 'default') {
+    const sorted = [...pads].sort((a, b) => {
+      const na = (a.querySelector('.pad-name')?.textContent || '').toLowerCase();
+      const nb = (b.querySelector('.pad-name')?.textContent || '').toLowerCase();
+      return _bdSort === 'az' ? na.localeCompare(nb) : nb.localeCompare(na);
+    });
+    sorted.forEach((p, i) => p.style.order = i);
+    grid.querySelectorAll('.pad.is-empty').forEach(p => p.style.order = sorted.length + 1);
+  } else {
+    grid.querySelectorAll('.pad').forEach(p => p.style.removeProperty('order'));
+  }
+
+  pads.forEach(p => {
+    const name = (p.querySelector('.pad-name')?.textContent || '').toLowerCase();
+    let typeClass = '';
+    if (p.classList.contains('is-loop')) typeClass = 'loop';
+    else if (p.classList.contains('is-playlist')) typeClass = 'playlist';
+    else if (p.classList.contains('is-combo')) typeClass = 'combo';
+    else typeClass = 'single';
+    const typeOk = _bdTypeFilter === 'all' || typeClass === _bdTypeFilter;
+    const searchOk = !q || name.includes(q);
+    p.style.display = (typeOk && searchOk) ? '' : 'none';
+  });
 }
 
 /** @param {Object} pad @returns {string} */
@@ -5795,6 +5851,9 @@ function handleAction(action, el) {
 
     // board
     case 'bd-mode':           handleBdMode(el.dataset.mode); break;
+    case 'bd-search-input':   _bdSearch = el.value; applyPadFilter(); break;
+    case 'bd-type-change':    _bdTypeFilter = el.value; applyPadFilter(); break;
+    case 'bd-sort-change':    _bdSort = el.value; applyPadFilter(); break;
     case 'bd-scene-switch':      handleBdSceneSwitch(el.dataset.sceneId); break;
     case 'bd-scene-add':         handleBdSceneAdd(); break;
     case 'bd-scene-opts':        handleBdSceneOpts(el.dataset.sceneId); break;
