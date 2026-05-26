@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.34';
+const APP_VERSION = '1.5.35';
 
 const CHANGELOG = [
+  { v: '1.5.35', date: '2026-05-26', items: [
+    'Pad Editor: TRIM section — trim start/end sliders crop the active playback region of any single or loop pad',
+    'Waveform visualization: trimmed-out regions shown at low opacity; fade zones clamped to active region',
+    'Trim values (trimStart/trimEnd in seconds) saved to pad data; honored by all play sites and PREVIEW',
+  ]},
   { v: '1.5.34', date: '2026-05-26', items: [
     'Settings → KEYBINDING: capture a custom key to show/hide keymap overlay in GAME mode',
     'Keymap overlay shows all pads with hotkeys in current scene; density (MINIMAL/NORMAL); auto-hide duration',
@@ -2483,6 +2488,7 @@ async function handleQaPadTap(slot) {
     audioPlay(pad.id, pad.hash, {
       type: pad.type || 'single', volume: pad.volume ?? 80,
       fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
+      trimStart: pad.trimStart || 0, trimEnd: pad.trimEnd || 0,
     });
     if ((pad.type || 'single') !== 'loop') _onFgStart(pad.id);
     else _playOrderAdd(pad.id);
@@ -2853,10 +2859,12 @@ async function handleBdPadTap(slot) {
     el?.classList.remove('is-playing');
   } else {
     audioPlay(pad.id, pad.hash, {
-      type:    pad.type || 'single',
-      volume:  pad.volume  ?? 80,
-      fadeIn:  pad.fadeIn  || 0,
-      fadeOut: pad.fadeOut || 0,
+      type:      pad.type      || 'single',
+      volume:    pad.volume    ?? 80,
+      fadeIn:    pad.fadeIn    || 0,
+      fadeOut:   pad.fadeOut   || 0,
+      trimStart: pad.trimStart || 0,
+      trimEnd:   pad.trimEnd   || 0,
     });
     if ((pad.type || 'single') !== 'loop') _onFgStart(pad.id);
     else _playOrderAdd(pad.id);
@@ -4023,8 +4031,10 @@ function _renderPadEditor() {
   const pad  = _peEditPad;
   const t    = pad.type || 'single';
   const vol  = pad.volume ?? 80;
-  const fi   = pad.fadeIn  || 0;
-  const fo   = pad.fadeOut || 0;
+  const fi   = pad.fadeIn     || 0;
+  const fo   = pad.fadeOut    || 0;
+  const ts   = pad.trimStart  || 0;
+  const te   = pad.trimEnd    || 0;
   const name = pad.name || '—';
   const key  = pad.hotkey || '';
   const slot = _pePadSlot;
@@ -4161,6 +4171,25 @@ function _renderPadEditor() {
             oninput="document.getElementById('pe-fo-val').textContent=_peFadeLbl(+this.value);_peUpdateWave()">
         </div>
       </div>
+      <div class="pe-phdr">▸ TRIM</div>
+      <div class="pe-insp-sec">
+        <div class="pe-param">
+          <div class="pe-param-row">
+            <span class="pe-lbl">TRIM START</span>
+            <span class="pe-lbl" id="pe-ts-val" style="color:var(--text);font-family:var(--font-mono)">${_peTrimLbl(ts)}</span>
+          </div>
+          <input class="pe-range" type="range" id="pe-trim-start" min="0" max="${entry?.duration?.toFixed(1) || 999}" step="0.1" value="${ts}"
+            oninput="document.getElementById('pe-ts-val').textContent=_peTrimLbl(+this.value);_peUpdateWave()">
+        </div>
+        <div class="pe-param">
+          <div class="pe-param-row">
+            <span class="pe-lbl">TRIM END</span>
+            <span class="pe-lbl" id="pe-te-val" style="color:var(--text);font-family:var(--font-mono)">${te ? _peTrimLbl(te) : 'end'}</span>
+          </div>
+          <input class="pe-range" type="range" id="pe-trim-end" min="0" max="${entry?.duration?.toFixed(1) || 999}" step="0.1" value="${te}"
+            oninput="document.getElementById('pe-te-val').textContent=+this.value>0?_peTrimLbl(+this.value):'end';_peUpdateWave()">
+        </div>
+      </div>
     </aside>
 
   </div>
@@ -4202,6 +4231,11 @@ function _peModeHint(t) {
 function _peFadeLbl(s) {
   if (!s) return 'off';
   return s < 1 ? `${Math.round(s * 10) / 10}s` : `${+s.toFixed(1)}s`;
+}
+
+/** @param {number} s  seconds (always shows position) */
+function _peTrimLbl(s) {
+  return `${+s.toFixed(1)}s`;
 }
 
 /**
@@ -4267,7 +4301,7 @@ function _peCenterHTML(pad, entry) {
 
   return `${secHdr('SOUND')}
     ${fileChip}
-    <div class="pe-wave-wrap" id="pe-wave-wrap">${_peWaveHTML(entry, pad.fadeIn || 0, pad.fadeOut || 0)}</div>
+    <div class="pe-wave-wrap" id="pe-wave-wrap">${_peWaveHTML(entry, pad.fadeIn || 0, pad.fadeOut || 0, pad.trimStart || 0, pad.trimEnd || 0)}</div>
     ${statsHTML}`;
 }
 
@@ -4275,18 +4309,30 @@ function _peCenterHTML(pad, entry) {
  * @param {object|null} entry
  * @param {number} fi  fadeIn seconds
  * @param {number} fo  fadeOut seconds
+ * @param {number} [ts]  trimStart seconds
+ * @param {number} [te]  trimEnd seconds (0 = full)
  * @returns {string}
  */
-function _peWaveHTML(entry, fi, fo) {
+function _peWaveHTML(entry, fi, fo, ts = 0, te = 0) {
   const peaks = entry?.peaks;
   if (!peaks?.length) return `<div class="pe-wave-empty">— no audio —</div>`;
   const dur  = entry?.duration || 0;
   const N    = peaks.length;
-  const fiBars = dur > 0 ? Math.round(N * Math.min(fi, dur) / dur) : 0;
-  const foBars = dur > 0 ? Math.round(N * Math.min(fo, dur) / dur) : 0;
+  const tsBar = dur > 0 && ts > 0 ? Math.round(N * Math.min(ts, dur) / dur) : 0;
+  const teBar = dur > 0 && te > 0 ? Math.round(N * Math.min(te, dur) / dur) : N;
+  const activeLen = Math.max(0, teBar - tsBar);
+  const fiBars = activeLen > 0 ? Math.min(Math.round(N * Math.min(fi, dur) / dur), activeLen) : 0;
+  const foBars = activeLen > 0 ? Math.min(Math.round(N * Math.min(fo, dur) / dur), activeLen) : 0;
   const bars = peaks.map((v, i) => {
-    const h   = Math.max(4, Math.round(v * 100));
-    const cls = i < fiBars ? ' fi' : i >= N - foBars ? ' fo' : '';
+    const h = Math.max(4, Math.round(v * 100));
+    let cls = '';
+    if (i < tsBar || i >= teBar) {
+      cls = ' tr';
+    } else if (i < tsBar + fiBars) {
+      cls = ' fi';
+    } else if (i >= teBar - foBars) {
+      cls = ' fo';
+    }
     return `<div class="pe-wave-bar${cls}" style="height:${h}%"></div>`;
   }).join('');
   return `<div class="pe-wave-bars">${bars}</div>`;
@@ -4295,9 +4341,11 @@ function _peWaveHTML(entry, fi, fo) {
 function _peUpdateWave() {
   const wrap = document.getElementById('pe-wave-wrap');
   if (!wrap) return;
-  const fi = +(document.getElementById('pe-fade-in')?.value || 0);
-  const fo = +(document.getElementById('pe-fade-out')?.value || 0);
-  wrap.innerHTML = _peWaveHTML(_peLibEntry, fi, fo);
+  const fi = +(document.getElementById('pe-fade-in')?.value    || 0);
+  const fo = +(document.getElementById('pe-fade-out')?.value   || 0);
+  const ts = +(document.getElementById('pe-trim-start')?.value || 0);
+  const te = +(document.getElementById('pe-trim-end')?.value   || 0);
+  wrap.innerHTML = _peWaveHTML(_peLibEntry, fi, fo, ts, te);
 }
 
 function handlePeCancel() {
@@ -4312,14 +4360,16 @@ async function handlePeSave() {
   const hotkey  = keycap?.dataset.hotkey || '';
   const type    = document.querySelector('.pe-mode-card.is-active')?.dataset.type || _peEditPad.type || 'single';
   const volume  = Math.max(0, Math.min(100, +(document.getElementById('pe-volume')?.value ?? 80)));
-  const fadeIn  = Math.max(0, +(document.getElementById('pe-fade-in')?.value || 0));
-  const fadeOut = Math.max(0, +(document.getElementById('pe-fade-out')?.value || 0));
+  const fadeIn    = Math.max(0, +(document.getElementById('pe-fade-in')?.value    || 0));
+  const fadeOut   = Math.max(0, +(document.getElementById('pe-fade-out')?.value   || 0));
+  const trimStart = Math.max(0, +(document.getElementById('pe-trim-start')?.value || 0));
+  const trimEnd   = Math.max(0, +(document.getElementById('pe-trim-end')?.value   || 0));
   const isList  = type === 'playlist';
   const shuffle = isList ? document.querySelector('[data-action="pe-shuffle"].is-active')?.dataset.shuffle === '1' : undefined;
   const files   = isList ? _editingPlaylistFiles.map(f => ({ hash: f.hash, name: f.name })) : undefined;
 
   function _applyPad(p) {
-    const base = { ...p, name, hotkey, type, volume, fadeIn, fadeOut };
+    const base = { ...p, name, hotkey, type, volume, fadeIn, fadeOut, trimStart, trimEnd };
     if (_editingIconId) base.iconId = _editingIconId; else delete base.iconId;
     if (type === 'combo') {
       base.steps = _ceSteps.map(s => ({ chips: (s.chips || []).map(c => ({ ...c })), dur: s.dur || 0, action: s.action || null }));
@@ -4384,8 +4434,10 @@ function handlePeSaveTemplate() {
     type:    document.querySelector('[data-action="pe-type"].is-active')?.dataset.type || pad.type || 'single',
     hotkey:  document.getElementById('pe-hotkey-input')?.value || pad.hotkey || '',
     volume:  +(document.getElementById('pe-volume')?.value  ?? pad.volume  ?? 80),
-    fadeIn:  +(document.getElementById('pe-fade-in')?.value  || pad.fadeIn  || 0),
-    fadeOut: +(document.getElementById('pe-fade-out')?.value || pad.fadeOut || 0),
+    fadeIn:    +(document.getElementById('pe-fade-in')?.value    || pad.fadeIn    || 0),
+    fadeOut:   +(document.getElementById('pe-fade-out')?.value   || pad.fadeOut   || 0),
+    trimStart: +(document.getElementById('pe-trim-start')?.value || pad.trimStart || 0),
+    trimEnd:   +(document.getElementById('pe-trim-end')?.value   || pad.trimEnd   || 0),
     hash:    pad.hash   || null,
     files:   pad.files  || [],
     steps:   pad.steps  || [],
@@ -4405,10 +4457,12 @@ function handlePePreview() {
     audioStop(pad.id, { fade: +(document.getElementById('pe-fade-out')?.value || 0) });
     if (btn) btn.textContent = '▶ PREVIEW';
   } else if (pad.hash) {
-    const vol = +(document.getElementById('pe-volume')?.value ?? 80);
-    const fi  = +(document.getElementById('pe-fade-in')?.value  || 0);
-    const fo  = +(document.getElementById('pe-fade-out')?.value || 0);
-    audioPlay(pad.id, pad.hash, { type: pad.type || 'single', volume: vol, fadeIn: fi, fadeOut: fo });
+    const vol = +(document.getElementById('pe-volume')?.value      ?? 80);
+    const fi  = +(document.getElementById('pe-fade-in')?.value     || 0);
+    const fo  = +(document.getElementById('pe-fade-out')?.value    || 0);
+    const ts  = +(document.getElementById('pe-trim-start')?.value  || 0);
+    const te  = +(document.getElementById('pe-trim-end')?.value    || 0);
+    audioPlay(pad.id, pad.hash, { type: pad.type || 'single', volume: vol, fadeIn: fi, fadeOut: fo, trimStart: ts, trimEnd: te });
     if (btn) btn.textContent = '■ STOP';
   }
 }
@@ -5154,6 +5208,7 @@ document.addEventListener('keydown', e => {
             audioPlay(pad.id, pad.hash, {
               type: pad.type || 'single', volume: pad.volume ?? 80,
               fadeIn: pad.fadeIn || 0, fadeOut: pad.fadeOut || 0,
+              trimStart: pad.trimStart || 0, trimEnd: pad.trimEnd || 0,
             });
             if ((pad.type || 'single') !== 'loop') _onFgStart(pad.id);
             else _playOrderAdd(pad.id);

@@ -1195,6 +1195,7 @@ body.pad-ci .pad-hotkey{top:4px;right:4px;font-size:8px}
 .pe-wave-bar{flex:1;background:var(--text-dim);opacity:.45;min-height:3px}
 .pe-wave-bar.fi{background:var(--pad-loop);opacity:.8}
 .pe-wave-bar.fo{background:var(--gold);opacity:.8}
+.pe-wave-bar.tr{opacity:.12}
 .pe-wave-empty{
   font-family:var(--font-mono);font-size:12px;color:var(--text-mute);
   text-align:center;width:100%}

@@ -102,7 +102,7 @@ function fadeInGain(g, targetVol, fadeIn) {
  * @param {{ type?: 'single'|'loop', volume?: number, fadeIn?: number, fadeOut?: number }} opts
  */
 async function audioPlay(padId, hash, opts = {}) {
-  const { type = 'single', volume = 80, fadeIn = 0, fadeOut = 0 } = opts;
+  const { type = 'single', volume = 80, fadeIn = 0, fadeOut = 0, trimStart = 0, trimEnd = 0 } = opts;
 
   if (type === 'loop' && srcs[padId]) {
     audioStop(padId, { fade: fadeOut });
@@ -143,8 +143,19 @@ async function audioPlay(padId, hash, opts = {}) {
   const s = ctx.createBufferSource();
   s.buffer = buf;
   s.loop = (type === 'loop');
-  s.connect(g);
-  s.start(0);
+  if (type === 'loop') {
+    const ls = Math.max(0, Math.min(trimStart, buf.duration));
+    const le = (trimEnd > 0 && trimEnd > ls) ? Math.min(trimEnd, buf.duration) : buf.duration;
+    s.loopStart = ls;
+    s.loopEnd   = le;
+    s.connect(g);
+    s.start(0, ls);
+  } else {
+    const offset = Math.max(0, Math.min(trimStart, buf.duration));
+    const dur    = (trimEnd > 0 && trimEnd > offset) ? (Math.min(trimEnd, buf.duration) - offset) : undefined;
+    s.connect(g);
+    dur !== undefined ? s.start(0, offset, dur) : s.start(0, offset);
+  }
   srcs[padId] = s;
 
   s.onended = () => {
