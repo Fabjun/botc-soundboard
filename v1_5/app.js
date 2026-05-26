@@ -1,8 +1,13 @@
 'use strict';
 
-const APP_VERSION = '1.5.32';
+const APP_VERSION = '1.5.33';
 
 const CHANGELOG = [
+  { v: '1.5.33', date: '2026-05-26', items: [
+    'Settings → VISUALS: aura (type-color glow on playing pads), breathing (scale pulse on loop pads)',
+    'Hearth glow (radial gradient on board), ambient embers (18 floating particles), animations toggle (body.no-anim)',
+    'All visual states persist via localStorage; defaults: aura=ON, hearth=ON, breathing=OFF, embers=OFF, animations=ON',
+  ]},
   { v: '1.5.32', date: '2026-05-26', items: [
     'Settings → APPEARANCE: pad size (60–140 px), pad gap (0–16 px), label scale (0.6–1.6×), pad shape (SQUARE/CIRCLE)',
     'Appearance applied via CSS custom properties; persisted in localStorage; restored on every page load',
@@ -649,6 +654,37 @@ function applyTheme(name) {
   if (name) document.body.classList.add('theme-' + name);
 }
 
+function applyVisuals() {
+  const cl = document.body.classList;
+  cl.toggle('aura-on',     localStorage.getItem('sos-aura')       !== '0');
+  cl.toggle('breathing-on',localStorage.getItem('sos-breathing')  === '1');
+  cl.toggle('hearth-on',   localStorage.getItem('sos-hearth')     !== '0');
+  cl.toggle('no-anim',     localStorage.getItem('sos-no-anim')    === '1');
+  const embersOn = localStorage.getItem('sos-embers') === '1';
+  cl.toggle('embers-on', embersOn);
+  _applyEmbers(embersOn);
+}
+
+let _embersCreated = false;
+function _applyEmbers(on) {
+  const container = document.getElementById('bd-content');
+  if (!container) return;
+  if (!on) {
+    container.querySelectorAll('.ember').forEach(e => e.remove());
+    _embersCreated = false;
+    return;
+  }
+  if (_embersCreated) return;
+  _embersCreated = true;
+  for (let i = 0; i < 18; i++) {
+    const el = document.createElement('div');
+    el.className = 'ember';
+    const x = (Math.random() * 24 - 12).toFixed(1);
+    el.style.cssText = `left:${(Math.random()*90+5).toFixed(1)}%;bottom:${(Math.random()*40).toFixed(1)}%;--ember-x:${x}px;--ember-dur:${(3+Math.random()*3).toFixed(1)}s;--ember-delay:-${(Math.random()*4).toFixed(1)}s`;
+    container.appendChild(el);
+  }
+}
+
 function applyAppearance() {
   const root  = document.documentElement.style;
   const padSz    = +(localStorage.getItem('sos-pad-sz')           ?? 80);
@@ -671,6 +707,7 @@ function navigate(screenId) {
     document.querySelectorAll('.pad.is-playing, .set-pad.is-playing').forEach(e => e.classList.remove('is-playing'));
     _releaseWakeLock();
     _cancelAutoStop();
+    _embersCreated = false;
   }
   set.screen(screenId);
 }
@@ -1701,6 +1738,7 @@ function renderBoardUI() {
   renderPadGrid();
   renderCueStrip();
   renderQA();
+  _applyEmbers(localStorage.getItem('sos-embers') === '1');
 
   const sName  = document.getElementById('bd-status-name');
   const sScene = document.getElementById('bd-status-scene');
@@ -4490,6 +4528,11 @@ function settingsHTML() {
   const padGap        = localStorage.getItem('sos-pad-gap')          ?? '6';
   const padLabelSc    = localStorage.getItem('sos-pad-label-scale')  ?? '1';
   const padShape      = localStorage.getItem('sos-pad-shape')        || 'square';
+  const visAura       = localStorage.getItem('sos-aura')            !== '0';
+  const visBreathing  = localStorage.getItem('sos-breathing')       === '1';
+  const visHearth     = localStorage.getItem('sos-hearth')          !== '0';
+  const visEmbers     = localStorage.getItem('sos-embers')          === '1';
+  const visNoAnim     = localStorage.getItem('sos-no-anim')         === '1';
   const themes = [
     { id: '',        label: 'DEFAULT' },
     { id: 'verdant', label: 'VERDANT' },
@@ -4546,6 +4589,45 @@ function settingsHTML() {
       </div>
       <div class="sett-actions">
         <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="sett-appearance-save">APPLY</button>
+      </div>
+    </div>
+
+    <div class="sett-section">
+      <div class="sett-title">${pi('audio', 12, 'var(--gold)')} VISUALS</div>
+      <div class="sett-row">
+        <label class="sett-label">Aura (playing pads)</label>
+        <div class="sett-btn-group">
+          ${seg('sett-vis','key','aura-1','ON',  visAura)}
+          ${seg('sett-vis','key','aura-0','OFF', !visAura)}
+        </div>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Breathing (loop pads)</label>
+        <div class="sett-btn-group">
+          ${seg('sett-vis','key','breathing-1','ON',  visBreathing)}
+          ${seg('sett-vis','key','breathing-0','OFF', !visBreathing)}
+        </div>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Hearth glow</label>
+        <div class="sett-btn-group">
+          ${seg('sett-vis','key','hearth-1','ON',  visHearth)}
+          ${seg('sett-vis','key','hearth-0','OFF', !visHearth)}
+        </div>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Ambient embers</label>
+        <div class="sett-btn-group">
+          ${seg('sett-vis','key','embers-1','ON',  visEmbers)}
+          ${seg('sett-vis','key','embers-0','OFF', !visEmbers)}
+        </div>
+      </div>
+      <div class="sett-row">
+        <label class="sett-label">Animations</label>
+        <div class="sett-btn-group">
+          ${seg('sett-vis','key','no-anim-0','ON',  !visNoAnim)}
+          ${seg('sett-vis','key','no-anim-1','OFF', visNoAnim)}
+        </div>
       </div>
     </div>
 
@@ -5405,6 +5487,25 @@ function handleAction(action, el) {
     case 'ce-cp-back':       closeCeChipPicker(); break;
     case 'ce-cp-pick':       handleCeCpPick(el.dataset.hash, el.dataset.name); break;
 
+    // settings — visuals
+    case 'sett-vis': {
+      const k        = el.dataset.key;
+      const lastDash = k.lastIndexOf('-');
+      const feature  = k.slice(0, lastDash);
+      const val      = k.slice(lastDash + 1);
+      const storageMap = { aura:'sos-aura', breathing:'sos-breathing', hearth:'sos-hearth', embers:'sos-embers', 'no-anim':'sos-no-anim' };
+      const storageKey = storageMap[feature];
+      if (storageKey) localStorage.setItem(storageKey, val);
+      document.querySelectorAll('[data-action="sett-vis"]').forEach(b => {
+        b.classList.toggle('is-active', b.dataset.key === k);
+      });
+      if (feature === 'embers' && val === '0') {
+        _embersCreated = false;
+      }
+      applyVisuals();
+      break;
+    }
+
     // settings — appearance
     case 'sett-pad-shape':
       document.querySelectorAll('[data-action="sett-pad-shape"]').forEach(b =>
@@ -5547,6 +5648,7 @@ async function init() {
   S.theme = localStorage.getItem('sos-theme') || '';
   applyTheme(S.theme);
   applyAppearance();
+  applyVisuals();
   try {
     await openDB();
   } catch (err) {

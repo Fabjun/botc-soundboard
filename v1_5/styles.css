@@ -734,6 +734,34 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
   font-family:var(--font-mono);font-size:10px;color:var(--text-mute);
   text-align:center}
 
+/* ── VISUALS / ATMOSPHERE ────────────────────────────────────── */
+@keyframes pad-aura{0%,100%{filter:none}50%{filter:drop-shadow(0 0 10px var(--pad-single))}}
+@keyframes pad-aura-loop{0%,100%{filter:none}50%{filter:drop-shadow(0 0 10px var(--pad-loop))}}
+@keyframes pad-aura-pl{0%,100%{filter:none}50%{filter:drop-shadow(0 0 10px var(--pad-playlist))}}
+@keyframes pad-aura-co{0%,100%{filter:none}50%{filter:drop-shadow(0 0 10px var(--pad-combo))}}
+@keyframes pad-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+@keyframes ember-float{
+  0%{transform:translateY(0) translateX(0) scale(1);opacity:.65}
+  70%{opacity:.4}
+  100%{transform:translateY(-120px) translateX(var(--ember-x,8px)) scale(.3);opacity:0}}
+
+body.aura-on .pad.is-playing:not(.is-loop):not(.is-playlist):not(.is-combo){animation:pad-aura 2s ease-in-out infinite}
+body.aura-on .pad.is-loop.is-playing{animation:pad-aura-loop 2.4s ease-in-out infinite}
+body.aura-on .pad.is-playlist.is-playing{animation:pad-aura-pl 2s ease-in-out infinite}
+body.aura-on .pad.is-combo.is-playing{animation:pad-aura-co 2s ease-in-out infinite}
+body.breathing-on .pad.is-loop.is-playing{animation:pad-breathe 3s ease-in-out infinite}
+body.aura-on.breathing-on .pad.is-loop.is-playing{
+  animation:pad-aura-loop 2.4s ease-in-out infinite,pad-breathe 3s ease-in-out infinite}
+body.hearth-on #bd-content::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 100% 50% at 50% 100%,var(--gold-soft) 0%,transparent 70%)}
+.ember{
+  position:absolute;width:3px;height:3px;border-radius:50%;
+  background:var(--flame,#E8821E);pointer-events:none;z-index:1;
+  animation:ember-float var(--ember-dur,4s) ease-in var(--ember-delay,0s) infinite}
+body.no-anim *,body.no-anim *::before,body.no-anim *::after{
+  animation:none!important;transition:none!important}
+
 /* ── APPEARANCE OVERRIDES ────────────────────────────────────── */
 body.pad-ci .pad{
   border-radius:50%;clip-path:none;aspect-ratio:1;
