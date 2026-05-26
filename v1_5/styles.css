@@ -622,6 +622,16 @@ body{background:var(--night);color:var(--text);font-family:var(--font-mono);
   font-family:var(--font-ui);font-size:12px;letter-spacing:1px;
   padding:3px 10px;cursor:pointer;clip-path:var(--cc)}
 
+/* ── TEMPLATE ASSIGN BANNER ─────────────────────────────────── */
+.assign-banner{
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  background:var(--mode-game);color:var(--night);
+  font-family:var(--font-ui);font-size:12px;letter-spacing:.5px;
+  padding:7px 14px;display:flex;align-items:center;justify-content:center;gap:12px;
+  animation:slide-down .15s ease}
+.assign-banner-text strong{font-family:var(--font-ui)}
+@keyframes slide-down{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+
 /* ── CHANGELOG MODAL ─────────────────────────────────────────── */
 .cl-overlay{
   position:fixed;inset:0;background:rgba(8,8,26,.75);

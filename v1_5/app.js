@@ -1,8 +1,14 @@
 'use strict';
 
-const APP_VERSION = '1.5.25';
+const APP_VERSION = '1.5.26';
 
 const CHANGELOG = [
+  { v: '1.5.26', date: '2026-05-26', items: [
+    'Library PADS tab: save any configured pad as a reusable template (◈ TEMPLATE button in PAD EDITOR)',
+    'Templates stored locally; browse in Library → PADS with type badge, file/track info, saved date',
+    'ASSIGN: navigates to board (SETUP mode) with banner; tap any scene or set slot to apply the template',
+    'ESC cancels assign mode; 2-tap confirm delete per template',
+  ]},
   { v: '1.5.25', date: '2026-05-26', items: [
     'Audio ducking: LOOP pads automatically reduce volume when a SINGLE or PLAYLIST pad plays',
     'Duck amount configurable in Settings → DUCKING (0–100%, default 30%)',
@@ -616,6 +622,7 @@ function applyTheme(name) {
 /** @param {ScreenId} screenId */
 function navigate(screenId) {
   if (_peOpen) closePadEditor();
+  if (_assigningTemplate && screenId !== 'board') _cancelAssignTemplate();
   if (S.screen === 'board' && screenId !== 'board') {
     audioStopAll(0); _onFgStopAll();
     _comboClearAll();
@@ -1006,6 +1013,7 @@ function handleLibTab(tab) {
   const s = document.getElementById('lib-status-tab');
   if (s) s.textContent = tab.toUpperCase();
   if (tab === 'boards') renderBoardsTab();
+  else if (tab === 'pads')  renderPadsTab();
   else if (tab === 'audio') renderAudioList();
   else if (tab === 'icons') renderIconsTab();
 }
@@ -1065,6 +1073,124 @@ async function handleLibRename(hash) {
   });
 }
 
+
+function renderPadsTab() {
+  const container = document.getElementById('tab-pads');
+  if (!container) return;
+  const templates = loadPadTemplates();
+  const canAssign = _bdBoard && S.boardMode === 'setup';
+
+  const statusCount = document.getElementById('lib-status-count');
+  if (statusCount) statusCount.textContent = templates.length
+    ? `${templates.length} template${templates.length !== 1 ? 's' : ''}`
+    : 'No templates';
+
+  if (!templates.length) {
+    container.innerHTML = `<main class="lib-main"><p class="lib-empty" style="margin-top:40px">No pad templates yet.<br>Open a pad in SETUP mode and tap ◈ TEMPLATE to save one.</p></main>`;
+    return;
+  }
+
+  const typeLabel = { single:'SOLO', loop:'LOOP', playlist:'LIST', combo:'COMBO' };
+  const typeColor = { single:'var(--text-dim)', loop:'var(--mode-setup)', playlist:'#b48af7', combo:'var(--gold)' };
+
+  container.innerHTML = `<main class="lib-main"><div class="lib-bd-list" id="lib-pt-list">
+    ${templates.map(t => {
+      const isCfm = !!_ptDeleteCfm[t.id];
+      const typLbl = typeLabel[t.type] || t.type.toUpperCase();
+      const typClr = typeColor[t.type] || 'var(--text-dim)';
+      const date   = t.saved ? new Date(t.saved).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—';
+      let detail = '';
+      if (t.type === 'playlist' && t.files?.length)   detail = `${t.files.length} track${t.files.length !== 1 ? 's' : ''}`;
+      else if (t.type === 'combo' && t.steps?.length) detail = `${t.steps.length} step${t.steps.length !== 1 ? 's' : ''}`;
+      else if (t.hash) detail = (t.name || '').slice(0, 28);
+      return `<div class="lib-bd-row" data-pt-id="${t.id}">
+        <div class="lib-bd-info">
+          <div class="lib-bd-name" style="display:flex;align-items:center;gap:8px">
+            ${t.iconId ? `<span style="line-height:1">${renderPadIcon(t.iconId, 14, typClr)}</span>` : ''}
+            <span>${escHtml(t.name)}</span>
+            <span class="audio-badge" style="background:${typClr};color:var(--bg);font-size:9px">${typLbl}</span>
+          </div>
+          <div class="lib-bd-meta">${detail ? escHtml(detail) + ' · ' : ''}vol ${t.volume ?? 80}% · saved ${date}</div>
+        </div>
+        <div class="lib-bd-acts">
+          ${canAssign
+            ? `<button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="lib-pt-assign" data-pt-id="${t.id}">ASSIGN</button>`
+            : ''}
+          <button class="act-btn danger${isCfm ? ' is-confirm' : ''}" data-action="lib-pt-delete" data-pt-id="${t.id}" title="Delete template">${isCfm ? 'SURE?' : '×'}</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div></main>`;
+}
+
+function handleLibPtDelete(ptId) {
+  if (_ptDeleteCfm[ptId]) {
+    delete _ptDeleteCfm[ptId];
+    removePadTemplate(ptId);
+    renderPadsTab();
+  } else {
+    const old = Object.keys(_ptDeleteCfm)[0];
+    if (old) {
+      delete _ptDeleteCfm[old];
+      const btn = document.querySelector(`.act-btn.danger[data-pt-id="${old}"]`);
+      if (btn) { btn.classList.remove('is-confirm'); btn.textContent = '×'; }
+    }
+    _ptDeleteCfm[ptId] = true;
+    const btn = document.querySelector(`.act-btn.danger[data-pt-id="${ptId}"]`);
+    if (btn) { btn.classList.add('is-confirm'); btn.textContent = 'SURE?'; }
+  }
+}
+
+function handleLibPtAssign(ptId) {
+  const templates = loadPadTemplates();
+  const t = templates.find(x => x.id === ptId);
+  if (!t) return;
+  _assigningTemplate = t;
+  navigate('board');
+  _showAssignBanner();
+}
+
+function _showAssignBanner() {
+  document.getElementById('pt-assign-banner')?.remove();
+  if (!_assigningTemplate) return;
+  const banner = document.createElement('div');
+  banner.id = 'pt-assign-banner';
+  banner.className = 'assign-banner';
+  banner.innerHTML = `<span class="assign-banner-text">Tap a pad slot to assign <strong>${escHtml(_assigningTemplate.name)}</strong></span>
+    <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pt-assign-cancel">CANCEL</button>`;
+  document.getElementById('app').prepend(banner);
+}
+
+function _cancelAssignTemplate() {
+  _assigningTemplate = null;
+  document.getElementById('pt-assign-banner')?.remove();
+}
+
+async function _applyTemplateToSlot(slot, isSet) {
+  if (!_assigningTemplate || !_bdBoard) return;
+  const t = _assigningTemplate;
+  _cancelAssignTemplate();
+  const newPad = {
+    id: 'p_' + Math.random().toString(36).slice(2, 10), slot,
+    name: t.name, hotkey: t.hotkey || '', type: t.type || 'single',
+    volume: t.volume ?? 80, fadeIn: t.fadeIn || 0, fadeOut: t.fadeOut || 0,
+    hash: t.hash || null,
+  };
+  if (t.type === 'playlist' && t.files?.length) { newPad.files = [...t.files]; if (t.shuffle) newPad.shuffle = true; }
+  if (t.type === 'combo'    && t.steps?.length) newPad.steps = t.steps.map(s => ({ ...s, chips: (s.chips||[]).map(c => ({ ...c })) }));
+  if (t.iconId) newPad.iconId = t.iconId;
+  if (isSet && _bdSet) {
+    const updated = { ..._bdSet, pads: [...(_bdSet.pads || []).filter(p => p.slot !== slot), newPad] };
+    await setPut(updated);
+    _bdSet = updated;
+  } else if (_bdScene) {
+    const updated = { ..._bdScene, pads: [...(_bdScene.pads || []).filter(p => p.slot !== slot), newPad] };
+    await scenePut(updated);
+    _bdScene = updated;
+  }
+  renderBoard();
+  showToast(`"${t.name}" applied.`);
+}
 
 async function renderBoardsTab() {
   _libBdDeleteCfm = null;
@@ -1352,6 +1478,15 @@ let _lpNewVol = null;
 // Combo pad runtime state
 /** @type {Object.<string,{stopped:boolean,bgIds:Set<string>,fgIds:Set<string>,fgRem:number,stepIdx:number,pauseTimer:any}>} */
 const _comboState = {};
+
+// Pad template storage
+function loadPadTemplates()    { try { return JSON.parse(localStorage.getItem('sos-pad-templates') || '[]'); } catch { return []; } }
+function savePadTemplates(ts)  { localStorage.setItem('sos-pad-templates', JSON.stringify(ts)); }
+function addPadTemplate(t)     { const ts = loadPadTemplates(); ts.push(t); savePadTemplates(ts); return ts; }
+function removePadTemplate(id) { const ts = loadPadTemplates().filter(t => t.id !== id); savePadTemplates(ts); return ts; }
+
+let _assigningTemplate = null;  // template being assigned to a slot
+let _ptDeleteCfm = {};           // templateId → true if confirm pending
 
 // Ducking state
 const _fgPlayIds = new Set(); // padIds currently playing as foreground (single/playlist)
@@ -2120,6 +2255,10 @@ function openSetPadOpts(slot) {
 
 async function handleQaPadTap(slot) {
   const pad = _bdSet?.pads.find(p => p.slot === slot);
+  if (_assigningTemplate && S.boardMode === 'setup') {
+    await _applyTemplateToSlot(slot, true);
+    return;
+  }
   if (S.boardMode === 'setup') {
     if (pad) openPadEditor(slot, true);
     else openSetPadPicker(slot);
@@ -2484,6 +2623,10 @@ async function handleBdMode(mode) {
 
 async function handleBdPadTap(slot) {
   const pad = _bdScene?.pads.find(p => p.slot === slot);
+  if (_assigningTemplate && S.boardMode === 'setup') {
+    await _applyTemplateToSlot(slot, false);
+    return;
+  }
   if (S.boardMode === 'setup') {
     if (pad) openPadEditor(slot, false);
     else openPadPicker(slot);
@@ -3492,6 +3635,7 @@ function _renderPadEditor() {
     </div>
     <div class="pe-toolbar-actions">
       <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-preview" id="pe-preview-btn">▶ PREVIEW</button>
+      <button class="sb-btn sb-btn-sm sb-btn-ghost" data-action="pe-save-template" title="Save as template">◈ TEMPLATE</button>
       <button class="sb-btn sb-btn-sm sb-btn-filled" data-action="pe-save">✦ SAVE</button>
     </div>
     <div class="pe-toolbar-sep"></div>
@@ -3804,6 +3948,29 @@ async function _peClearPad() {
     _bdSet.pads = _bdSet.pads.filter(p => p.slot !== slot);
     await setPut(_bdSet); renderSetStrip();
   }
+}
+
+function handlePeSaveTemplate() {
+  const pad = _peEditPad;
+  if (!pad) return;
+  const name = document.getElementById('pe-name')?.value?.trim() || pad.name || 'Unnamed';
+  const tmpl = {
+    id: 'pt_' + Math.random().toString(36).slice(2, 10),
+    name,
+    type:    document.querySelector('[data-action="pe-type"].is-active')?.dataset.type || pad.type || 'single',
+    hotkey:  document.getElementById('pe-hotkey-input')?.value || pad.hotkey || '',
+    volume:  +(document.getElementById('pe-volume')?.value  ?? pad.volume  ?? 80),
+    fadeIn:  +(document.getElementById('pe-fade-in')?.value  || pad.fadeIn  || 0),
+    fadeOut: +(document.getElementById('pe-fade-out')?.value || pad.fadeOut || 0),
+    hash:    pad.hash   || null,
+    files:   pad.files  || [],
+    steps:   pad.steps  || [],
+    iconId:  _editingIconId  || null,
+    shuffle: pad.shuffle || false,
+    saved:   Date.now(),
+  };
+  addPadTemplate(tmpl);
+  showToast(`Template saved: "${name}"`);
 }
 
 function handlePePreview() {
@@ -4302,6 +4469,7 @@ document.addEventListener('keydown', e => {
     if (_ceCpOpen)             { closeCeChipPicker(); return; }
     if (_ceOpen)               { handleCeBack(); return; }
     if (_peOpen)               { handlePeCancel(); return; }
+    if (_assigningTemplate)    { _cancelAssignTemplate(); return; }
     if (_importModalOpen)      { closeImportModal(); return; }
     if (_clOpen)               { closeChangelog(); return; }
     if (_bdPickerSlot !== null || _bdPickerMode === 'playlist-add') { closePadPicker(); return; }
@@ -4606,6 +4774,9 @@ function handleAction(action, el) {
     case 'lib-delete':        handleLibDelete(el.dataset.hash); break;
     case 'lib-bd-open':       handleBlOpen(el.dataset.boardId); break;
     case 'lib-bd-delete':     handleLibBdDelete(el.dataset.boardId); break;
+    case 'lib-pt-assign':     handleLibPtAssign(el.dataset.ptId); break;
+    case 'lib-pt-delete':     handleLibPtDelete(el.dataset.ptId); break;
+    case 'pt-assign-cancel':  _cancelAssignTemplate(); break;
 
     // board list
     case 'bl-create':         openBoardCreate(); break;
@@ -4690,6 +4861,7 @@ function handleAction(action, el) {
     case 'pe-save':          handlePeSave(); break;
     case 'pe-delete':        handlePeDelete(); break;
     case 'pe-preview':       handlePePreview(); break;
+    case 'pe-save-template': handlePeSaveTemplate(); break;
     case 'pe-key-capture':   handlePeStartCapture(); break;
     case 'pe-key-clear':     handlePeKeyClear(); break;
     case 'pe-type':          handlePeTypeChange(el.dataset.type); break;
